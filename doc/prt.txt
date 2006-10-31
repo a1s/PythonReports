@@ -1,0 +1,715 @@
+=======================
+PythonReports Templates
+=======================
+
+:Version: 0.1.0
+:Date: 29-jun-2006
+
+.. TODO: variables iterated at start of section;
+         groups have title/summary instead of header/footer
+
+.. TODO: subreports, backgrounds, outline tags
+
+.. contents::
+
+Introduction
+============
+
+Report definitions for PythonReports (_`report templates`) are
+used to control database report layouts.  Report builder applies
+a template to a sequence of `report data`_ objects and produces a
+`printout`_ file that can be rendered by one of the front-end
+drivers to screen, printer, HTML, PDF etc.
+
+Report templates are files in XML format.
+By convention, these files use extension ``.PRT``.
+
+This document describes the structure of the template files.
+
+Let's start with some terminology:
+
+* _`body elements`: elements that produce primitive printable content,
+  i.e. `field`_, `line`_, `rectangle`_, `image`_ and `barcode`_.
+* _`section elements`: `detail`_, `header`_, `footer`_, `title`_
+  and `summary`_.
+* _`report elements`: `section elements`_ and `body elements`_.
+* `box`_: rectangular area controlling the placement
+  of `report elements`_.
+* `style`_: element controlling the appearance of `report elements`_ -
+  fonts, colors and such.
+* _`report data`: a sequence (iterable) of structure-like (fields
+  are attributes) or mapping-like (fields are items) objects.
+
+The root of the template structure is `report`_ element.  It must
+contain exactly one `layout`_ element and may contain and arbitrary
+number of `font`_, `parameter`_, `variable`_ and `data`_ elements.
+
+The `layout`_ element contains one `group`_ or `detail`_ element
+and may contain a sequence of `style`_ elements and possible
+`columns`_, `header`_, `footer`_, `title`_ and `summary`_ elements.
+
+The `columns`_ element may contain a sequence of `style`_ elements
+and possible `header`_ and `footer`_ elements.
+
+The `group`_ element contains one `group`_ or `detail`_ element and
+may contain a sequence of `style`_ elements and possible `columns`_,
+`header`_ and `footer`_ elements.
+
+Report template may contain only one `detail`_ section (innermost
+in the `layout`_/`group`_ hierarchy).
+
+All `section elements`_ may contain one `box`_ element, a sequence
+of `eject`_ variants and `style`_ definitions and any `body elements`_.
+The order of `body elements`_ is important: elements appearing later
+in the template sequence are laid out on top of previous elements.
+
+All `body elements`_ must contain one `box`_ element and may contain
+a sequence of `style`_ elements.
+
+In each sequence of the `style`_ and `eject`_ specifications only
+one will apply: ``when`` expressions are evaluated in order of the
+element appearance in the report template, and the first match will
+stop the search.
+
+Styles are inherited; when `body elements`_ do not have an applicable
+style, style search continues up the template hierarchy: containing
+parent section first, then all containing `group`_ elements, and
+finally the `layout`_ element.  Styles set in `columns`_ are checked
+immediately before the styles of parent `group`_ or `layout`_ element.
+
+Types of element attributes
+===========================
+
+This section explains special attribute types used in element descriptions.
+
+Booleans
+--------
+
+Values ``true``, ``yes`` and ``1`` stand for boolean true,
+values ``false``, ``no`` and ``0`` stand for boolean false.
+Recommended form is ``true`` and ``false``.
+
+Colors
+------
+
+Color values may be specified in one of the following forms:
+
+* 6-digit hexadecimal number prefixed by a hash mark (HTML format),
+* color name from the following dictionary (case insensitive),
+* three integer values: red, green, blue (0..255),
+* three float values: red, green, blue (0..1),
+* single integer value, where
+
+  - the red component is in bits 16-23,
+  - the green component is in bits 8-15,
+  - the blue component is in bits 0-7.
+
+Recommended form is the first one.
+
+Standard color names:
+
+========= ======= ========= =======
+Name      Value   Name      Value
+========= ======= ========= =======
+BLACK     #000000 YELLOW    #FFFF00
+SILVER    #C0C0C0 NAVY      #000080
+GRAY      #808080 BLUE      #0000FF
+WHITE     #FFFFFF TEAL      #008080
+MAROON    #800000 AQUA      #00FFFF
+RED       #FF0000 CYAN      #00FFFF
+PURPLE    #800080 DARKGRAY  #404040
+FUCHSIA   #FF00FF LIGHTGRAY #C0C0C0
+GREEN     #008000 MAGENTA   #FF00FF
+LIME      #00FF00 ORANGE    #FFC800
+OLIVE     #808000 PINK      #FFAFAF
+========= ======= ========= =======
+
+Dimensions
+----------
+
+All report dimensions (page and field sizes, margins etc.) are expressed
+as integer or floating point numbers with optional suffix:
+
+* ``mm`` - millimeters,
+* ``cm`` - centimeters,
+* ``in`` - inches,
+* ``pt`` - points (1/72 inch).
+
+If suffix is omitted, dimension is in points.
+
+It is recommended to always use integral points for all dimensions
+to avoid rounding errors.
+
+The origin of the coordinate system (0,0) is always in the left upper
+corner of a container (page or section).
+
+Expressions
+-----------
+
+All expressions are evaluated in the context of current result set row,
+i.e. result set fields may be referred directly as python variables.
+In addition, expressions can use names defined by `import`_, `parameter`_
+and `variable`_ elements and the following _`predefined variables`:
+
+=================== ====================================================
+Name                Meaning
+=================== ====================================================
+``THIS``            Current row object from `report data`_.
+``ITEM_NUMBER``     Zero-based index of current row object in `report
+                    data`_ sequence.  May differ from ``REPORT_COUNT``
+                    if some `detail`_ sections are suppressed by
+                    ``printwhen``.
+``DATA_COUNT``      Total length of the `report data`_ sequence.
+``REPORT_COUNT``    Number of detail sections from start of the report.
+``PAGE_COUNT``      Number of detail sections from start of the page.
+``COLUMN_COUNT``    Number of detail sections from start of the column.
+*group* ``_COUNT``  Number of detail sections from start of named group.
+``PAGE_NUMBER``     Current page number.
+``COLUMN_NUMBER``   Current column number.
+=================== ====================================================
+
+Evaluation context performs name lookup in the following order:
+
+1. `Predefined variables`_.
+2. Names created by `import`_ elements.
+3. `parameter`_ names.
+4. `variable`_ names.
+5. Items of the row object (dictionary-like).
+6. Attributes of the row object (structure-like).
+
+Template elements
+=================
+
+This chapter contains informal descriptions of the template elements.
+
+In element attribute tables, the second column (**Req**) shows whether
+the attribute is required: **M** for mandatory attributes, **O** for
+optional ones.
+
+All elements and attributes not mentioned here are ignored by PythonReports.
+Element contents (text) are ignored except for the `data`_ elements.
+
+.. TODO: group element descriptions: create document sections
+  for body elements, section elements and others...
+
+``report``
+----------
+
+The root element of template.  Contains a sequence of `parameter`_,
+`variable`_, `import`_ and `font`_ elements and exactly one `layout`_
+element.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           O    string    Report name.
+``description``    O    string    Description of the report.
+``version``        O    string    Report version.
+``author``         O    string    Author name.
+``basedir``        O    string    Base directory for image file paths.
+                                  Default: directory containing template
+                                  file.
+================= ===== ========= ======================================
+
+``parameter``
+-------------
+
+This element sets parameter values for report generation.
+
+Attributes:
+
+================= ===== ========= ======================================
+Name              Req   Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Variable name.
+``default``        M    expr      Default value.
+                                  Empty string if omitted.
+``prompt``         O    boolean   If set to ``yes``, report builder
+                                  will prompt for parameter value.
+                                  If value is ``no``, report builder
+                                  will use default value.
+================= ===== ========= ======================================
+
+``variable``
+------------
+
+Report variable.  Used to run counters, sums and such.
+
+Attributes:
+
+================= ===== ========= ======================================
+Name              Req   Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Variable name.
+``expr``           M    expr      Expression used to compute value.
+``init``           O    expr      Initial value for calculations.
+``calc``           O    string    Calculation function.
+                                  See `calculation types`_ below.
+``iter``           O    string    How often the expression is evaluated:
+                                  ``report``, ``page``, ``column``,
+                                  ``group`` or ``detail``. [#a]_
+                                  Default: ``detail``.
+``itergrp``       [#b]_ string    Group name for ``iter="group"``.
+``reset``          O    string    How often the expression is reset
+                                  to initial value: ``report``,
+                                  ``page``, ``column``, ``group`` or
+                                  ``detail``. [#a]_
+                                  Default: ``report``.
+``resetgrp``      [#c]_ string    Group name for ``reset="group"``.
+================= ===== ========= ======================================
+
+.. [#a] The expression is always evaluated at the end of report
+        group referred by this attribute.
+.. [#b] Required when ``iter`` is ``group``, otherwise ignored.
+.. [#c] Required when ``reset`` is ``group``, otherwise ignored.
+
+_`Calculation types`:
+
+========= ==============================================================
+Name      Meaning
+========= ==============================================================
+``count`` Count distinct values.
+          Hint: for iteration counter, use ``sum``
+          with ``expression="1"`` or one of the `predefined variables`_.
+``sum``   Sum of all values.
+``avg``   Average value. [#float_value]_
+``min``   Lowest value.
+``max``   Highest value.
+``std``   Standard deviation. [#float_value]_
+``var``   Variance from the average. [#float_value]_
+``first`` Keeps the first value calculated after reset.
+========= ==============================================================
+
+.. [#float_value]  The expression must be compatible with float type.
+
+``import``
+----------
+
+Import a symbol from Python module.
+
+Attributes:
+
+================= ===== ========= ======================================
+Name              Req   Type      Description
+================= ===== ========= ======================================
+``path``           M    string    A dot-delimited path in python package
+                                  namespace.  The last component of the
+                                  path will be available for use in
+                                  expressions.
+                                  E.g. ``<import path="a.b.c.d" />`` has
+                                  the same effect as Python statement
+                                  ``from a.b.c import d``.
+``alias``          O    string    Alternate local name for imported
+                                  symbol.
+                                  E.g. ``<import path="a" alias="b" />``
+                                  has the same effect as Python
+                                  statement ``import a as b``.
+================= ===== ========= ======================================
+
+``font``
+--------
+
+Font definition for use in text fields and as a default font in sections
+and whole report.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Local name of font definition.  Used
+                                  as font reference in `field`_
+                                  elements.
+``typeface``       M    string    Typeface name.
+``size``           M    integer   Font size in points.
+``bold``           O    boolean   True for bold fonts.
+``italic``         O    boolean   True for italic fonts.
+``underline``      O    boolean   True for underlined text.
+================= ===== ========= ======================================
+
+``data``
+--------
+
+Contains arbitrary data for use in `field`_, `image`_ and `barcode`_
+elements.
+
+This is the only element in PythonReports templates that has significant
+body text; for all other elements body text is ignored.
+
+.. Discussion: for easier processing, `data`_ elements may be restricted
+  to be immediate children of the `report`_ element (named data) or
+  `field`_, `image`_ and `barcode`_ elements (anonymous data).
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``          [#d]_ string    Data reference needed to use the data
+                                  in elements other than immediate
+                                  parent element.
+``pickle``         O    boolean   if set to True, data is pickled
+                                  Python object.
+``compress``       O    string    ``zlib`` or ``bz2``.
+``encoding``       O    string    ``base64``, ``uu`` or ``qp``.
+================= ===== ========= ======================================
+
+.. [#d] Optional when immediate parent element is `field`_, `image`_
+        or `barcode`_; required otherwise.
+
+``style``
+---------
+
+The `style`_ elements may be contained in all `section elements`_
+and `body elements`_.  Style attributes ``printwhen``, ``font``,
+``color`` and ``bgcolor`` propagate to inner elements, i.e. if an
+element does not have these attributes in the applicable style,
+they are searched up the layout hierarchy.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``when``           O    expr      When this style is applicable.
+                                  The styles are checked in order of
+                                  their appearance in the template.
+                                  Style search stops when this
+                                  expression evaluates to boolean True.
+                                  Default: True.
+``printwhen``      O    expr      If False, this element is suppressed.
+``font``           O    string    Name of `font`_ definition.
+``color``          O    color     Foreground or pen color.
+``bgcolor``        O    color     Background or fill color.
+================= ===== ========= ======================================
+
+``box``
+-------
+
+Defines rectangular space occupied by `report elements`_.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``x``              O    dimension Horizontal position.  Negative values
+                                  are offset from the right margin.
+                                  [#negative_position]_
+``y``              O    dimension Vertical position.  Negative values
+                                  are relative to the bottom of section.
+                                  [#negative_position]_
+``float``          O    boolean   If True, ``y`` position (must be
+                                  positive) is adjusted according to
+                                  heights of elements laid out higher
+                                  in the same section.  Ignored for
+                                  negative ``y`` values.
+``width``          O    dimension Element width.  Negative values
+                                  are offset from the right margin.
+                                  [#negative_size]_  Default: -1.
+``height``         O    dimension Element height.  Negative values
+                                  are offset from the bottom of section.
+                                  [#negative_size]_  Default: -1.
+``halign``         O    string    Horizontal alignment for `field`_,
+                                  `image`_ and `barcode`_ elements:
+                                  ``left``, ``right`` or ``center``.
+                                  Default: ``left``.
+``valign``         O    string    Vertical alignment for `field`_,
+                                  `image`_ and `barcode`_ elements:
+                                  ``top``, ``bottom`` or ``center``.
+                                  Default: ``bottom``.
+``transparent``    O    boolean   If set to False, the box is opaque.
+================= ===== ========= ======================================
+
+.. Note: ``valign`` defaults to ``bottom`` to align in line texts
+  of different font sizes.
+
+.. XXX should there be ``baseline`` valign?
+
+.. [#negative_position] Element position is calculated
+                        as *margin + 1 + offset*, i.e.
+                        an element with ``y="-1"`` will be
+                        placed right at the bottom margin
+                        (and hence will have zero height).
+
+.. [#negative_size] Element size is calculated as
+                    *margin + 1 + offset - position*,
+                    i.e. an element with ``width="-1"``
+                    will use all space remaining
+                    till right margin of the section.
+
+``eject``
+---------
+
+Tells when `section elements`_ must be started on a new page or column.
+
+For the `title`_ section, `eject`_ is evaluated at the end of the section,
+for all other sections - at the beginning of the section.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    ``page`` or ``column``.
+``require``        O    dimension Required vertical space on current
+                                  page or column.  If there is enough
+                                  available space, the section continues
+                                  current page or column.  If omitted,
+                                  eject is unconditional.
+``when``           O    expr      If the expression evaluates to False,
+                                  `eject`_ is ignored.
+================= ===== ========= ======================================
+
+``title``
+---------
+
+A child element of `layout`_ element containing a summary printed before
+report data.
+
+While `title`_ is processed, all ``*_COUNT`` values are set to zero
+(see `predefined variables`_.)
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``swapheader``     O    boolean   If True, title section is printed
+                                  before the first page header.
+================= ===== ========= ======================================
+
+``summary``
+-----------
+
+A child element of `layout`_ element containing a summary printed after
+report data.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``swapfooter``     O    boolean   If True, the last page footer is
+                                  printed before the summary section
+================= ===== ========= ======================================
+
+``header``
+----------
+
+A child element of `layout`_, `columns`_ or `group`_ describing header
+layout for report page, column or group respectively.
+
+``footer``
+----------
+
+A child element of `layout`_, `columns`_ or `group`_ describing footer
+layout for report page, column or group respectively.
+
+``layout``
+----------
+
+Topmost element of report layout definition.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``pagesize``       O    string    Standard page size, like ``A4``,
+                                  ``Letter``, ``Envelope#10`` or
+                                  ``EnvelopeDL``.
+``width``         [#e]_ dimension Page width.
+``height``        [#e]_ dimension Page height.
+``landscape``      O    boolean   If True, page dimensions are swapped
+                                  (landscape orientation).
+``leftmargin``     O    dimension Left page margin.
+``rightmargin``    O    dimension Right page margin.
+``topmargin``      O    dimension Top page margin.
+``bottommargin``   O    dimension Bottom page margin.
+================= ===== ========= ======================================
+
+.. [#e] Required when ``pagesize`` is not specified;
+        ignored when ``pagesize`` is set.
+
+.. TODO: `layout`_ should have target resolution to compute image box
+  dimensions and draw bar codes...  perhaps the resolution can be
+  overridden by a builder parameter.  vertical and horizontal dpi must
+  be separate values.
+
+``columns``
+-----------
+
+Arranges report data for multi-column output.  May be used in `layout`_
+and `group`_ elements.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``count``          M    integer   Number of output columns.  All columns
+                                  have equal widths and equal space
+                                  between them.
+``gap``            O    dimension Space between columns.
+================= ===== ========= ======================================
+
+.. TODO: line between columns.
+
+``group``
+---------
+
+Defines a data-based group of report records.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Group name.
+``expr``           M    expr      Grouping expression.  When value of
+                                  this expression changes, current group
+                                  is closed and new group starts.
+================= ===== ========= ======================================
+
+``detail``
+----------
+
+The detail section.  Built once for each item in the `report data`_ set.
+
+``field``
+---------
+
+Output a text field.
+
+Contents of the field may be set by ``expr`` or ``data`` attributes
+or by child `data`_ element.  Data may be set (either by attribute
+or by child element) along with ``expr`` to estimate field size when
+``expr`` evaluation is delayed by non-empty ``evaltime``.
+When evaluation time arrives, the field is filled with ``expr`` result.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``expr``           O    string    Field expression.
+``evaltime``       O    string    When the expression is evaluated:
+                                  ``report``, ``page``, ``column``
+                                  or group name.  Evaluation is delayed
+                                  until the end of this section.
+``data``           O    string    Name of a `data`_ section defined as
+                                  a child of the `report`_ element.
+``align``          O    string    Text alignment: ``left``, ``center``,
+                                  ``right`` or ``justified``.
+``format``         O    string    Formatting expression.
+                                  Default: ``%s`` (unicode conversion).
+``stretch``        O    boolean   Stretch with overflow.
+================= ===== ========= ======================================
+
+``line``
+--------
+
+Draw a line.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``pen``            M    dimension Line style: width of the line or one
+                        or string of ``dot``, ``dash``, ``dashdot``.
+``backslant``      O    boolean   When both box dimensions are non-zero,
+                                  draw the line from upper left corner
+                                  to lower right one - \\ instead of /.
+================= ===== ========= ======================================
+
+``rectangle``
+-------------
+
+Draw a rectangle.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``pen``            M    dimension Outline style: width of the line or
+                        or string one of ``dot``, ``dash``, ``dashdot``.
+                                  Use ``0`` to disable outline.
+``radius``         O    dimension Corner radius for rounded rectangles.
+                                  Default: 0
+================= ===== ========= ======================================
+
+``image``
+---------
+
+Place bitmap image.  The bitmap may be loaded from a file
+or from a `data`_ element (either put in the `image`_ element
+or referred by the ``data`` attribute.)
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    Image type, e.g. ``jpeg`` or ``png``.
+``file``           O    string    Image file path.  If specified,
+                                  the data is ignored unless the file
+                                  cannot be loaded.
+``data``           O    string    Name of a `data`_ section defined as
+                                  a child of the `report`_ element.
+``scale``          O    string    Scaling mode: ``cut``, ``fill``
+                                  (adjust image to the `box`_) or
+                                  ``grow`` (adjust the `box`_ to the
+                                  image.)
+``proportional``   O    boolean   If True (default), image or `box`_
+                                  proportions are kept with ``fill``
+                                  and ``grow`` scaling modes.
+``embed``          O    boolean   If True (default), the image is
+                                  embedded in the `PRP file`_.
+================= ===== ========= ======================================
+
+``barcode``
+-----------
+
+Print a bar code image.  The `box`_ of the `barcode`_ elements always
+grows in the direction of coding (vertically if ``vertical="true"``,
+horizontally otherwise) and is filled in the opposite direction.
+Bar code images are always embedded in the `PRP file`_.
+
+Code contents may be set by ``expr`` or ``data`` attributes
+or by child `data`_ element.  Data may be set (either by attribute
+or by child element) along with ``expr`` to estimate image size when
+``expr`` evaluation is delayed by non-empty ``evaltime``.  When
+evaluation time arrives, ``expr`` result produces the bar code image.
+
+Characters that cannot be encoded with selected code ``type`` are ignored.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    ``Code128``, ``Code39`` or ``2of5i``.
+``module``         O    number    X dimension, in mils (1/1000inch).
+                                  Default: 10.0.
+``vertical``       O    boolean   If True, the image is rotated
+                                  90 degrees clockwise.
+``expr``           O    string    Value expression.
+``evaltime``       O    string    When the expression is evaluated:
+                                  ``report``, ``page``, ``column``
+                                  or group name.  Evaluation is delayed
+                                  until the end of this section.
+``data``           O    string    Name of a `data`_ section defined as
+                                  a child of the `report`_ element.
+================= ===== ========= ======================================
+
+.. _External hyperlink targets:
+
+.. _Printout:
+.. _PRP file: prp.html
+
+.. vim: set et ft=rst sts=2 sw=2 :

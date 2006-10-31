@@ -1,0 +1,313 @@
+======================
+PythonReports Printout
+======================
+
+:Version: 0.1.0
+:Date: 11-sep-2006
+
+.. TODO: backgrounds, outline tags
+
+.. contents::
+
+Introduction
+============
+
+PythonReports Printout files are "built" reports, ready to be rendered
+with a frontend driver.  Printouts are stored in XML files with extension
+``.PRP``.
+
+This document describes printout structures.
+
+The overall structure of printouts is very simple: printout contains
+one or more `page`_ elements, and each page contains `text`_, `line`_,
+`rectangle`_, `image`_ and `barcode`_ elements, each having it's final
+dimensions and placement.
+
+`printout`_ element also contains `font`_ definitions and may contain
+named `data`_ elements providing bitmaps for repeated images.
+
+Types of element attributes
+===========================
+
+This section explains special attribute types used in element descriptions.
+
+Booleans
+--------
+
+Values ``true``, ``yes`` and ``1`` stand for boolean True,
+values ``false``, ``no`` and ``0`` stand for boolean False.
+Recommended form is ``true`` and ``false``.
+
+Colors
+------
+
+Color values may be specified in one of the following forms:
+
+* 6-digit hexadecimal number prefixed by a hash mark (HTML format),
+* color name from the following dictionary (case insensitive),
+* three integer values: red, green, blue (0..255),
+* three float values: red, green, blue (0..1),
+* single integer value, where
+
+  - the red component is in bits 16-23,
+  - the green component is in bits 8-15,
+  - the blue component is in bits 0-7.
+
+Recommended form is the first one.
+
+Standard color names:
+
+========= ======= ========= =======
+Name      Value   Name      Value
+========= ======= ========= =======
+BLACK     #000000 YELLOW    #FFFF00
+SILVER    #C0C0C0 NAVY      #000080
+GRAY      #808080 BLUE      #0000FF
+WHITE     #FFFFFF TEAL      #008080
+MAROON    #800000 AQUA      #00FFFF
+RED       #FF0000 CYAN      #00FFFF
+PURPLE    #800080 DARKGRAY  #404040
+FUCHSIA   #FF00FF LIGHTGRAY #C0C0C0
+GREEN     #008000 MAGENTA   #FF00FF
+LIME      #00FF00 ORANGE    #FFC800
+OLIVE     #808000 PINK      #FFAFAF
+========= ======= ========= =======
+
+Dimensions
+----------
+
+All report dimensions (page and field sizes, margins etc.) are expressed
+as integer or floating point numbers with optional suffix:
+
+* ``mm`` - millimeters,
+* ``cm`` - centimeters,
+* ``in`` - inches,
+* ``pt`` - points (1/72 inch).
+
+If suffix is omitted, dimension is in points.
+
+It is recommended to always use integral points for all dimensions
+to avoid rounding errors.
+
+The origin of the coordinate system (0,0) is always in the left upper
+corner of a container (page or section).
+
+Timestamps
+----------
+
+Dates and times are recorded in ISO format, e.g. ``2006-06-14T14:20:47``.
+
+Printout elements
+=================
+
+This chapter contains informal descriptions of the printout elements.
+
+In element attribute tables, the second column (**Req**) shows whether
+the attribute is required: **M** for mandatory attributes, **O** for
+optional ones.
+
+All elements and attributes not mentioned here are ignored by PythonReports.
+Element contents (text) are ignored except for `data`_ elements.
+
+``printout``
+------------
+
+The root element of the printout tree.  Contains elements of types
+`font`_, `data`_ and `page`_.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           O    string    Report name. [#a]_
+``description``    O    string    Description of the report. [#a]_
+``version``        O    string    Report version. [#a]_
+``author``         O    string    Author name. [#a]_
+``basedir``        O    string    Base directory for image file paths.
+                                  Default: directory containing printout
+                                  file.
+``built``          O    timestamp Date and time of report build.
+================= ===== ========= ======================================
+
+.. [#a] copied from report template.
+
+``data``
+--------
+
+Contains arbitrary data for use in `text`_, `image`_ and `barcode`_
+elements.
+
+This is the only element in PythonReports templates that has significant
+body text; for all other elements body text is ignored.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``          [#d]_ string    Data reference needed to use the data
+                                  in elements other than immediate
+                                  parent element.
+``compress``       O    string    ``zlib`` or ``bz2``.
+``encoding``       O    string    ``base64``, ``uu`` or ``qp``.
+================= ===== ========= ======================================
+
+.. [#d] Ignored when immediate parent element is `text`_, `image`_
+        or `barcode`_; required otherwise.
+
+``font``
+--------
+
+Font definition for use in text blocks.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Local name of font definition.  Used
+                                  as font reference in text blocks.
+``typeface``       M    string    Typeface name.
+``size``           M    integer   Font size in points.
+``bold``           O    boolean   True for bold fonts.
+``italic``         O    boolean   True for italic fonts.
+``underline``      O    boolean   True for underlined text.
+================= ===== ========= ======================================
+
+``page``
+--------
+
+Single output page.  Child elements are `text`_, `line`_, `rectangle`_
+and `image`_.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``width``          M    dimension Page width (including margins).
+``height``         M    dimension Page height (including margins).
+``leftmargin``     M    dimension Left page margin.
+``rightmargin``    M    dimension Right page margin.
+``topmargin``      M    dimension Top page margin.
+``bottommargin``   M    dimension Bottom page margin.
+================= ===== ========= ======================================
+
+``box``
+-------
+
+Required child for all elements placed in pages, i.e. `text`_, `line`_,
+`rectangle`_ and `image`_.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``x``              M    dimension Horizontal position.
+``y``              M    dimension Vertical position.
+``width``          M    dimension Element width.
+``height``         M    dimension Element height.
+================= ===== ========= ======================================
+
+``text``
+--------
+
+A textual block.  The text to print is contained in child `data`_ element.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``font``           M    string    Name of the font definition.
+``align``          O    string    Text alignment: ``left``, ``center``,
+                                  ``right`` or ``justified``.
+                                  Default: ``left``.
+``color``          M    color     Text color.
+================= ===== ========= ======================================
+
+``line``
+--------
+
+Draw a line.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``pen``            M    dimension Line style: width of the line or one
+                        or string of ``dot``, ``dash``, ``dashdot``.
+``color``          M    color     Line color.
+``backslant``      O    boolean   When both box dimensions are non-zero,
+                                  draw the line from upper left corner
+                                  to lower right one - \\ instead of /.
+================= ===== ========= ======================================
+
+``rectangle``
+-------------
+
+Draw a rectangle.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``pen``            M    dimension Outline style: width of the line or
+                        or string one of ``dot``, ``dash``, ``dashdot``.
+                                  Use ``0`` to disable outline.
+``pencolor``       M    color     Outline color.
+``color``          O    color     Fill color.  If omitted, the rectangle
+                                  is transparent.
+``radius``         O    dimension Corner radius for rounded rectangles.
+                                  Default: 0
+================= ===== ========= ======================================
+
+``image``
+---------
+
+Place bitmap image.  The bitmap may be loaded from a file
+or from a `data`_ element (either put in the `image`_ element
+or referred by the ``data`` attribute.)
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    Image type, e.g. ``jpeg`` or ``png``.
+``file``           O    string    Image file path.  If specified,
+                                  the data is ignored unless the file
+                                  cannot be loaded.
+``data``           O    string    Name of a `data`_ section defined as
+                                  a child of the `printout`_ element.
+``scale``          O    boolean   If False (default), the image is cut
+                                  to box dimensions.  If True,
+                                  the bitmap is scaled to the box.
+================= ===== ========= ======================================
+
+``barcode``
+-----------
+
+Draw a bar code image.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    ``Code128``, ``Code39`` or ``2of5i``.
+``value``          M    string    The text encoded with the bar code.
+``stripes``        M    list of   Precomputed bar code - comma-delimited
+                        integers  sequence of bar/space widths, starting
+                                  from space for leading quiet zone.
+``module``         O    number    X dimension, in mils (1/1000inch).
+                                  Default: 10.0.
+``vertical``       O    boolean   If True, the image is rotated
+                                  90 degrees clockwise.
+================= ===== ========= ======================================
+
+.. vim: set et ft=rst sts=2 sw=2 :

@@ -1,0 +1,39 @@
+html body {
+  line-height:1.4em;
+  font-family:"Lucida Grande", verdana, lucida, helvetica, sans-serif;
+  background-color:#f8f8f8;
+}
+
+:link { color: #900; }
+
+h1, h2 {
+  line-height:1.3em;
+  margin:0.2em 0;
+  background-color:#F3EDE7;
+}
+h1 { font-size:160%; }
+h2 { font-size:130%; }
+h3 { font-size:120%; }
+h4 { font-size:115%; }
+h5 { font-size:110%; }
+h6 { font-size:95%; }
+
+pre, code, tt {
+  line-height:1.2em;
+  font-size:120%;
+  color:#7A4707;
+}
+
+table {
+  border-collapse:collapse;
+}
+
+th.head {
+  padding:0.2em 0.6em;
+  text-align:left;
+  background-color:#F3EDE7;
+}
+
+td {
+  padding:0.2em 0.6em;
+}

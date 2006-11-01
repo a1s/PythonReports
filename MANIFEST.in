@@ -1,0 +1,3 @@
+include PythonReports/*.py
+include test/*.py test/sakila.prt
+include doc/*.txt doc/*.html doc/default.css doc/Makefile

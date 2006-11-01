@@ -5,12 +5,13 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+01-nov-2006 [als]   driver classes have backend name property
 11-oct-2006 [als]   fix variable name in ImageDriver.resize
 05-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:01:59 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/01 17:37:56 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -83,6 +84,7 @@ class ImageDriver(object):
 
     """
 
+    backend = None  # backend name, must be set in child classes
     filepath = None # set when loaded from disk file
     name = None     # name of data block
     type = None     # image type, e.g. "jpeg" or "png"
@@ -248,6 +250,11 @@ class TextDriver(object):
     and handles all texts printed out with that font.
 
     """
+
+    backend = None  # backend name, must be set in child classes
+    height = None   # line height, in points
+    leading = None  # distance between baselines of two subsequent rows,
+                    # in points
 
     def __init__(self, font):
         """Create text driver instance

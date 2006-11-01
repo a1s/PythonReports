@@ -1,5 +1,7 @@
 """Rendering utilities for Python Imaging Library (PIL) backend"""
+
 """History (most recent first):
+01-nov-2006 [als]   driver classes have backend name property
 05-oct-2006 [als]   use base classes for the rendering drivers
 02-oct-2006 [als]   ImageDriver: added .nullimage()
 29-sep-2006 [als]   added ImageDriver
@@ -11,8 +13,8 @@
 29-aug-2006 [als]   TextDriver ported from previous implementation
 """
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:02:38 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/01 17:38:34 $"[7:-2]
 
 __all__ = ["ImageDriver", "TextDriver"]
 
@@ -23,6 +25,18 @@ from PIL import Image, ImageFont
 from PythonReports import drivers, fonts
 
 class ImageDriver(drivers.ImageDriver):
+
+    """Image processing driver
+
+    Instances of this driver class are created for each
+    distinct image source, i.e. image file or data block.
+
+    Instantiation must be done by one of the factory
+    methods .fromfile() and .fromdata().
+
+    """
+
+    backend = "PIL"
 
     _image = None   # PIL image object (not for external access)
 
@@ -142,6 +156,8 @@ class TextDriver(drivers.TextDriver):
     and handles all texts printed out with that font.
 
     """
+
+    backend = "PIL"
 
     # PIL does not report the leading.
     # 1/5 of character size is default line gap used by ReportLab.

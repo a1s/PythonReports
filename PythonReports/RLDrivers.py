@@ -5,11 +5,12 @@ so we can just use PIL ImageDriver instead of wrapping a wrapper.
 
 """
 """History (most recent first):
+01-nov-2006 [als]   driver classes have backend name property
 05-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:03:02 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/01 17:39:00 $"[7:-2]
 
 __all__ = ["TextDriver"]
 
@@ -25,6 +26,8 @@ class TextDriver(drivers.TextDriver):
     and handles all texts printed out with that font.
 
     """
+
+    backend = "RL"
 
     # attributes read directly by PythonReports.PdfWriter
     name = None

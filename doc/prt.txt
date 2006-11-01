@@ -3,7 +3,7 @@ PythonReports Templates
 =======================
 
 :Version: 0.1.0
-:Date: 29-jun-2006
+:Date: 20-oct-2006
 
 .. TODO: variables iterated at start of section;
          groups have title/summary instead of header/footer

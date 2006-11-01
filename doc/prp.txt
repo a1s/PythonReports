@@ -3,7 +3,7 @@ PythonReports Printout
 ======================
 
 :Version: 0.1.0
-:Date: 11-sep-2006
+:Date: 20-oct-2006
 
 .. TODO: backgrounds, outline tags
 

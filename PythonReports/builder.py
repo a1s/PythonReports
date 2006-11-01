@@ -1,0 +1,1765 @@
+"""PythonReports builder"""
+# FIXME: column-based variables are not intelligible
+"""History (most recent first):
+20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
+20-oct-2006 [als]   Structure moved to datatypes
+09-oct-2006 [als]   round section height to integer points after stretching
+05-oct-2006 [als]   get_driver() moved to the drivers module
+03-oct-2006 [als]   support images
+29-sep-2006 [als]   Builder: added .filepath()
+27-sep-2006 [als]   advance 1pt after each section;
+                    never eject when building footer sections;
+                    resize positive sized sections if contents are stretchable
+26-sep-2006 [als]   printout.Text does not use bgcolor
+25-sep-2006 [als]   fix bar code placement errors
+22-sep-2006 [als]   Bar Code API changed
+13-sep-2006 [als]   support bar codes
+11-sep-2006 [als]   fix: reset all *_COUNT variables where appropriate;
+                    fix processing page dimensions if set by width/height
+08-sep-2006 [als]   fix: report summary and final footers evaluated
+                    in context of next to last data object
+08-sep-2006 [als]   fix: first data item not printed out
+08-sep-2006 [als]   eject if filled section does not fit in frame
+08-sep-2006 [als]   don't print fields when expression value is None;
+                    fix calculations in Frame.make_child;
+                    fix page header and footer put in reduced frame;
+                    keep references to frames made for columns elements;
+                    fix: outer sections were placed right after short 2nd col;
+                    added Frame repr()
+06-sep-2006 [als]   Section: fill/refill procedures redesigned
+04-sep-2006 [als]   text drivers became stateful - instantiate
+                    drivers for all report fonts in Builder.__init__
+01-sep-2006 [als]   fix: printable page size calculation
+                    didn't take in account left and top margins;
+                    fix: static texts not printed
+30-aug-2006 [als]   Box moved to datatypes
+30-aug-2006 [als]   fix end_group: build footers in old context;
+                    fix column ejection (ejected one frame less than needed)
+29-aug-2006 [als]   Variable: always return None if no values accumulated;
+                    Section: register deferred evaluations;
+                    fix Builder.resolve_eval: sections are not hashable
+29-aug-2006 [als]   Builder: load text/image drivers;
+                    fix Variable.sum failing when no values collected;
+                    fix Section.compose_style: styles argument ignored;
+                    Section: don't build output elements if suppressed
+                    by printwhen (may get errors in expressions);
+                    enabled simple output of text fields
+27-jul-2006 [als]   defaults for all method parameters made immutable
+26-jul-2006 [als]   Section: use Box objects for layout operations,
+                    fix section height if <=0 in template;
+                    fix Builder.fill_title: printable title section
+                    with no contents was not output
+25-jul-2006 [als]   refactored to work with ElementTrees
+17-jul-2006 [als]   first draft: main building procedures are in place,
+                    fields and images are unsupported yet
+11-jul-2006 [als]   created
+"""
+
+import math
+import os
+import time
+
+from PythonReports import barcode, drivers
+from PythonReports import template as prt
+from PythonReports import printout as prp
+from PythonReports.datatypes import *
+
+__version__ = "$Revision: 1.1 $"[11:-2]
+__date__ = "$Date: 2006/11/01 11:05:19 $"[7:-2]
+
+__all__ = ["Builder"]
+
+class Variable(object):
+
+    """Report variable
+
+    Variables accumulate data values while report data sequence
+    is iterated.  The value property performs the calculation
+    on the accumulated sequence.
+
+    """
+
+    # Most variables use builtin list to accumulate values
+    # these helper classes are used in special cases
+    # for uniform accumulation calls
+
+    class AccumulateDistinct(set):
+        def append(self, value):
+            self.add(value)
+
+    class AccumulateFloat(list):
+        def append(self, value):
+            super(AccumulateFloat, self).append(float(value))
+
+    class KeepFirst(list):
+        value = NOTHING
+        def append(self, value):
+            if self.value is NOTHING:
+                self[:] = [value]
+
+    class UseCurrent(list):
+        def append(self, value):
+            self[:] = [value]
+
+    ### calculation types
+
+    @staticmethod
+    def first(value):
+        return value[0]
+
+    @staticmethod
+    def count(value):
+        return len(value)
+
+    @staticmethod
+    def avg(value):
+        return sum(value) / len(value)
+
+    @staticmethod
+    def min(value):
+        return min(value)
+
+    @staticmethod
+    def max(value):
+        return max(value)
+
+    @staticmethod
+    def var(value):
+        _avg = avg(value)
+        return sum([(_item - _avg) ** 2 for _item in _value]) / len(value)
+
+    @staticmethod
+    def std(value):
+        return math.sqrt(avg(value))
+
+    # sum must be defined last to use builtin sum in other calculations
+    @staticmethod
+    def sum(value):
+        if isinstance(value[0], basestring):
+            return "".join(value)
+        else:
+            return sum(value)
+
+    def __init__(self, template):
+        """Create report variable
+
+        Parameters:
+            template: instance of template.Variable
+
+        """
+        super(Variable, self).__init__()
+        for _name in prt.Variable.attributes:
+            setattr(self, _name, template.get(_name))
+        # FIXME? accumulator class and computing function for
+        #   calculation variants may be defined at class level
+        #   (faster because won't use object attribute lookup)
+        (self._accumulator, self._compute) = {
+            None: (self.UseCurrent, self.first),
+            "first": (self.KeepFirst, self.first),
+            "count": (self.AccumulateDistinct, self.count),
+            "sum": (list, self.sum),
+            "avg": (self.AccumulateFloat, self.avg),
+            "min": (list, self.min),
+            "max": (list, self.max),
+            "std": (self.AccumulateFloat, self.std),
+            "var": (self.AccumulateFloat, self.var),
+        }[self.calc]
+        # values must be initialized with start()
+        # this is a dummy to make pylint/pychecker happy
+        self.values = []
+
+    def start(self, context):
+        """Reset the variable (start value accumulation)
+
+        Parameters:
+            context: expression evaluation context,
+                used to compute initial value
+
+        """
+        if self.init:
+            _init = [context.eval(self.init)]
+        else:
+            _init = []
+        self.values = self._accumulator(_init)
+
+    def iterate(self, context):
+        """Store next value of the iteration sequence
+
+        Parameters:
+            context: expression evaluation context
+
+        """
+        self.values.append(context.eval(self.expr))
+
+    def rollback(self):
+        """Undo last iteration"""
+        if self.init:
+            _fence = 1
+        else:
+            _fence = 0
+        if len(self.values) > _fence:
+            del self.values[-1]
+
+    @property
+    def value(self):
+        if self.values:
+            return self._compute(self.values)
+        else:
+            return None
+
+    def __repr__(self):
+        return "<%s@%X \"%s\" %r>" % (self.__class__.__name__, id(self),
+            self.name, self.values)
+
+
+class Context(object):
+
+    """Expression evaluation context"""
+
+    # name lookup is performed in order of this list
+    __slots__ = ["sysvars", "imports", "parameters", "variables"]
+
+    # names of the predefined variables
+    # (additional *_COUNT variables may be created for report groups)
+    PREDEFINED_VARIABLES = (
+        "THIS", "ITEM_NUMBER",
+        "DATA_COUNT", "REPORT_COUNT", "PAGE_COUNT", "COLUMN_COUNT",
+        "PAGE_NUMBER", "COLUMN_NUMBER",
+    )
+
+    def __init__(self, *args, **kwargs):
+        _attrs = dict([(_name, {}) for _name in self.__slots__])
+        _attrs.update(kwargs)
+        if args:
+            _attrs.update(zip(self.__slots__, args))
+        # each context has it's own dictionary of predefined
+        # variables, all other collections may be shared
+        # between different contexts.
+        # all predefined variables must be present.
+        self.sysvars = dict.fromkeys(self.PREDEFINED_VARIABLES, 0)
+        self.sysvars.update(_attrs.pop("sysvars", {}))
+        # copy remaining collections
+        for (_name, _value) in _attrs.iteritems():
+            setattr(self, _name, _value)
+
+    # mapping/evaluation interface
+
+    def __getitem__(self, name):
+        for _cname in self.__slots__:
+            _collection = getattr(self, _cname)
+            try:
+                _value = _collection[name]
+            except KeyError:
+                continue
+            if _cname == "variables":
+                _value = _value.value
+            return _value
+        _data = self.sysvars["THIS"]
+        try:
+            return _data[name]
+        except (TypeError, KeyError):
+            try:
+                return getattr(_data, name)
+            except AttributeError:
+                raise KeyError, name
+
+    def __setitem__(self, name, value):
+        self.sysvars[name] = value
+
+    def eval(self, expression):
+        """Evaluate expression in this context"""
+        return eval(expression, {}, self)
+
+    # utilities
+
+    def copy(self):
+        """Return new context with identical contents"""
+        return self.__class__(**dict([(_name, getattr(self, _name))
+            for _name in self.__slots__]))
+
+#    def freeze(self):
+#        """Remember current values of all report variables
+#
+#        Evaluate all report variables and put their current
+#        values to the system variables container so that
+#        further access to variable names always returns
+#        frozen values.
+#
+#        """
+#        for (_name, _var) in self.variables:
+#            self.sysvars[_name] = _var.value
+
+    def add_variables(self, *vars):
+        """Add report variable definitions
+
+        Arguments are instances of the Variable class.
+
+        """
+        for _var in vars:
+            self.variables[_var.name] = _var
+
+    def load_imports(self, report):
+        """Process import declarations in given report ElementTree"""
+        for _item in report.findall("import"):
+            _path = _item.get("path").split(".")
+            _module = __import__(_path[0])
+            for _name in _path[1:]:
+                _module = getattr(_module, _name)
+            self.imports[_item.get("alias") or _path[-1]] = _module
+
+class ReportElement(Structure):
+
+    """Printable report element
+
+    This is a simple structure keeping references
+    to template element and containing output section,
+    an output style for the element and bounding box
+    position and size.
+
+    May also hold any additional info needed for the builder.
+
+    For now (this may change in the future) ReportElement does no
+    processing by itself; all the brains are in the Section objects.
+
+    """
+
+    ### attributes:
+    #
+    # section: containing section object
+    # template: template element
+    # style: dictionary of style attributes
+    # printable: True (non-printable elements cannot be processed at present)
+    # tbox: box defined in the template
+    # bbox: box with absolute sizes (computed from tbox and section sizes)
+    # obox: output box, with absolute position and size values
+
+    # additional attributes for "field" elements:
+    #
+    # text: text value acquired from data or expression evaluation
+    # otext: output text, wrapped to box width
+
+class Section(list):
+
+    """Output section
+
+    Objects of this class fill a sections of the report,
+    i.e. title, summary, header, footer and detail sections.
+
+    After a section is built it acts like a list of ReportElement objects.
+
+    """
+
+    # Printout classes and attributes to copy from templates
+    PRINTOUTS = {}
+    for (_prt, _prp) in (
+        (prt.Field, prp.Text),
+        (prt.Line, prp.Line),
+        (prt.Rectangle, prp.Rectangle),
+        (prt.Image, prp.Image),
+        (prt.BarCode, prp.BarCode),
+    ):
+        PRINTOUTS[_prt.tag] = (_prp,
+            set(_prt.attributes) & set(_prp.attributes))
+    del _prt, _prp
+
+    # Bar Code drivers
+    BARCODES = {
+        "Code128": barcode.code128,
+        "Code39": barcode.code39,
+        "2of5i": barcode.code2of5i,
+    }
+
+    # printability is set by .build
+    printable = None
+
+    def __init__(self, builder, template, context=None):
+        """Create Section instance
+
+        Parameters:
+            builder: report builder object
+                used to register deferred evaluations
+                and to get named fonts and datablocks
+            template: section template
+            context: optional section context
+                if passed, the section will be automatically built
+                for this context
+
+        """
+        super(Section, self).__init__()
+        self.builder = builder
+        self.template = template
+        self.tbox = Box.from_element(template.find("box"))
+        if context:
+            self.build(context)
+
+    def iter_styles(self):
+        """Iterate over all styles for the section (both direct and inherited)
+        """
+        _element = self.template
+        _parents = self.builder.layout_parents
+        # all sections except detail (i.e. header, footer, title and summary)
+        # extend over all columns defined in their immediate parent.
+        # therefore parent columns styles must be ignored.
+        if _element.tag == "detail":
+            _skip_columns = 1
+        else:
+            _skip_columns = 2 # self and parent
+        while _element:
+            if _skip_columns:
+                _skip_columns -= 1
+            else:
+                for _style in _element.findall("columns/style"):
+                    yield _style
+            for _style in _element.findall("style"):
+                yield _style
+            _element = _parents[_element]
+
+    def check_printable(self, context):
+        """Return True if the section is printable in given context
+
+        Return value is cached and may be obtained later from the
+        .printable attribute.  (This allows to avoid repeated
+        evaluation when .build() is called.)
+
+        """
+        _rv = True
+        for _style in self.iter_styles():
+            if context.eval(_style.get("when")):
+                _printwhen = _style.get("printwhen")
+                if _printwhen:
+                    _rv = bool(contex.eval(_printwhen))
+                    break
+        self.printable = _rv
+        return _rv
+
+    def compose_style(self, context, need_attrs, styles):
+        """Return style attributes collected from a style sequence
+
+        Parameters:
+            context: expression evaluation context
+            need_attrs: names of the style attributes to collect
+                processing stops when all these attributes
+                are set to non-empty value or when the sequence
+                is exhausted
+            styles: sequence of dictionary-like objects
+
+        Return value: dictionary containing all names from need_attrs.
+        If some of the attributes are not filled, their values will be None.
+
+        """
+        _attrs = {}
+        _count = len(need_attrs)
+        for _style in styles:
+            _when = _style.get("when", None)
+            if (_when is None) or context.eval(_when):
+                for _name in need_attrs:
+                    if _name in _attrs:
+                        continue
+                    _attr = _style.get(_name, None)
+                    if _attr is not None:
+                        _attrs[_name] = _attr
+                # stop when all need_attrs are collected
+                if len(_attrs) == _count:
+                    break
+        else:
+            # the loop didn't break, some attributes are not filled
+            for _name in need_attrs:
+                _attrs.setdefault(_name, None)
+        return _attrs
+
+    def set_text_value(self, context, element):
+        """Attach initial text value to field or barcode element.
+
+        Parameters:
+            context: expression evaluation context
+            element: ReportElement object with Field or BarCode template
+
+        The "text" attribute of the element object will be set
+        by the first applicable of the following rules:
+
+            - if expr is unset, use data block
+            - if evaltime is not empty and data block found, use data block
+            - evaluate expr and use it's result
+
+        """
+        _template = element.template
+        _data = _template.get("data") # name of data block defined at top level
+        if _data:
+            _data = self.builder.template.datablocks[_data]
+        else:
+            _data = _template.find("data")
+        _expr = _template.get("expr")
+        if _expr:
+            if _template.get("evaltime") and _data:
+                _value = Data.get_data(_data)
+            else:
+                _value = context.eval(_expr)
+        elif _data is not None:
+            _value = Data.get_data(_data)
+        else:
+            _value = None
+        if _value is None:
+            element.text = u""
+        else:
+            element.text = _template.get("format", "%s") % _value
+
+    def build(self, context):
+        """Create section contents
+
+        Parameters:
+            context: expression evaluation context
+
+        Fill the list with ReportElement instances for all
+        template elements.
+
+        """
+        self.check_printable(context)
+        # reset
+        self[:] = []
+        # if the section is suppressed do nothing
+        if not self.printable:
+            return
+        _elements = self.template.getchildren()
+        # section is resizeable if it's height is not fixed
+        # for resizeable secions, final size must be recalculated after filling
+        self.resizeable = self.tbox.height <= 0
+        if not self.resizeable:
+            # look for stretchable texts
+            # or barcodes (always stretchable)
+            # or growable images.
+            for _item in _elements:
+                _tag = _item.tag
+                if (((_tag == "field") and _item.get("stretch"))
+                    or (_tag == "barcode")
+                    or ((_tag == "image") and (_item.get("scale") == "grow"))
+                ):
+                    self.resizeable = True
+                    break
+        _default_element_style = [self.compose_style(context,
+            ("font", "color", "bgcolor"), self.iter_styles())]
+        for _item in _elements:
+            # ignore children that are not known body elements
+            if _item.tag not in (
+                "field", "line", "rectangle", "image", "barcode",
+            ):
+                continue
+            _element = ReportElement(section=self, template=_item)
+            _element.style = self.compose_style(context,
+                ("printwhen", "font", "color", "bgcolor"),
+                _item.findall("style") + _default_element_style)
+            _printwhen = _element.style.get("printwhen")
+            if _printwhen:
+                _element.printable = context.eval(_printwhen)
+            else:
+                _element.printable = True
+            # must not evaluate expressions for suspended elements.
+            # skip elements that are not printable.
+            if not _element.printable:
+                continue
+            _element.tbox = Box.from_element(_item.find("box"))
+            if _item.tag in ("field", "barcode"):
+                self.set_text_value(context, _element)
+                if _item.get("evaltime"):
+                    self.builder.register_eval(_element)
+                if _item.tag == "barcode":
+                    _element.barcode_text = None
+            elif _item.tag == "image":
+                _element.image = self.builder.image(_item)
+                # FIXME: use_count should be incremented in Builder.image()
+                _element.image.use_count += 1
+            self.append(_element)
+
+    def build_barcode(self, element):
+        """Compute sripe widths and box size/position for barcode element
+
+        If the text attribute is changed since previous call,
+        recalculate the symbol and update element's bounding box.
+
+        """
+        if element.text == element.barcode_text:
+            # the text was not changed since previous call
+            return
+        _xdim = element.template.get("module")
+        _code = self.BARCODES[element.template.get("type")]
+        _stripes = _code(element.text)
+        element.stripes = _code.add_qz(_stripes, _xdim)
+        # expand the bounding box if needed
+        _min_height = _code.min_height(_stripes, _xdim)
+        _min_width = math.ceil(sum(element.stripes) * _xdim / 1000. * 72)
+        if element.template.get("vertical"):
+            (_min_height, _min_width) = (_min_width, _min_height)
+        _bbox = element.tbox.copy()
+        if _bbox.width < _min_width:
+            _bbox.width = _min_width
+        if _bbox.height < _min_height:
+            _bbox.height = _min_height
+        _bbox.place_x(self.box)
+        _bbox.place_y(self.box)
+        element.bbox = _bbox
+        # remember the text of the symbol -
+        # will skip build unless the text is changed
+        element.barcode_text = element.text
+
+    def fill(self, x, y, width, bottom):
+        """Compute section layout within given dimensions
+
+        Parameters:
+            x, y: position of the left upper corner
+            width: width of the available space
+            bottom: y position of the bottom of available space
+
+        """
+        _text_drivers = self.builder.text_drivers
+        # create section placement box
+        _sbox = self.box = self.tbox.copy()
+        _bbox = Box(x, y, width, bottom - y)
+        _sbox.place_x(_bbox)
+        _sbox.place_y(_bbox)
+        # Note: vertical alignment is ignored for section boxes
+        _sbox.align_x(_bbox)
+        # fix widths, wrap texts, estimate heights
+        for _element in self:
+            _bbox = _element.tbox.copy()
+            _bbox.place_x(_sbox)
+            _template = _element.template
+            # for the purposes of the section height estimation
+            # we cannot use boxes with height offset from the section bottom
+            # because we don't know yet where the bottom is.
+            # still, we can estimate height for stretchable boxes.
+            if _template.tag == "field":
+                _stretch = _template.get("stretch")
+                if _stretch or (_bbox.height >= 0):
+                    _driver = _text_drivers[_element.style["font"]]
+                    if _stretch:
+                        # expand box height to suffice for the whole text
+                        _otext = _driver.wrap(_element.text, _bbox.width)
+                    else:
+                        # make sure the box is high enough for one row of text
+                        _otext = _element.text.split("\n")[0]
+                    _height = _driver.getsize(_otext)[1]
+                    if _bbox.height < _height:
+                        _bbox.height = _height
+            elif (_template.tag == "image"):
+                (_width, _height) = _element.image.getsize()
+                if _template.get("scale") == "grow":
+                    # make sure the box is big enough for the picture
+                    if 0 <= _bbox.width < _width:
+                        _bbox.width = _width
+                    if 0 <= _bbox.height < _height:
+                        _bbox.height = _height
+                else:
+                    # adjust "autosize" dimensions, if any
+                    if _bbox.width == 0:
+                        _bbox.width = _width
+                    if _bbox.height == 0:
+                        _bbox.height = _height
+            elif _template.tag == "barcode":
+                self.build_barcode(_element)
+                # bbox was built from symbol metrics
+                _bbox = _element.bbox
+                # undo vertical placement - section resizing requires
+                # that elements are not placed vertically
+                # (i.e. y coordinate for the bounding box
+                # is relative to the section margin).
+                _bbox.y = _element.tbox.y
+            _element.bbox = _bbox
+        ###
+        ### TODO: Move floating boxes
+        ###
+        # fix section height (may not be computed from total available height)
+        if self.resizeable:
+            _height = self.tbox.height
+            for _element in self:
+                # Note: bbox vertical dimensions are relative yet
+                _bbox = _element.bbox
+                if (_bbox.height < 0) and (_element.template.tag == "image") \
+                and (_element.template.get("scale") == "grow"):
+                    # box height is relative to section size
+                    # which must grow to hold the image.
+                    # absolute value of _bbox.height is bottom padding.
+                    _elem_height = _element.image.getsize()[1] - _bbox.height
+                    if _bbox.y > 0:
+                        _elem_height += _bbox.y
+                elif _bbox.y < 0:
+                    # the element was placed relatively to section bottom
+                    # FIXME? height may be negative too
+                    _elem_height = max(1 - _bbox.y, _bbox.height)
+                elif _bbox.height >= 0:
+                    _elem_height = _bbox.y + _bbox.height
+                else:
+                    # fixed space from top and bottom, unknown size
+                    _elem_height = _bbox.y + 1 - _bbox.height
+                if _elem_height > _height:
+                    _height = _elem_height
+            _sbox.height = round(_height)
+        # fix vertical dimensions for elements
+        for _element in self:
+            _template = _element.template
+            _bbox = _element.bbox
+            _bbox.place_y(_sbox)
+            if _template.tag != "image":
+                continue
+            # keep current bbox dimensions
+            _obox = _bbox.copy()
+            # shrink bounding box to image dimensions
+            # Note: for "grow" images bbox should be grown yet.
+            (_width, _height) = map(float, _element.image.getsize())
+            if _template.get("proportional") \
+            and (_template.get("scale") != "cut"):
+                _ratio = min(_bbox.width / _width, _bbox.height / _height)
+                _bbox.width = _width * _ratio
+                _bbox.height = _height * _ratio
+            else:
+                # shrink dimensions independently
+                if _bbox.width > _width:
+                    _bbox.width = _width
+                if _bbox.height > _height:
+                    _bbox.height = _height
+            # apply alignment
+            _bbox.align_x(_obox)
+            _bbox.align_y(_obox)
+        # compute output boxes
+        self.refill()
+
+    def refill(self, new_y=None):
+        """Update section element placements.
+
+        Called when vertical position of the section changes
+        and after deferred evaluation of field expressions.
+        The size of the section is not changed.
+
+        """
+        if new_y is None:
+            _sbox = None
+        else:
+            _sbox = self.box
+            _sbox.y = new_y
+        _text_drivers = self.builder.text_drivers
+        for _element in self:
+            if _element.template.tag == "barcode":
+                # update encoded symbol and bbox from current text if needed
+                self.build_barcode(_element)
+            _bbox = _element.bbox
+            if _sbox:
+                # vertical position changed.  recalc from template.
+                _bbox.y = _element.tbox.y
+                _bbox.place_y(_sbox)
+            _obox = _bbox.copy()
+            if _element.template.tag == "field":
+                _driver = _text_drivers[_element.style["font"]]
+                _element.otext = _driver.wrap(_element.text, _bbox.width)
+                (_width, _height) = _driver.getsize(_element.otext)
+                if _height > _bbox.height:
+                    _element.otext = _driver.chop(_element.otext, _bbox.height)
+                    _obox.height = _driver.getsize(_element.otext)[1]
+                else:
+                    _obox.height = _height
+                # don't shrink the box in horizontal dimension
+                # unless required by box-based horizontal alignment.
+                # (we may need full width for text alignment.)
+                if _obox.halign != "left":
+                    _obox.width = _width
+            _obox.align_x(_bbox)
+            _obox.align_y(_bbox)
+            _element.obox = _obox
+
+    def output(self, page):
+        """Create printout elements on printout page
+
+        Parameters:
+            page: printout.Page object
+
+        """
+        for _element in self:
+            # build definition for printout element
+            _template = _element.template
+            (_prp_type, _prp_attrs) = self.PRINTOUTS[_template.tag]
+            _prp_tag = _prp_type.tag
+            _attrib=dict([(_name, _template.get(_name))
+                for _name in _prp_attrs])
+            # add style attributes (must be done before constructor is called)
+            if _prp_tag == "text":
+                _attrib["font"] = _element.style["font"]
+                _attrib["color"] = _element.style["color"]
+            elif _prp_tag == "line":
+                _attrib["color"] = _element.style["color"]
+            elif _prp_tag == "rectangle":
+                _attrib["pencolor"] = _element.style["color"]
+                _attrib["color"] = _element.style["bgcolor"]
+            elif _prp_tag == "barcode":
+                _attrib["stripes"] = ",".join([str(_stripe)
+                    for _stripe in _element.stripes])
+                _attrib["value"] = _element.text
+            elif _prp_tag == "image":
+                _image = _element.image
+                if _image.name:
+                    _attrib["data"] = _image.name
+                elif _image.filepath and not _template.get("embed"):
+                    _attrib["file"] = _image.filepath
+                # override type (all images are output as jpeg or png)
+                _attrib["type"] = _image.preferred_type
+                # "scale" is boolean in prp: False to cut
+                _attrib["scale"] = Boolean(
+                    _template.get("scale") in ("fill", "grow"))
+            # create printout element
+            _prp_element = SubElement(page, _prp_tag, _attrib)
+            _element.obox.make_element(_prp_element)
+            # add content (text and images)
+            if _template.tag == "field":
+                # TODO: encoding, compression
+                Data.make_element(_prp_element, {}, _element.otext)
+            elif (_template.tag == "image"):
+                _image = _element.image
+                if not _image.name \
+                and ((not _image.filepath) or _template.get("embed")):
+                    # bitmap is kept in an anonymous data block
+                    Data.make_element(_prp_element, data=_image.getdata(),
+                        attrib={"name": _image.name, "encoding": "base64"})
+
+class Frame(Structure):
+
+    """An area on the page with optional header and footer
+
+    Example:
+
+        +-----------------------------+
+        |  A                          |
+        | +-------------------------+ |
+        | | headerA                 | |
+        | +-------------------------+ |
+        | +-----------+ +-----------+ |
+        | | B1        | | B2        | |
+        | |+---------+| |+---------+| |
+        | || headerB || || headerB || |
+        | |+---------+| |+---------+| |
+           ...........   ...........
+        | |+---------+| |+---------+| |
+        | || footerB || || footerB || |
+        | |+---------+| |+---------+| |
+        | +-----------+ +-----------+ |
+        | +-------------------------+ |
+        | | footerA                 | |
+        | +-------------------------+ |
+        +-----------------------------+
+
+    The example shows page layout with two frame definitions: A and B.
+    Definition B is arranged for 2-column output (so the example shows
+    two instances of this definition).
+
+    If frame A represents the whole page then its' printable space
+    is page dimensions minus sizes of the page margins.
+
+    Printable width for frame B is (widthA-(gap*(columns-1)))/columns
+    (for 2 columns that is (widthA-gap)/2).  The bottom margin for
+    frame B is set to the bottom margin of frame A minus height
+    of the footer placed in frame A.
+
+    Frames are arranged in linked list: each frame keeps references
+    to containing frame (parent) and contained frame (child).
+
+    """
+
+    colcount = 1    # number of columns
+    colgap = 0      # space between columns
+    column = 0      # current column index
+    x = 0           # x position for current column
+    width = 0       # printable width
+    top = 0         # position of the top margin
+    bottom = 0      # position of the bottom margin
+    header = None   # template of the header section for this frame
+    footer = None   # template of the footer section for this frame
+    parent = None   # containing frame
+    child = None    # contained frame
+    max_y = 0       # maximum y position reached at end of column
+
+    def __repr__(self):
+        if self.colcount > 1:
+            _col = " (column %i/%i)" % (self.column + 1, self.colcount)
+        else:
+            _col = ""
+        return "<%s@%X%s: %.1f, %.1f, %.1f, %.1f>" % (
+            self.__class__.__name__, id(self), _col,
+            self.x, self.top, self.width, self.bottom - self.top)
+
+    def make_child(self, **kwargs):
+        """Create new Frame inside this one
+
+        Child frame attributes that are not overridden
+        by keyword arguments will be initialized as follows:
+            - width is copied from this frame
+            - top is lowered by size of this frame header
+            - bottom is raised by size of this frame footer
+            - parent is set to this frame
+            - all other attributes will have default values
+
+        """
+        _args = {"parent": self, "width": self.width,
+            "top": self.top, "bottom": self.bottom}
+        if self.header is not None:
+            _args["top"] += Box.from_element(self.header.find("box")).height
+        if self.footer is not None:
+            _args["bottom"] -= Box.from_element(self.footer.find("box")).height
+        _args.update(kwargs)
+        self.child = self.__class__(**_args)
+        return self.child
+
+class Builder(object):
+
+    """PythonReports builder
+
+    Instances of this class apply a template to a sequence
+    of report data objects producing a printout structure
+    that can be serialized to XML (PRP file) and rendered
+    by front-end drivers to screen, printer, PDF etc.
+
+    """
+
+    ### following properties hold builder state.  reinitialized by each .run()
+    # current page position
+    cur_y = 0
+    # list of output pages.  each page is a list of Section objects
+    pages = []
+    # current page
+    page = None
+    # evaluation contexts for current and previous data items
+    context = old_context = None
+    # group expressions, used to detect group changes
+    group_values = {}
+    # deferred evaluations.
+    # keys are "report", "page", "column" or tuples ("group", name)
+    # values are ReportElements with templates having the "expr"
+    # attribute (fields and barcodes).
+    eval_later = {}
+    # report section frames
+    section_frames = {}
+    # parent elements for report sections
+    layout_parents = {}
+
+    def __init__(self, template, data=(), parameters=None, item_callback=None):
+        """Initialize builder
+
+        Parameters:
+            template: PRT file name or ElementTree With loaded report template
+            data: report data sequence
+            parameters: values for report parameters
+                (dictionary or sequence of (key, value) pairs)
+            item_callback: if passed, must be a callable
+                that will be called without arguments
+                for each item of the data sequence.
+
+        """
+        super(Builder, self).__init__()
+        if isinstance(template, basestring):
+            template = prt.load(template)
+        self.template = template
+        self.data = data
+        if parameters:
+            self.parameters = dict(parameters)
+        else:
+            self.parameters = {}
+        self.callback = item_callback
+        self.text_driver_factory = drivers.get_driver("Text")
+        self.image_driver_factory = drivers.get_driver("Image")
+        self.basedir = template.getroot().get("basedir", None)
+        if not self.basedir:
+            if template.filename:
+                self.basedir = os.path.dirname(template.filename)
+            else:
+                self.basedir = os.getcwd()
+        self.variables = [Variable(_item)
+            for _item in template.variables.itervalues()]
+        self.text_drivers = dict([(_name, self.text_driver_factory(_font))
+            for (_name, _font) in template.fonts.iteritems()])
+        # image collections:
+        #   - kept in files
+        self.images_filed = {}
+        #   - loaded from named data elements
+        self.images_named = {}
+        #   - all loaded images, including named and unnamed data elements
+        #       and files with embed=yes.  keyed by image data.
+        self.images_loaded = {}
+        #
+        _layout = template.find("layout")
+        self.template_pagefooter = _layout.find("footer")
+        # list of group templates
+        self.groups = []
+        _group = _layout.find("group")
+        while _group:
+            self.groups.append(_group)
+            _group = _group.find("group")
+        # detail template
+        if self.groups:
+            self.detail = self.groups[-1].find("detail")
+        else:
+            self.detail = _layout.find("detail")
+        # page origin
+        self.leftmargin = _layout.get("leftmargin")
+        self.topmargin = _layout.get("topmargin")
+        self.create_frames()
+        self.find_layout_parents()
+
+    def filepath(self, *path):
+        """Return normalized absolute pathname
+
+        Parameters: path components.
+
+        Join all parameters as path components.
+        If resulting path is relative, add report's basedir.
+        Normalize and return resulting path.
+
+        """
+        return os.path.abspath(os.path.join(self.basedir, *path))
+
+    def image(self, element):
+        """Return an image object for report template element
+
+        Parameters:
+            element: template element of type "image".
+
+        Return value: ImageDriver object for the image.
+
+        """
+        _type = element.get("type")
+        # if "file" attribute is set, load image from file
+        _file = element.get("file")
+        if _file:
+            _file = self.filepath(_file)
+            try:
+                return self.images_filed[_file]
+            except KeyError:
+                _image = self.image_driver_factory.fromfile(_file, _type)
+                self.images_filed[_file] = _image
+                if element.get("embed"):
+                    self.images_loaded[_image.getdata(_type)] = _image
+                return _image
+        # try named data block
+        _name = element.get("data")
+        if _name:
+            try:
+                return self.images_named[_name]
+            except KeyError:
+                # lookup is separated from conversion
+                # to have clearly identifiable error source
+                # when _name is not in the datablocks collection.
+                _imgdata = self.template.datablocks[_name]
+                _imgdata = Data.get_data(_imgdata)
+                _image = self.image_driver_factory.fromdata(
+                    _imgdata, type=_type, name=_name)
+                self.images_named[_name] = _image
+                self.images_loaded[_imgdata] = _image
+                return _image
+        # unnamed data block (child of the image element)
+        _data = element.find("data")
+        if _data is None:
+            _image = self.image_driver_factory.nullimage()
+            _imgdata = _image.getdata()
+            if _imgdata not in self.images_loaded:
+                self.images_loaded[_imgdata] = _image
+        else:
+            _imgdata = Data.get_data(_data)
+            if _imgdata not in self.images_loaded:
+                _image = self.image_driver_factory.fromdata(_imgdata,
+                    type=_type)
+                self.images_loaded[_imgdata] = _image
+        return self.images_loaded[_imgdata]
+
+    def find_layout_parents(self):
+        """Register parent sections for all sections of the template"""
+        _layout = self.template.find("layout")
+        self.layout_parents = {_layout: None}
+        _descend = [_layout]
+        while _descend:
+            _next_level = []
+            for _item in _descend:
+                for _child in _item.getchildren():
+                    if _child.tag in ("group", "columns"):
+                        _next_level.append(_child)
+                    if _child.tag in (
+                        "title", "summary", "header", "footer",
+                        "columns", "group", "detail",
+                    ):
+                        self.layout_parents[_child] = _item
+            _descend = _next_level
+
+    def create_frames(self):
+        """Create frames for all report sections"""
+        _layout = self.template.find("layout")
+        self.section_frames = {}
+        # page frame, used for page header/footer and swapped title/summary
+        _page_frame = Frame()
+        _pagesize = _layout.get("pagesize")
+        if _pagesize:
+            (_page_frame.width, _page_frame.bottom) = _pagesize.dimensions
+        else:
+            _page_frame.width = _layout.get("width")
+            _page_frame.bottom = _layout.get("height")
+        _page_frame.width -= _layout.get("leftmargin") \
+            + _layout.get("rightmargin")
+        _page_frame.bottom -= _layout.get("bottommargin")
+        # keep the outermost frame under well-known key
+        self.section_frames[None] = _page_frame
+        # add header and footer
+        _page_frame.header = _layout.find("header")
+        _page_frame.footer = _layout.find("footer")
+        if (_page_frame.header is None) and (_page_frame.footer is None):
+            # use whole page for contents
+            _frame = _page_frame
+        else:
+            # either header or footer may be None but we don't care -
+            # section_frames[None] is _page_frame anyway.
+            self.section_frames[_page_frame.header] = _page_frame
+            self.section_frames[_page_frame.footer] = _page_frame
+            # contents go to child frame with smaller area
+            _frame = _page_frame.make_child()
+        # add title and summary
+        # if swapped, they use page frame, otherwise inner frame
+        _section = _layout.find("title")
+        if _section:
+            if _section.get("swapheader") and _section.find("eject"):
+                self.section_frames[_section] = _page_frame
+            else:
+                self.section_frames[_section] = _frame
+        _section = _layout.find("summary")
+        if _section:
+            if _section.get("swapfooter"):
+                self.section_frames[_section] = _page_frame
+            else:
+                self.section_frames[_section] = _frame
+        # create toplevel columns frame
+        _frame = self.make_column_frames(_layout, _frame)
+        # process all groups
+        for _group in self.groups:
+            # group header and footer use containing frame, columns are inside
+            # group header and footer are *not* frame header and footer
+            # (not printed on each page; don't reserve space)
+            _header = _group.find("header")
+            if _header is not None:
+                self.section_frames[_header] = _frame
+            _footer = _group.find("footer")
+            if _footer is not None:
+                self.section_frames[_footer] = _frame
+            _frame = self.make_column_frames(_group, _frame)
+        # detail section uses innermost frame
+        self.section_frames[self.detail] = _frame
+
+    def make_column_frames(self, group, parent_frame):
+        """Create frames for columns definition
+
+        Parameters:
+            group: data group or layout template element
+            parent_frame: containing frame
+
+        Return the frame to use for contents
+
+        """
+        _columns = group.find("columns")
+        if not _columns:
+            return parent_frame
+        _colcount = _columns.get("count")
+        _colgap = _columns.get("gap")
+        _width=(parent_frame.width - ((_colcount - 1) * _colgap)) / _colcount
+        _frame = parent_frame.make_child(width=_width,
+            colcount=_colcount, colgap=_colgap)
+        self.section_frames[_columns] = _frame
+        _header = _columns.find("header")
+        _footer = _columns.find("footer")
+        if _header or _footer:
+            if _header:
+                self.section_frames[_header] = _frame
+                _frame.header = _header
+            if _footer:
+                self.section_frames[_footer] = _frame
+                _frame.footer = _footer
+            _inner_frame = _frame.make_child()
+        else:
+            _inner_frame = _frame
+        return _inner_frame
+
+    def run(self, data=NOTHING, parameters=None, item_callback=None):
+        """Build the report
+
+        Parameters:
+            data: optional data sequence.  If passed, overrides
+                the sequence passed to builder initialization.
+            parameters: optional values for report parameters (dictionary).
+                combined with parameters passed to initialization.
+            item_callback: optional callable to be called for each
+                data item.  If passed, overrides the callback
+                passed to initialization.
+
+        Return value: Printout object
+
+        """
+        # Timings: for 1000 items of test data,
+        # processing takes about 10s
+        # and output generation takes about .4s
+        _start_time = time.time()
+        if item_callback:
+            _callback = item_callback
+        else:
+            _callback = self.callback
+        _data_iter = self.start(data, parameters)
+        if _callback:
+            _callback()
+        self.fill_title()
+        # first item was already popped out of _data_iter
+        # (for use in title/headers context).  print it out now.
+        if self.context["THIS"] is not None:
+            self.fill_detail()
+        # process remaining items
+        for _item in _data_iter:
+            self.next_item(_item)
+            if _callback:
+                _callback()
+            self.fill_detail()
+        # fill_summary will close all report groups.
+        # since group footers are always evaluated in old_context
+        # (assuming that current context started a new group)
+        # we now need old_context to be current context.
+        self.old_context = self.context
+        self.fill_summary()
+        # resolve all deferred evaluations
+        self.resolve_eval(*self.eval_later.keys())
+        #print "built in %.2fs" % (time.time() - _start_time)
+        return self.build_printout()
+
+    def start(self, data=NOTHING, parameters=None):
+        """Initialize report building
+
+        Parameters:
+            data: optional data sequence.  If passed, overrides
+                the sequence passed to builder initialization.
+            parameters: optional values for report parameters (dictionary).
+                combined with parameters passed to initialization.
+
+        Create initial context, initialize all report structures,
+        start the first page (without any content).
+
+        Return value: data sequence iterator (with the first
+        object already iterated out; available in context["THIS"]).
+
+        """
+        _template = self.template
+        # create data iterator and get the first object, if any
+        if data is NOTHING:
+            _data = self.data
+        else:
+            _data = data
+        _data_iter = iter(_data)
+        try:
+            _data_obj = _data_iter.next()
+        except StopIteration:
+            _data_obj = None
+        # build initial context:
+        # initialize counters for all report groups,
+        # set row object and total length of data
+        _context = Context(sysvars=dict(
+            [("DATA_COUNT", len(_data)), ("THIS", _data_obj)]
+            + [(_item.get("name") + "_COUNT", 0) for _item in self.groups]
+        ))
+        _context.add_variables(*self.variables)
+        _context.load_imports(_template)
+        # collect report parameters
+        _parameters = dict(self.parameters)
+        if parameters:
+            _parameters.update(parameters)
+        for (_name, _parm) in _template.parameters.iteritems():
+            if _name not in _parameters:
+                _value = _context.eval(_parm.get("default"))
+                if _item_prompt:
+                    # TODO? parameter input with wx or Tkinter GUI
+                    _input = raw_input("%s [%s]: " % (_name, _value))
+                    if _input:
+                        _value = _input
+                _parameters[_name] = _value
+        _context.parameters = _parameters
+        self.context = self.old_context = _context
+        # initialize build structures
+        self.pages = []
+        self.eval_later = dict([(_key, [])
+            for _key in ["report", "page", "column"] + [
+                ("group", _item.get("name")) for _item in self.groups]
+        ])
+        # initialize all variables
+        for _item in self.variables:
+            _item.start(_context)
+            if _item.iter == "report":
+                _item.iterate(_context)
+        # initialize group expressions
+        for _item in self.groups:
+            self.group_values[_item.get("name")] = _context.eval(
+                _item.get("expr"))
+        # create the first page
+        self.start_page()
+        return _data_iter
+
+    def next_item(self, data):
+        """Prepare for processing of the next item in report data sequence
+
+        Parameters:
+            data: data object
+
+        Build new context, check all group expressions
+        and end/start groups if any expression is changed.
+
+        Note: this does not increment *_COUNT variables -
+        that will be done in .fill_detail() if the detail
+        section is printable.
+
+        """
+        _context = self.context
+        self.old_context = _context.copy()
+        #self.old_context.freeze()
+        _context["THIS"] = data
+        _context["ITEM_NUMBER"] += 1
+        _groups_changed = []
+        for (_idx, _group) in enumerate(self.groups):
+            _group_name = _group.get("name")
+            _value = _context.eval(_group.get("expr"))
+            if not (_value == self.group_values[_group_name]):
+                # group change implies change of all inner groups
+                _groups_changed = self.groups[_idx:]
+                # save new value and reeval remaining groups
+                self.group_values[_group_name] = _value
+                for _group in _groups_changed[1:]:
+                    self.group_values[_group.get("name")] = _context.eval(
+                        _group.get("expr"))
+                break
+        for _group in reversed(_groups_changed):
+            self.end_group(_group)
+        for _group in _groups_changed:
+            self.start_group(_group)
+
+    def fill_title(self):
+        """Build the beginning of the report
+
+        Fill report title, page header, all group and column headings.
+
+        """
+        _layout = self.template.find("layout")
+        _layout_title = _layout.find("title")
+        _layout_header = _layout.find("header")
+        if _layout_title:
+            if _layout_title.get("swapheader"):
+                _section = self.build_section(_layout_title)
+                if _section is not None:
+                    self.add_section(_section)
+                    self.check_eject(_layout_title, ignoresize=True)
+                self.add_section(self.build_section(_layout_header))
+            else:
+                self.add_section(self.build_section(_layout_header))
+                _section = self.build_section(_layout_title)
+                if _section is not None:
+                    self.add_section(_section)
+                    self.check_eject(_layout_title)
+        else:
+            self.add_section(self.build_section(_layout_header))
+        self.add_section(self.build_section(_layout.find("columns/header")))
+        for _group in self.groups:
+            self.start_group(_group)
+
+    def fill_detail(self):
+        """Build a detail section
+
+        Eject column/page if requested, create detail section
+        and put it on the current page (column) if there is enough
+        space.  If not, eject and rebuild the detail section at new
+        page or column.
+
+        """
+        _template = self.detail
+        self.check_eject(_template)
+        # create new temporary context with incremented *_COUNT values
+        _new_context = self.context.copy()
+        for _name in _new_context.sysvars:
+            if _name.endswith("_COUNT") and (_name != "DATA_COUNT"):
+                _new_context[_name] += 1
+        for _var in self.variables:
+            if _var.reset == "detail":
+                _var.start(_new_context)
+            if _var.iter == "detail":
+                _var.iterate(_new_context)
+        # build the section
+        _section = self.build_section(_template, _new_context)
+        if _section:
+            # commit context changes and place the section
+            self.context = _new_context
+            self.add_section(_section)
+        else:
+            # the section is not printed - undo context changes
+            for _var in self.variables:
+                if _var.reset == "detail":
+                    # reinitialize with context rolled back
+                    _var.start(self.context)
+                elif _var.iter == "detail":
+                    _var.rollback()
+
+    def fill_summary(self):
+        """Build the end of the report
+
+        Fill all group and column footers, report summary and page footer.
+
+        """
+        _layout = self.template.find("layout")
+        for _group in reversed(self.groups):
+            self.end_group(_group)
+        _columns = _layout.find("columns")
+        if _columns:
+            self.add_section(self.build_section(_columns.find("footer")))
+            self.resolve_eval("column")
+            _max_y = self.section_frames[_columns].max_y
+            if _max_y > self.cur_y:
+                self.cur_y = _max_y
+        _summary = _layout.find("summary")
+        if _summary:
+            self.check_eject(_summary)
+            if _summary.get("swapfooter"):
+                _footer = self.build_section(_layout.find("footer"))
+                # reposition at current y
+                _footer.refill(self.cur_y)
+                self.add_section(_footer)
+                self.add_section(self.build_section(_summary))
+            else:
+                self.add_section(self.build_section(_summary))
+                self.add_section(self.build_section(_layout.find("footer")))
+        else:
+            self.add_section(self.build_section(_layout.find("footer")))
+
+    def start_page(self):
+        """Create new output page
+
+        Create new page object, add it to the pages list
+        and set self.page to this new object.  Update
+        context variables and current output position.
+
+        Note: builder's page is just a list of Section objects.
+
+        """
+        self.page = []
+        self.pages.append(self.page)
+        self.cur_y = self.topmargin
+        self.context["PAGE_NUMBER"] += 1
+        self.context["PAGE_COUNT"] = 0
+        self.context["COLUMN_COUNT"] = 0
+        # reset column index for all frames
+        _frame = self.section_frames[None]
+        while _frame:
+            _frame.column = 0
+            _frame.max_y = self.cur_y
+            _frame.x = self.leftmargin
+            _frame = _frame.child
+        # reset/iterate variables
+        for _var in self.variables:
+            if _var.reset in ("page", "column"):
+                _var.start(self.context)
+            if _var.iter in ("page", "column"):
+                _var.iterate(self.context)
+
+    def start_group(self, group):
+        """Start a data group
+
+        Iterate all group-based variables, print group and column headers
+
+        """
+        _group_name = group.get("name")
+        self.context["%s_COUNT" % _group_name] = 0
+        for _var in self.variables:
+            if (_var.reset == "group") and (_var.resetgrp == _group_name):
+                _var.start(self.context)
+            if (_var.iter == "group") and (_var.itergrp == _group_name):
+                _var.iterate(self.context)
+        _header = group.find("header")
+        if _header:
+            self.check_eject(_header)
+            self.add_section(self.build_section(_header))
+        _columns = group.find("columns")
+        if _columns:
+            self.add_section(self.build_section(_columns.find("header")))
+
+    def end_group(self, group):
+        """End a data group
+
+        Print column and group footers, resolve deferred evaluations.
+
+        """
+        _columns = group.find("columns")
+        if _columns:
+            self.add_section(self.build_section(_columns.find("footer"),
+                context=self.old_context))
+            _max_y = self.section_frames[_columns].max_y
+            if _max_y > self.cur_y:
+                self.cur_y = _max_y
+        _footer = group.find("footer")
+        if _footer:
+            self.check_eject(_footer)
+            self.add_section(self.build_section(_footer,
+                context=self.old_context))
+        self.resolve_eval(("group", group.get("name")))
+
+    def build_section(self, template, context=None):
+        """Build, fill and return Section object
+
+        Parameters:
+            template: PRT section object
+            context: optional expression evaluation context
+                if omitted, use current context
+
+        Return value: Section object or None if the section
+        is not printable (suppressed by printwhen expression).
+
+        """
+        if template is None:
+            return None
+        if context is None:
+            context = self.context
+        _frame = self.section_frames[template]
+        context["COLUMN_NUMBER"] = _frame.column + 1
+        _section = Section(self, template, context)
+        if not _section.printable:
+            return None
+        _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
+        # align page footers to the bottom of page
+        if (template is self.template_pagefooter):
+            _section.refill(_frame.bottom - _section.box.height)
+        elif ((_section.box.y + _section.box.height) > _frame.bottom) \
+        and (_section.template.tag != "footer"):
+            self.eject(_frame)
+            context["COLUMN_NUMBER"] = _frame.column + 1
+            _section.build(context)
+            if not _section.printable:
+                return None
+            _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
+        return _section
+
+    def add_section(self, section):
+        """Add a filled section to current page
+
+        Parameters:
+            section: filled Section object
+                if None, this method is no-op
+
+        Note: this method is separated from .build_section()
+        to allow the caller to check if the section fits into
+        current page.
+
+        """
+        if section is None:
+            return
+        # TODO? if the section is empty (no content), simply advance cur_y
+        # without adding the section to the page
+        self.page.append(section)
+        self.cur_y = section.box.y + section.box.height + 1
+        if section.template.tag == "header":
+            # adjust top margin of all contained frames
+            # (new columns will start at this position)
+            #
+            # updating just one direct child is not enough:
+            #
+            # +-1-------------+
+            # |    header     |
+            # |+-2-----------+|
+            # ||+-3--+ +-3--+||
+            #
+            # we added header of frame 1.  it's direct child
+            # is frame 2, which contains no own sections but
+            # a child frame arranged for multi-column output.
+            # to have correct position after eject of frame 3
+            # we must update all embedded frames recursively.
+            # (perhaps just a grandchild would be enough too?)
+            #
+            _frame = self.section_frames[section.template].child
+            while _frame:
+                _frame.top = self.cur_y
+                _frame = _frame.child
+
+    def check_eject(self, section, ignoresize=False):
+        """Eject page/column if requested by report template
+
+        Parameters:
+            section: template section
+            ignoresize: if True, don't eject when section height
+                is greater than remaining available space
+                (used to eject *after* report title section)
+
+        """
+        _current_frame = self.section_frames[section]
+        _avail = _current_frame.bottom - self.cur_y
+        _eject = None
+        for _item in section.findall("eject"):
+            _when = _item.get("when")
+            if _when and not self.context.eval(_when):
+                # disabled
+                continue
+            _when = _item.get("require")
+            if (_when is None) or (_avail < _when):
+                # eject criteria met
+                _eject = _item.get("type")
+            # according to docs, the search stops at the first match
+            break
+        if not (_eject or ignoresize):
+            # check if there is enough space for the section box
+            _box = Box.from_element(section.find("box"))
+            if (_box.y + _box.height) > _avail:
+                _eject = "column"
+        # return early if no eject needed
+        if _eject:
+            self.eject(_current_frame, _eject=="page")
+
+    def eject(self, current_frame, newpage=False):
+        """Eject page or column
+
+        Parameters:
+            current_frame: frame for a section that caused eject
+            newpage: if True, eject page.
+                Otherwise eject column (default).
+
+        """
+        # build a list of all frames that will have their
+        # headers/footers printed by this eject
+        _eject_frames = []
+        if newpage:
+            # build footers/headers for current frame and all parents
+            _frame = current_frame
+            while _frame:
+                _eject_frames.append(_frame)
+                _frame = _frame.parent
+        else:
+            # if we are starting new column but this is the last column
+            # of the current frame eject parents recursively
+            _frame = current_frame
+            while _frame:
+                _eject_frames.append(_frame)
+                if _frame.column < (_frame.colcount - 1):
+                    # this frame can make another column -
+                    # it is the last frame to eject
+                    break
+                _frame = _frame.parent
+        # print all footers
+        for _frame in _eject_frames:
+            self.add_section(self.build_section(_frame.footer,
+                context=self.old_context))
+            if self.cur_y > _frame.max_y:
+                _frame.max_y = self.cur_y
+        # headers will go in reverse order: first for the last footer printed
+        _eject_frames.reverse()
+        # if last ejected was page footer, start new page
+        # otherwise reset column index for all column frames
+        # except the last one
+        _frame = _eject_frames[0]
+        if _frame is self.section_frames[None]:
+            self.resolve_eval("page", "column")
+            self.start_page()
+        else:
+            self.resolve_eval("column")
+            self.context["COLUMN_COUNT"] = 0
+            # reset/iterate column-based variables
+            for _var in self.variables:
+                if _var.reset == "column":
+                    _var.start(self.context)
+                if _var.iter == "column":
+                    _var.iterate(self.context)
+            # change page position to the top of new column
+            self.cur_y = _frame.top
+            _frame.column += 1
+            _xpos = _frame.parent.x \
+                + ((_frame.width + _frame.colgap) * _frame.column)
+            _frame.x = _xpos
+            # all inner frames are at the first column
+            for _frame in _eject_frames[1:]:
+                _frame.x = _xpos
+                _frame.column = 0
+        # print all headers
+        for _frame in _eject_frames:
+            self.add_section(self.build_section(_frame.header))
+
+    def register_eval(self, element):
+        """Register deferred evaluation for element expression
+
+        Parameters:
+            element: ReportElement having template with non-empty evaltime
+
+        """
+        _template = element.template
+        _evaltime = _template.get("evaltime")
+        if not _evaltime:
+            # eh?
+            return
+        if _evaltime not in ("report", "page", "column"):
+            _evaltime = ("group", _evaltime)
+        self.eval_later[_evaltime].append(element)
+
+    def resolve_eval(self, *args):
+        """Resolve deferred evaluations and refill corresponding sections
+
+        Parameters are keys to deferred evaluations registry.
+
+        Expressions are evaluated in the previous evaluation context.
+
+        """
+        # _refill collection contains unique sections.
+        # it would be a set if section objects are hashable.
+        # but they are not, so use a dictionary keyed by section ids.
+        _refill = {}
+        for _key in args:
+            for _element in self.eval_later[_key]:
+                _template = _element.template
+                _value = self.old_context.eval(_template.get("expr"))
+                _element.text = _template.get("format", u"%s") % _value
+                _refill[id(_element.section)] = _element.section
+            self.eval_later[_key] = []
+        for _section in _refill.itervalues():
+            _section.refill()
+
+    def build_printout(self):
+        """Create and return Printout object for built report"""
+        _template = self.template.getroot()
+        _attrs = dict([(_name, _template.get(_name)) for _name in
+            (set(prt.Report.attributes) & set(prp.Printout.attributes))])
+        # TODO: _attrs["built"] = datetime.utcnow()
+        _root = Element(prp.Printout.tag, _attrs)
+        for _item in _template.findall("font"):
+            SubElement(_root, "font", _item.attrib)
+        # output data blocks that were not used by the builder
+        # (images will be processed separately)
+        _data_names = set(self.images_named)
+        for (_name, _item) in self.template.datablocks.iteritems():
+            if _name not in self.images_named:
+                SubElement(_root, "data", _item.attrib).text = _item.text
+                _data_names.add(_name)
+        _img_idx = 0
+        for _image in self.images_loaded.itervalues():
+            # look if an unnamed image is used more than once.
+            # if yes, assign it a surrogate name.
+            if (_image.use_count > 1) and not _image.name:
+                while True:
+                    _img_idx += 1
+                    _name = "Image%s" % _img_idx
+                    if _name not in _data_names:
+                        _image.name = _name
+                        _data_names.add(_name)
+                        break
+            # if image data has a name, build data block
+            if _image.name:
+                # image data is converted to preferred type
+                # and stored in base64, without compression
+                # (both preferred types are compressed per se).
+                Data.make_element(_root, data=_image.getdata(),
+                    attrib={"name": _image.name, "encoding": "base64"})
+        # use layout element for page dimensions
+        _layout = _template.find("layout")
+        _page_attrs = dict([(_name, _layout.get(_name)) for _name in
+            ("leftmargin", "topmargin", "rightmargin", "bottommargin")])
+        _pagesize = _layout.get("pagesize")
+        if _pagesize:
+            (_page_attrs["width"], _page_attrs["height"]) = \
+                _pagesize.dimensions
+        else:
+            _page_attrs["width"] = _layout.get("width")
+            _page_attrs["height"] = _layout.get("height")
+        for _page in self.pages:
+            _prt_page = SubElement(_root, prp.Page.tag, _page_attrs)
+            for _section in _page:
+                _section.output(_prt_page)
+        return ElementTree(prp.Printout, _root)
+
+# vim: set et sts=4 sw=4 :

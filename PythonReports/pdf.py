@@ -1,0 +1,427 @@
+"""PDF output for PythonReports"""
+"""History (most recent first):
+20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
+03-oct-2006 [als]   support images
+27-sep-2006 [als]   fix: borderless rectangles toggled off dashed lines
+26-sep-2006 [als]   remove textcolor - fillcolor is common for text and grapics
+26-sep-2006 [als]   draw bar codes;
+                    center texts vertically within their bounding boxes
+25-sep-2006 [als]   created
+"""
+__version__ = "$Revision: 1.1 $"[11:-2]
+__date__ = "$Date: 2006/11/01 11:06:39 $"[7:-2]
+
+__all__ = ["PdfWriter", "write"]
+
+import os
+import sys
+
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics, ttfonts
+from reportlab.pdfgen import canvas
+
+# reportlab requires PIL for images.  so do we.
+# XXX is it possible to put jpeg images without PIL?
+try:
+    from PIL import Image
+except ImportError:
+    # images will be disabled
+    Image = None
+
+from PythonReports.datatypes import *
+from PythonReports import fonts, printout as prp
+
+class PdfWriter(object):
+
+    """PDF renderer for PythonReports Printout (PRP) files"""
+
+    # color values
+    WHITE = (1.0, 1.0, 1.0)
+    BLACK = (0.0, 0.0, 0.0)
+
+    # pdf output canvas - will be created in .write()
+    canvas = None
+    # canvas state properties
+    pagesize = (595, 842) # A4
+    strokecolor = BLACK
+    fillcolor = BLACK
+    pen = 1 # datatypes.Pen value
+    # textobject state properties
+    textobject = None
+    font = None
+    wordspace = 0
+
+    def __init__(self, report, filepath=None):
+        """Initialize the writer
+
+        Parameters:
+            report: PRP file name or ElementTree with loaded report printout
+
+        """
+        super(PdfWriter, self).__init__()
+        if isinstance(report, basestring):
+            report = prp.load(report)
+        self.report = report
+        # element handlers
+        self.handlers = {
+            "line": self.DrawLine,
+            "rectangle": self.DrawRectangle,
+            "text": self.DrawText,
+            "barcode": self.DrawBarcode,
+        }
+        if Image:
+            # PIL is loaded - can process images
+            self.handlers["image"] = self.DrawImage
+            _images = {}
+            for _element in report.findall("data"):
+                _data = StringIO(Data.get_data(_element))
+                # data blocks may be used for other purposes too.
+                # if PIL says it's not an image, skip it.
+                try:
+                    _img = Image.open(_data)
+                except IOError:
+                    continue
+                else:
+                    _images[_element.get("name")] = _img
+            self.named_images = _images
+        _fonts = {}
+        _registered = set()
+        for (_name, _font) in report.fonts.iteritems():
+            _typeface = _font.get("typeface")
+            _bold = _font.get("bold")
+            _italic = _font.get("italic")
+            _size = _font.get("size")
+            _facename = _typeface
+            if _bold:
+                _facename += " Bold"
+            if _italic:
+                _facename += " Italic"
+            if _facename not in _registered:
+                pdfmetrics.registerFont(ttfonts.TTFont(_facename,
+                    fonts.fontfile(_typeface, _bold, _italic)))
+                _registered.add(_facename)
+            # leading is 120% of the font size
+            _fonts[_name] = (_facename, _size, _size * 1.2)
+        self.fonts = _fonts
+
+    def write(self, filepath=None, compression=False):
+        """Write the report to PDF file
+
+        Parameters:
+            filepath: output filepath.
+            compression: if True, turn on compression of the PDF
+                operations stream for each page.  Compressed documents
+                will be smaller, but slower to generate.
+
+        """
+        self.canvas = canvas.Canvas(filepath, pageCompression=compression,
+            pagesize=self.pagesize)
+        for _page in self.report.findall("page"):
+            self.setPageSize(_page.get("width"), _page.get("height"))
+            # draw elements
+            for _item in _page:
+                # if current item is not a text
+                # and there is accumulated text, write it down
+                if (_item.tag != "text") and self.textobject:
+                    self._flushText()
+                try:
+                    _handler = self.handlers[_item.tag]
+                except KeyError:
+                    # no handler for element type - ignore element
+                    continue
+                _handler(_item)
+            # output accumulated text, if any
+            if self.textobject:
+                self._flushText()
+            # finalize page output
+            self.canvas.showPage()
+        self.canvas.save()
+
+    def _flushText(self):
+        """output current text object and discard it"""
+        self.canvas.drawText(self.textobject)
+        self.textobject = None
+        self.font = None
+
+    # stateful canvas proxies
+    # the canvas output PDF code at once for each state change operation
+    # following methods keep current settings and suppress code output
+    # when the state is not changed
+
+    def setPageSize(self, width, height):
+        """Set paper size for this and subsequent pages
+
+        Parameters:
+            width: page width in points
+            height: page height in points
+
+        """
+        if self.pagesize != (width, height):
+            self.canvas.setPageSize((width, height))
+            self.pagesize = (width, height)
+
+    def setStrokeColor(self, color):
+        """Set the stroke color
+
+        Parameters:
+            color: datatypes.Color object or None
+
+        Return True if the color is set (not None),
+        False otherwise.
+
+        """
+        if color is None:
+            return False
+        _rgb = color.rgbf
+        if self.strokecolor != _rgb:
+            self.canvas.setStrokeColorRGB(*_rgb)
+            self.strokecolor = _rgb
+        return True
+
+    def setFillColor(self, color):
+        """Set the stroke color
+
+        Parameters:
+            color: datatypes.Color object or None
+
+        Return True if the color is set (not None),
+        False otherwise.
+
+        """
+        if color is None:
+            return False
+        _rgb = color.rgbf
+        if self.fillcolor != _rgb:
+            self.canvas.setFillColorRGB(*_rgb)
+            self.fillcolor = _rgb
+        return True
+
+    def setPen(self, pen):
+        """Change stroke style and width
+
+        Parameters:
+            pen: datatypes.Pen object or None
+
+        Return True if the pen is opaque (not None
+        and not zero-width), False otherwise.
+
+        """
+        if pen is None:
+            return False
+        if pen == self.pen:
+            return True
+        if self.pen in ("dot", "dash", "dashdot"):
+            _width = 1
+            _solid = False
+        else:
+            _width = self.pen
+            _solid = True
+        _newwidth = 1
+        if pen == "dot":
+            self.canvas.setDash((1, 3))
+        elif pen == "dash":
+            self.canvas.setDash((3,))
+        elif pen == "dashdot":
+            self.canvas.setDash((3, 1, 1, 1))
+        else:
+            _newwidth = pen
+        if _newwidth == 0:
+            return False
+        if not ((pen in ("dot", "dash", "dashdot")) or _solid):
+            # switch from dashed to solid
+            self.canvas.setDash(())
+        if _width != _newwidth:
+            self.canvas.setLineWidth(_newwidth)
+        self.pen = pen
+        return True
+
+    def setWordSpace(self, wordspace=0):
+        """Set word spacing
+
+        Parameters:
+            space: additional space to add between words.
+
+        Note: PDF adds wordspace is to *each* character
+        with code <20> (ASCII space character).
+
+        """
+        if wordspace != self.wordspace:
+            self.textobject.setWordSpace(wordspace)
+            self.wordspace = wordspace
+
+    # drawing
+
+    def getDimensions(self, element):
+        """Return position and size of the element box
+
+        Parameters:
+            element: one of printout elements.
+                Must have a "box" child element.
+
+        Return value: 4-element tuple (x, y, width, height)
+        where (x, y) is position of the upper left corner.
+
+        """
+        _box = element.find("box")
+        _height = _box.get("height")
+        return (_box.get("x"), self.pagesize[1] - _box.get("y") - _height,
+            _box.get("width"), _height)
+
+    def DrawLine(self, line):
+        # set line style, return if the line is not visible
+        if not (self.setStrokeColor(line.get("color"))
+            and self.setPen(line.get("pen"))
+        ):
+            return
+        # get coordinates
+        (_x1, _y1, _width, _height) = self.getDimensions(line)
+        _x2 = _x1 + _width
+        if line.get("backslant"):
+            _y2 = _y1 - _height
+        else:
+            _y2 = _y1
+            _y1 = _y2 - _height
+        # draw
+        self.canvas.line(_x1, _y1, _x2, _y2)
+
+    def DrawRectangle(self, rect):
+        _stroke = self.setStrokeColor(rect.get("pencolor")) \
+            and self.setPen(rect.get("pen"))
+        _fill = self.setFillColor(rect.get("color"))
+        _radius = rect.get("radius")
+        if _radius:
+            self.canvas.roundRect(
+                *(self.getDimensions(rect) + (_radius, _stroke, _fill)))
+        else:
+            self.canvas.rect(*(self.getDimensions(rect) + (_stroke, _fill)))
+
+    def DrawImage(self, image):
+        _scale = image.get("scale", True)
+        _img = image.get("file")
+        if _img:
+            # it is better to use filename unless we have to cut the image
+            # (scale will be done by reportlab)
+            if not _scale:
+                _img = Image.open(_img)
+        else:
+            _data = image.get("data")
+            if _data:
+                _img = self.named_images[_data]
+            else:
+                # image data must be child element
+                _data = StringIO(Data.get_data(image.find("data")))
+                _img = Image.open(_data)
+        (_x, _y, _width, _height) = self.getDimensions(image)
+        if _scale:
+            self.canvas.drawImage(ImageReader(_img), _x, _y, _width, _height)
+        else:
+            (_img_width, _img_height) = _img.size
+            _img = _img.crop(
+                (0, 0, min(_width, _img_width), min(_height, _img_height)))
+            self.canvas.drawImage(ImageReader(_img), _x, _y)
+
+    def DrawText(self, text):
+        _content = text.find("data").text
+        if not _content:
+            return
+        _align = text.get("align")
+        # if there is no active text object, make one
+        if not self.textobject:
+            self.textobject = self.canvas.beginText()
+        _tobj = self.textobject
+        # update font
+        _font = text.get("font")
+        (_fontname, _fontsize, _leading) = self.fonts[_font]
+        if _font != self.font:
+            _tobj.setFont(_fontname, _fontsize, _leading)
+            self.font = _font
+        _color = text.get("color").rgbf
+        if _color != self.fillcolor:
+            _tobj.setFillColorRGB(*_color)
+            self.fillcolor = _color
+        # set starting point
+        (_x, _y, _width, _height) = self.getDimensions(text)
+        # text origin is baseline of the first line.
+        # go to the top of the box and then down to the baseline.
+        _ascent = pdfmetrics.getAscent(_fontname) / 1000. * _fontsize
+        _y += _height - _ascent
+        # vertical size of the box should be as close
+        # to the text height as the builder can get.
+        # center the text (ascent) vertically in the box.
+        _y -= (_height - _leading * _content.count("\n") - _ascent) / 2
+        if _align in ("center", "right"):
+            # we're going to .moveCursor() for each line
+            # set starting point up one line
+            # to avoid first line check inside the line loop
+            _y += _leading
+        _tobj.setTextOrigin(_x, _y)
+        # reset word spacing unless we do justified text
+        if _align != "justified":
+            self.setWordSpace(0)
+        # draw lines
+        _offset = 0
+        for _line in _content.split("\n"):
+            if _align != "left":
+                _pad = _width - pdfmetrics.stringWidth(_line,
+                    _fontname, _fontsize)
+            if _align == "right":
+                _tobj.moveCursor(_pad - _offset, _leading)
+                _offset = _pad
+            elif _align == "center":
+                _tobj.moveCursor((_pad / 2.0) - _offset, _leading)
+                _offset = _pad / 2.0
+            elif _align == "justified":
+                self.setWordSpace(_pad / _line.count(" "))
+            _tobj.textLine(_line)
+
+    def DrawBarcode(self, barcode):
+        _xdim = barcode.get("module") / 1000. * 72.
+        _stripes = [int(_stripe) * _xdim
+            for _stripe in barcode.get("stripes").split(",")]
+        # blank out the symbol area
+        _canvas = self.canvas
+        (_x, _y, _width, _height) = self.getDimensions(barcode)
+        self.setFillColor(Color("white"))
+        _canvas.rect(_x, _y, _width, _height, False, True)
+        # draw bars
+        self.setFillColor(Color("black"))
+        if barcode.get("vertical"):
+            _cur_y = _y + _height
+            for (_idx, _stripe) in enumerate(_stripes):
+                if _idx & 1:
+                    _canvas.rect(_x, _cur_y, _width, _stripe, False, True)
+                _cur_y -= _stripe
+        else:
+            _cur_x = _x
+            for (_idx, _stripe) in enumerate(_stripes):
+                if _idx & 1:
+                    _canvas.rect(_cur_x, _y, _stripe, _height, False, True)
+                _cur_x += _stripe
+
+def write(report, filepath):
+    """Create PDF document from PythonReports printout
+
+    Parameters:
+        report: PRP file name or ElementTree with loaded report printout
+        filepath: output file path.
+
+    """
+    PdfWriter(report).write(filepath)
+
+def run(argv=sys.argv):
+    if len(argv) not in (2, 3):
+        print "Usage: %s <printout> [<pdf>]" % argv[0]
+        sys.exit(2)
+    _printout = argv[1]
+    if len(argv) > 2:
+        _pdf = argv[2]
+    else:
+        _pdf = os.path.splitext(_printout)[0] + ".pdf"
+    write(_printout, _pdf)
+    # XXX DEBUG: run the pdf
+    os.system(_pdf)
+
+if __name__ == "__main__":
+    run()
+
+# vim: set et sts=4 sw=4 :

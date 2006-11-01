@@ -5,13 +5,15 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+01-nov-2006 [als]   get_driver won't fail if no image driver found
+                    (but the first image operation will raise an error)
 01-nov-2006 [als]   driver classes have backend name property
 11-oct-2006 [als]   fix variable name in ImageDriver.resize
 05-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/01 17:37:56 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/11/01 19:21:55 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -241,6 +243,13 @@ class ImageDriver(object):
             # should cut, but the image is smaller than cut frame
             _rv = self.getdata()
         return _rv
+
+# Use above ImageDriver class as dummy fallback driver
+# (will be overwritten as soon as any actual driver is found).
+# This will raise NotImplementdedError when the first image
+# operation is attempted, but if there are no images in report
+# then we can get through without image driver.
+_image_drivers[None] = ImageDriver
 
 class TextDriver(object):
 

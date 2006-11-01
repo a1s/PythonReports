@@ -1,0 +1,1226 @@
+"""PythonReports Template Designer"""
+"""History (most recent first):
+31-oct-2006 [als]   boolean property checkbuttons have grey background;
+                    fix: ElementTree not updated on element deletion;
+                    shift group/detail on group insertion
+31-oct-2006 [als]   X windows portability fixes;
+                    disable "delete element" in menu for fixed ones;
+                    fix insertNode: addToTree ignored argument "before"
+30-oct-2006 [als]   added insertion and deletion of the tree nodes
+27-oct-2006 [als]   update/validate all attributes before preview or save
+27-oct-2006 [als]   shell: close designer window when command is "quit";
+                    designer: added some menu items, implemented preview
+26-oct-2006 [als]   shell: make sure the prompt always starts from a new line;
+                    removed references to Python legal stuff from the shell
+                    greeting (might be misunderstood as designer own notices)
+26-oct-2006 [als]   added shell frame
+13-oct-2006 [als]   created
+"""
+__version__ = "$Revision: 1.1 $"[11:-2]
+__date__ = "$Date: 2006/11/01 11:07:02 $"[7:-2]
+
+from code import InteractiveInterpreter
+from cStringIO import StringIO
+import os
+import sys
+
+from Tix import *
+# override Tix.PanedWindow with Tkinter.PanedWindow
+from Tkinter import PanedWindow
+from ScrolledText import ScrolledText
+from tkColorChooser import askcolor
+from tkMessageBox import Message
+import tkFileDialog
+
+from PythonReports import datatypes, drivers, template as prt, printout as prp
+from PythonReports.builder import Builder
+from PythonReports.datatypes import *
+from PythonReports.Tk import PreviewWindow
+
+NEW_REPORT_TEMPLATE = """<report>
+ <font name="body" typeface="Arial" size="8" />
+ <layout pagesize="A4" leftmargin="2.5cm" rightmargin="1.5cm"
+  topmargin="1.5cm" bottommargin="1.5cm">
+  <style font="body" color="0" bgcolor="white" />
+  <detail>
+   <box height="12" />
+  </detail>
+ </layout>
+</report>
+"""
+
+### shell
+
+# since we're not interactive, sys does not have ps1 and ps2
+try:
+    sys.ps1
+except AttributeError:
+    sys.ps1 = ">>> "
+    sys.ps2 = "... "
+
+class Interpreter(InteractiveInterpreter):
+
+    def __init__(self, locals, stdin=sys.stdin,
+        stdout=sys.stdout, stderr=sys.stderr
+    ):
+        InteractiveInterpreter.__init__(self, locals)
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
+
+    def runcode(self, code):
+        # save current standard streams
+        _stdin = sys.stdin
+        _stdout = sys.stdout
+        _stderr = sys.stderr
+        # apply redirected streams for the time of running code block
+        sys.stdin = self.stdin
+        sys.stdout = self.stdout
+        sys.stderr = self.stderr
+        try:
+            # execute the code
+            InteractiveInterpreter.runcode(self, code)
+        finally:
+            # restore saved streams unless changed by the code
+            if sys.stdin == self.stdin:
+                sys.stdin = _stdin
+            if sys.stdout == self.stdout:
+                sys.stdout = _stdout
+            if sys.stderr == self.stderr:
+                sys.stderr = _stderr
+
+class ShellOutputStream(object):
+
+    """File-like objects writing to the text window"""
+
+    def __init__(self, window, tag=""):
+        """Initialize the writer
+
+        Parameters:
+            window: Tk.Text window
+            tag: optional name of the text tag
+
+        """
+        super(ShellOutputStream, self).__init__()
+        self.window = window
+        self.tag = tag
+
+    # writeable file API
+
+    @staticmethod
+    def isatty():
+        return True
+
+    def write(self, text):
+        self.window.insert("end", text, self.tag)
+        # window must be refreshed in case we fall into raw_input somewhere
+        self.window.see("insert")
+        self.window.update_idletasks()
+
+    def writelines(self, iterable):
+        _write = self.write
+        for _line in iterable:
+            _write(_line)
+
+class Shell(ScrolledText):
+
+    """Interactive shell widget"""
+
+    @property
+    def shell_greeting(self):
+        return self._("Python %s on %s\n") % (sys.version, sys.platform)
+
+    @property
+    def greeting(self):
+        return self._(
+            "Set \"data\" variable to report data sequence for preview.\n")
+
+    def __init__(self, master=None, cnf={}, **kw):
+        ScrolledText.__init__(self, master, cnf=cnf, **kw)
+        _toplevel = self.winfo_toplevel()
+        self._ = self.gettext = _toplevel.gettext
+        self.ngettext = _toplevel.ngettext
+        self.locals = {
+            "designer": self.winfo_toplevel(),
+            "shell": self,
+            "data": (),
+        }
+        self.interpreter = Interpreter(self.locals,
+            stdout=ShellOutputStream(self, "output"),
+            stderr=ShellOutputStream(self, "error"))
+        self.tag_config("prompt", foreground="salmon4")
+        self.tag_config("greeting", foreground="salmon4", underline=True)
+        self.tag_config("input", underline=True)
+        self.tag_config("output", foreground="blue")
+        self.tag_config("error", foreground="red")
+        # Note: inserting a non-prompt text between shell_greeting
+        # (tagged as "prompt") and the first input prompt
+        # facilitates input line detection.
+        self.insert("insert", self.shell_greeting, "prompt")
+        self.insert("insert", self.greeting, "greeting")
+        self.prompt()
+        self.bind("<Key>", self.OnKeyPress)
+        self.bind("<<Paste>>", lambda evt: self.after_idle(self.set_input_tag))
+
+    def OnKeyPress(self, event):
+        # don't process control and navigation keys
+        if event.char == "":
+            return ""
+        # disable text input if not on input line
+        if not self.on_input_line():
+            return "break"
+        # disable backspacing past input area
+        if (event.keysym == "BackSpace") \
+        and ("input" not in self.tag_names("insert -1c")):
+            return "break"
+        if (event.keysym == "Return"):
+            if self.compare("insert linestart", "!=", "end -1l linestart"):
+                # selected a history line - copy to input
+                _cmd = self.get(
+                    self.tag_nextrange("prompt", "insert linestart")[1],
+                    "insert lineend")
+                self.delete(
+                    self.tag_nextrange("prompt", "end -1l linestart")[1],
+                    "end")
+                self.insert("end", _cmd, "input")
+            self.mark_set("insert", "end")
+            self.after_idle(self.execute)
+        else:
+            # on next idle event, apply input tag
+            self.after_idle(self.set_input_tag)
+        return ""
+
+    def prompt(self, prompt=sys.ps1):
+        """Write new input prompt"""
+        self.mark_set("insert", "end")
+        if self.compare("insert", "!=", "insert linestart"):
+            self.insert("insert", "\n")
+        self.insert("insert", sys.ps1, "prompt")
+        self.see("end")
+
+    def on_input_line(self, index="insert"):
+        """Return True if selected line contains input area
+
+        Parameters:
+            index: text position on a line to check.
+
+        If the line starts with a standard prompt
+        and text position is not in the prompt string,
+        return True.  Otherwise return False.
+
+        """
+        if "input" in self.tag_names(index + " lineend -1c"):
+            # the line contains input area
+            # FIXME? if there is input text on the line,
+            # it is possible to enter new text in and before
+            # the prompt area (which won't be executed anyway).
+            # On the other hand, this allows to relaunch
+            #a history line while input position is in the prompt.
+            return True
+        if "prompt" not in self.tag_names(index + " linestart"):
+            # the line does not start with a prompt - no input possible
+            return False
+        _prompt_range = self.tag_nextrange("prompt", index + " linestart")
+        if self.get(*_prompt_range) not in (sys.ps1, sys.ps2):
+            # the line does not start with one of recognized prompts -
+            # perhaps a start-up greeting message.
+            return False
+        if self.compare(index, "<", _prompt_range[1]):
+            # input marker is within the prompt
+            return False
+        # input may follow
+        return True
+
+    def set_input_tag(self):
+        """Called after a text is added by keyboard: apply "input" tag"""
+        if self.on_input_line():
+            # current line has input area.
+            # apply "input" tag from the end of the prompt
+            # to the end of the line
+            self.tag_add("input",
+                self.tag_nextrange("prompt", "insert linestart")[1],
+                "insert lineend")
+
+    def execute(self, line="insert -1l"):
+        """Execute selected input line"""
+        if self.on_input_line(line):
+            _cmd = self.get(
+                self.tag_nextrange("prompt", line + " linestart")[1],
+                line + " lineend")
+            if _cmd == "quit":
+                self.winfo_toplevel().destroy()
+            else:
+                self.interpreter.runsource(_cmd)
+                # TODO? continuation lines
+                self.prompt()
+
+# widgets for property values
+
+class CodeSelection(ComboBox):
+
+    def __init__(self, master=None, cnf={}, **kw):
+        self.values = kw.pop("values", ())
+        ComboBox.__init__(self, master=master, cnf=cnf, **kw)
+        for _val in self.values:
+            self.insert("end", _val)
+        _designer = self.winfo_toplevel()
+        self.entry["background"] = _designer.color_window
+        self.entry["disabledbackground"] = _designer.color_window
+        self.entry["disabledforeground"] = _designer.color_text
+        self.slistbox.listbox["background"] = _designer.color_window
+        if len(self.values) > 20:
+            _listlen = 20
+        else:
+            _listlen = 0 # auto
+        self.slistbox.listbox["height"] = _listlen
+
+class ColorSelection(Frame):
+
+    def __init__(self, master=None, cnf={}, **kw):
+        self.var = kw.pop("variable")
+        Frame.__init__(self, master=master, cnf=cnf, **kw)
+        self["background"] = self.winfo_toplevel().color_panel
+        _select = CodeSelection(self, editable=True, variable=self.var,
+            values=sorted(Color.names.keys()), validatecmd=self.OnEntry)
+        _select.grid(row=0, column=0)
+        self.indicator = Frame(self, relief=RIDGE, borderwidth=4,
+            background=self.var.get())
+        self.indicator.grid(row=0, column=1, sticky=NE+SW, padx=5, pady=1)
+        _btn = Button(self, command=self.OnButton,
+            text=self.winfo_toplevel()._("..."))
+        _btn.grid(row=0, column=2)
+        self.columnconfigure(1, weight=1)
+
+    def OnEntry(self, value):
+        """Validate the combo box value"""
+        try:
+            _color = Color.fromValue(value)
+        except InvalidLiteral:
+            value = self.var.get()
+        else:
+            self.indicator["background"] = _color
+        return value
+
+    def OnButton(self):
+        # askcolor returns ((r, g, b), "#rrggbb") or (None, None)
+        _color = askcolor(self.var.get())[1]
+        if _color:
+            self.var.set(_color)
+            self.indicator["background"] = _color
+
+class PropertyEntry(Frame):
+
+    # Entry member of the ComboBox is offset to the right.
+    # We need to compensate all other widgets too.
+    if os.name == "nt":
+        LPAD = 3
+    else:
+        LPAD = 7
+
+    # This is base class for entries, spin boxes and check boxes.
+    # Target widget class is set by this class attribute
+    WIDGET = Entry
+
+    # list of (name, value) pairs for default WIDGET initialization keywords
+    DEFAULT_OPTIONS = ()
+
+    def __init__(self, master=None, cnf={}, **kw):
+        Frame.__init__(self, master)
+        Frame(self, width=self.LPAD).pack(side=LEFT)
+        for (_name, _value) in self.DEFAULT_OPTIONS:
+            kw.setdefault(_name, _value)
+        self.widget = self.WIDGET(master=self, cnf=cnf, **kw)
+        self.widget.pack(side=LEFT, fill=BOTH, expand=True)
+        self.bind("<FocusIn>", self.OnSetFocus)
+
+    def OnSetFocus(self, event):
+        self.widget.focus_set()
+        self.widget.select_range(0, "end")
+
+class IntegerSelection(PropertyEntry):
+
+    WIDGET = Control
+    DEFAULT_OPTIONS = (("step", 1),)
+
+    if os.name == "nt":
+        LPAD = 0
+    else:
+        LPAD = 5
+
+class BooleanSelection(PropertyEntry):
+
+    WIDGET = Checkbutton
+    DEFAULT_OPTIONS = (
+        ("text", ""),
+        ("anchor", W),
+        ("onvalue", "true"),
+        ("offvalue", "false"),
+    )
+
+    if os.name == "nt":
+        LPAD = 0 # still insufficient
+
+    def __init__(self, master=None, cnf={}, **kw):
+        PropertyEntry.__init__(self, master, cnf, **kw)
+        # XXX on windows, these checkbuttons get white background
+        self.widget["background"] = self.winfo_toplevel().color_panel
+
+    # checkbuttons have no .select_range method
+    def OnSetFocus(self, event):
+        self.widget.focus_set()
+
+class PropertyEditor(object):
+
+    """Widget factory for an attribute data type"""
+
+    # instantiated factories
+    FACTORIES = {}
+
+    def __init__(self, widget, varoptname="textvariable", **options):
+        """Create a factory
+
+        Parameters:
+            widget: Tk widget class
+            varoptname: name of the widget option for the value variable
+            additional keyword arguments for widget constructor
+
+        """
+        super(PropertyEditor, self).__init__()
+        self.widget = widget
+        self.varoptname = varoptname
+        self.options = options
+
+    def __call__(self, variable, *args, **kwargs):
+        """Create widget attached to the variable"""
+        _options = self.options.copy()
+        _options[self.varoptname] = variable
+        _options.update(kwargs)
+        return self.widget(*args, **_options)
+
+    @classmethod
+    def forType(cls, value):
+        """Return a widget factory for given value class
+
+        Parameters:
+            value: one of the attribute value classes
+
+        """
+        try:
+            _rv = cls.FACTORIES[value]
+        except KeyError:
+            assert issubclass(value, datatypes._Value)
+            if issubclass(value, datatypes.PenType):
+                _rv = cls(CodeSelection, "variable", editable=True,
+                    values=value.VALUES + tuple(xrange(5)))
+            elif issubclass(value, datatypes._Codes):
+                _rv = cls(CodeSelection, "variable", values=value.VALUES)
+            elif issubclass(value, Color):
+                _rv = cls(ColorSelection, "variable")
+            elif issubclass(value, Boolean):
+                _rv = cls(BooleanSelection, "variable")
+            elif issubclass(value, Integer):
+                _rv = cls(IntegerSelection, "variable")
+            else:
+                _rv = cls(PropertyEntry)
+            cls.FACTORIES[value] = _rv
+        return _rv
+
+# data objects
+
+class PropertyData(Structure):
+
+    """Data object representing an attribute editable in the properties list"""
+
+class TreeNodeData(list):
+
+    """Data object representing a node of the designer tree"""
+
+    # TODO? for comments and unknown nodes,
+    # it is possible to replace the properties list
+    # with a Text widget for low-level editing
+
+    # some things cannot be created at the compilation time - root
+    # window must be created first.  this class property and
+    # following class method do such initialization at the time
+    # of the first display operation.  at that time, Tk should
+    # be properly initialized yet.
+    __do_classinit = True
+    @classmethod
+    def _classinit(cls, designer):
+        """Create classwide structures
+
+        Parameters:
+            designer: the Designer object (toplevel window)
+
+        """
+        _base_font = designer.option_get("font", Entry)
+        if not _base_font:
+            _base_font = designer.pl.hlist["font"]
+        cls.PROP_NAME_STYLE = designer.tk.call("tixDisplayStyle", TEXT,
+            "-justify", RIGHT, "-anchor", E, "-padx", 6, "-pady", 0)
+        cls.PROP_NAME_STYLE_MANDATORY = designer.tk.call("tixDisplayStyle",
+            TEXT, "-justify", RIGHT, "-anchor", E, "-padx", 6, "-pady", 0,
+            "-font", _base_font + " bold underline")
+        cls.PROP_VALUE_STYLE = designer.tk.call("tixDisplayStyle", WINDOW,
+            "-padx", 0, "-pady", 0)
+        cls.__do_classinit = False
+
+    @property
+    def treelabel(self):
+        """Return text string for the tree entry"""
+        _rv = self.tag
+        _name = self.element.get("name", "")
+        if _name:
+            _rv += " %s" % _name
+        return _rv
+
+    @property
+    def path(self):
+        """Return dot-separated path for the tree node"""
+        if self.parent:
+            return ".".join((self.parent.path, self.id))
+        else:
+            return self.id
+
+    def __init__(self, parent, element, validator, nodeid=None):
+        """Initialize the data object
+
+        Parameters:
+            parent: parent node data (None for root).
+            element: ElementTree object containing node data.
+            validator: element validator
+            nodeid: optional data identifier (within parent node).
+                Default: composed from element tag and object id.
+
+        """
+        assert element.tag == validator.tag
+        super(TreeNodeData, self).__init__()
+        self.element = element
+        self.validator = validator
+        self.tag = element.tag
+        if nodeid is None:
+            nodeid = "%s@%X" % (self.tag, id(self))
+        self.id = nodeid
+        self.parent = parent
+        self.canvas_object = None
+        self.is_section = element.tag in ("title", "summary",
+            "header", "footer", "detail")
+        self.is_printable = element.tag in ("field", "line", "rectangle",
+            "image", "barcode")
+        # create the subtree data
+        _collections = [_validator.tag
+            for (_validator, _restrict) in validator.children
+            if (_restrict not in (_validator.ONE, _validator.ZERO_OR_ONE))]
+        _child_validators = validator.child_validators
+        for _child in element.getchildren():
+            _tag = _child.tag
+            # boxes go to element properties -
+            # don't create separate tree nodes for them
+            if (_tag != "box") and (_tag in _child_validators):
+                if _tag in _collections:
+                    _id = None # will be computed by child constructor
+                else:
+                    _id = _tag # there may be only one
+                self.append(TreeNodeData(self, nodeid=_id,
+                    element=_child, validator=_child_validators[_tag]))
+        # attribute edit support
+        _properties = []
+        for (_name, (_cls, _default)) in validator.attributes.iteritems():
+            _properties.append(PropertyData(name=_name, type=_cls,
+                default=_default, element=element, box=False))
+        if self.is_printable or self.is_section:
+            # we need a box element.  if there's no box, add default one
+            _box = element.find("box")
+            _box_attrs = prt.Box.attributes
+            if _box is None:
+                _box = SubElement(element, "box", attrib=dict((_name, _default)
+                    for (_name, (_cls, _default)) in _box_attrs.iteritems()))
+            if self.is_printable:
+                for (_name, (_cls, _default)) in _box_attrs.iteritems():
+                    _properties.append(PropertyData(name=_name, type=_cls,
+                        default=_default, element=_box, box=True))
+            elif self.is_section:
+                # add box dimensions but hide box attrs that are not applicable
+                for _name in ("x", "y", "width", "height"):
+                    (_cls, _default) = _box_attrs[_name]
+                    _properties.append(PropertyData(name=_name, type=_cls,
+                        default=_default, element=_box, box=True))
+        for _prop in _properties:
+            # create edit variable
+            _prop.var = StringVar()
+            _val = _prop.element.get(_prop.name, _prop.default)
+            # Note: _val may be REQUIRED for newly added elements
+            if _val in (None, REQUIRED):
+                _val = u""
+            else:
+                _val = unicode(_val)
+            _prop.var.set(_val)
+            # TODO: it is possible to add a write callback to the var
+            # and update the element attribute as soon as the value
+            # is changed in the editor.
+            _prop.widget = PropertyEditor.forType(_prop.type)
+            _prop.mandatory = _prop.default is REQUIRED
+        _properties.sort(
+            key=lambda prop: (prop.box, not prop.mandatory, prop.name))
+        # XXX does the properties container need to be a dictionary?
+        self.properties = tuple(_properties)
+
+    def addToTree(self, tree, before=None):
+        """Create a subtree from this data
+
+        Parameters:
+            tree: Tix.Tree widget
+            before: optional path of the next sibling.
+                If omitted, new node will be added to
+                the end of the tree branch.
+
+        """
+        if self.__do_classinit:
+            self._classinit(tree.winfo_toplevel())
+        _kw = {"itemtype": TEXT, "text": self.treelabel}
+        if before:
+            _kw["before"] = before
+        tree.hlist.add(self.path, **_kw)
+        for _child in self:
+            _child.addToTree(tree)
+            tree.hlist.hide_entry(_child.path)
+
+    def loadPropertyList(self, hlist):
+        """Put note attributes to Tix.HList for editing"""
+        if self.__do_classinit:
+            self._classinit(hlist.winfo_toplevel())
+        # query current size of the first column and set it to auto
+        _col_width = int(hlist.column_width(0))
+        _window_color = hlist.winfo_toplevel().color_window
+        hlist.column_width(0, "")
+        hlist.delete_all()
+        for _prop in self.properties:
+            _style = (self.PROP_NAME_STYLE, self.PROP_NAME_STYLE_MANDATORY)[
+                _prop.mandatory]
+            hlist.add(_prop.name, itemtype=TEXT, text=_prop.name,
+                style=_style, state=DISABLED)
+            _win = _prop.widget(_prop.var, hlist, background=_window_color)
+            hlist.item_create(_prop.name, 1, itemtype=WINDOW, window=_win,
+                style=self.PROP_VALUE_STYLE)
+        # grow the first column if needed
+        _col_width = max(_col_width, int(hlist.column_width(0)))
+        hlist.column_width(0, _col_width)
+
+    def updateProperties(self, recursive=False, errors="strict"):
+        """Load property values from Tkinter variables
+
+        Parameters:
+            recursive: if set, also update children
+            errors: error handling scheme: "strict" or "ignore".
+
+        """
+        _element = self.element
+        for _prop in self.properties:
+            _val = _prop.var.get()
+            try:
+                _val = _prop.type.fromValue(_val)
+            except InvalidLiteral, _err:
+                if errors == "strict":
+                    raise AttributeConversionError(_prop.name, _val, _err,
+                        element=_element, path=self.path)
+            _element.set(_prop.name, _val)
+        if recursive:
+            for _child in self:
+                _child.updateProperties(recursive=True, errors=errors)
+
+    def __repr__(self):
+        return "<%s@%X: %s>" % (self.__class__.__name__, id(self), self.path)
+
+    def child(self, nodeid):
+        """Return child data object for given nodeid"""
+        for _child in self:
+            if _child.id == nodeid:
+                return _child
+        else:
+            raise KeyError(nodeid)
+
+    def __eq__(self, other):
+        # simple comparison to make .index() work
+        return self is other
+
+# the application
+
+class Designer(Toplevel):
+
+    """PythonReports Template Designer"""
+
+    # elements with these tags cannot be added or removed from the tree
+    FIXED_TAGS = ("report", "layout", "detail", "box")
+
+    # state properties
+    filename = None
+    filedir = None
+    report = None
+    current_node = None
+
+    @property
+    def fileoptions(self):
+        """Options for Open/Save File dialogs (dictionary)"""
+        return dict(parent=self, defaultextension="prt",
+            initialdir=(self.filedir or os.getcwd()),
+            initialfile=self.filename,
+            filetypes=(
+                (self._("PythonReports Templates"), ".prt"),
+                (self._("All Files"), "*"),
+            ))
+
+    def __init__(self, filename=None, **options):
+        """Create the window
+
+        Parameters:
+            filename: optional PRT file name to load at start
+
+        """
+        Toplevel.__init__(self, class_="PythonReportsDesigner", **options)
+        self.build()
+        if filename:
+            self.loadFile(filename)
+        else:
+            self.makeReport()
+
+    # layout
+
+    def build(self):
+        """Do the window layout"""
+        self.buildMenu()
+        # statusbar
+        self.statusbar = Label(self, borderwidth=1, relief=SUNKEN)
+        self.statusbar.pack(side=BOTTOM, fill=X)
+        self.vp = PanedWindow(self, orient="vertical")
+        self.vp.pack(fill=BOTH, expand=YES)
+        self.hp = PanedWindow(self.vp, orient="horizontal")
+        self.tree = Tree(self.hp,
+            browsecmd=self.OnTreeBrowse, width=240, height=260)
+        _tree_hlist = self.tree.hlist
+        _tree_hlist.bind("<Delete>",
+            lambda event: self.deleteNode(self.current_node))
+        self.hp.add(self.tree)
+        # Tkish way to get standard visual attributes is .option_get(),
+        # but on X windows that returns empty strings, not suitable
+        # for direct use as attribute values.
+        # Look at created windows for common appearance.
+        # This is quite a weird place to do such initialization,
+        # but i want to do this as early as possible.
+        self.color_panel = self["background"]
+        self.color_text = _tree_hlist["foreground"]
+        # FIXME? on X windows, this makes entries slightly darker
+        self.color_window = _tree_hlist["background"]
+        # XXX on X windows, selected item is shown grey on grey!
+        if _tree_hlist["selectforeground"] == _tree_hlist["selectbackground"]:
+            if _tree_hlist["selectforeground"] == self.color_text:
+                # make it inverse
+                _tree_hlist["selectforeground"] = self.color_window
+            else:
+                _tree_hlist["selectforeground"] = self.color_text
+        # remaining layout
+        self.pl = ScrolledHList(self.hp,
+            options="columns 2 background " + self.color_panel)
+        self.pl.hlist.bind("<Configure>", self.OnPropListResize)
+        self.hp.add(self.pl)
+        self.vp.add(self.hp)
+        self.shell = Shell(self.vp, borderwidth=2, relief=SUNKEN, height=10)
+        self.vp.add(self.shell.frame)
+        self.canvas = Canvas(self.vp, borderwidth=2, relief=SUNKEN,
+            width=720, height=100)
+        self.vp.add(self.canvas)
+
+    def buildMenu(self):
+        """Create system menu"""
+        _menu = Menu(self, tearoff=False)
+        #_menu.pack(side=TOP, fill=X)
+        Frame(self, height=2, borderwidth=1, relief=GROOVE).pack(side=TOP,
+            fill=X)
+        # File menu
+        _popup = self._build_menu_item(_menu, ''"_File", type="cascade")
+        self._build_menu_item(_popup, ''"_New", command=self.makeReport)
+        self._build_menu_item(_popup, ''"_Open", command=self.OnMenuFileOpen)
+        self._build_menu_item(_popup, ''"_Save",
+            command=lambda: self.saveFile(self.filename))
+        self._build_menu_item(_popup, ''"Save _As...",
+            command=lambda: self.saveFile(None))
+        _popup.add_separator()
+        self._build_menu_item(_popup, ''"E_xit", command=self.OnMenuQuit)
+        # Edit menu
+        _popup = self._build_menu_item(_menu, ''"_Edit", type="cascade")
+        self._build_menu_item(_popup, ''"Cu_t", event="<<Cut>>")
+        self._build_menu_item(_popup, ''"_Copy", event="<<Copy>>")
+        self._build_menu_item(_popup, ''"_Paste", event="<<Paste>>")
+        # Report menu
+        _popup = self._build_menu_item(_menu, ''"_Report", type="cascade")
+        self.report_menu = _popup
+        self._build_menu_item(_popup, ''"_Insert...", type="cascade", menu="")
+        self._build_menu_item(_popup, ''"_Delete element",
+            command=lambda: self.deleteNode(self.current_node))
+        _popup.add_separator()
+        self._build_menu_item(_popup, ''"Print Pre_view", command=self.preview)
+        # Help menu
+        _popup = self._build_menu_item(_menu, ''"_Help", type="cascade")
+        self._build_menu_item(_popup, ''"_About...", command=self.OnMenuAbout)
+        # set window menu to created tree
+        self["menu"] = _menu
+        # create insertion menus and validator data
+        self.element_validators = {}
+        self.insert_menus = {}
+        self.buildInsertionMenus(prt.Report)
+
+    def buildInsertionMenus(self, validator):
+        """Create a set of menus and validator data for element insertion"""
+        _tag = validator.tag
+        # return early if menu is already present (break recursion on group,
+        # may be used to make some menus in different way)
+        if _tag in self.insert_menus:
+            return
+        # return early if validator has no children (no insert menu)
+        if not validator.children:
+            self.insert_menus[_tag] = None
+            return
+        # create submenu for "insert element" cascade
+        _menu = Menu(self.report_menu, tearoff=False)
+        self.insert_menus[_tag] = _menu
+        for (_child, _restrict) in validator.children:
+            self.element_validators[(_tag, _child.tag)] = (_child, _restrict)
+            self.buildInsertionMenus(_child)
+            if _child.tag not in self.FIXED_TAGS:
+                # FIXED_TAGS cannot be inserted
+                self._build_menu_item(_menu, _child.tag,
+                    command=lambda tag=_child.tag: self.insertNode(tag))
+
+    @staticmethod
+    def find_underline(label):
+        """Return (underline, text) for given label"""
+        _underline = label.find("_")
+        if _underline >= 0:
+            _text = label[:_underline] + label[_underline+1:]
+        else:
+            _text = label
+        return (_underline, _text)
+
+    def _build_menu_item(self, parent, label, type="command",
+            event=None, **options
+    ):
+        """Create menu button with popup menu
+
+        Parameters:
+            parent: containing menu widget.
+            label: button label (subject for gettext translation).
+                Underscore character in label text means next character
+                will be underlined.  If the label contains more than
+                one underscore character, second and following
+                underscores are displayed.
+            type: item type - "command", "cascade" etc.
+                Default: "command".
+            event: optional name of virtual event to post
+                when menu command is selected (overrides "command"
+                procedure set in options, if any).
+            additional keyword arguments will be passed right to Tk.
+
+        If type is "cascade", return associated submenu widget.
+        Otherwise return None.
+
+        """
+        (_underline, _text) = self.find_underline(self._(label))
+        if _underline >= 0:
+            options.setdefault("underline", _underline)
+        if event:
+            options["command"] = lambda evt=event: self._post_event(evt)
+        try:
+            _make = getattr(parent, "add_" + type)
+        except AttributeError:
+            raise ValueError("Unsupported menu object type: %s" % type)
+        if type == "cascade":
+            # create submenu unless passed in options
+            if "menu" not in options:
+                options["menu"] = Menu(parent, tearoff=False)
+            _rv = options["menu"]
+        else:
+            _rv = None
+        _make(label=_text, **options)
+        return _rv
+
+    # event handlers
+
+    def _post_event(self, event):
+        """Send a virtual event to widget having focus"""
+        _widget = self.focus_get()
+        if _widget:
+            _widget.event_generate(event)
+
+    def OnMenuFileOpen(self):
+        """Load template file"""
+        _filename = tkFileDialog.askopenfilename(**self.fileoptions)
+        if _filename:
+            self.loadFile(_filename)
+
+    def OnMenuQuit(self):
+        """Exit the application"""
+        # TODO: save file
+        self.destroy()
+
+    def OnMenuAbout(self):
+        """Display "About..." dialog"""
+
+    def OnTreeBrowse(self, node):
+        """Select new item on the tree"""
+        # XXX why the browse event always comes twice?
+        if node == self.current_node:
+            return
+        # TODO? if self.current_node is not None,
+        # update from the properties list
+        _data = self.getNodeData(node)
+        _data.loadPropertyList(self.pl.hlist)
+        self.current_node = node
+        # replace insertion menu
+        _menu = self.insert_menus[_data.tag]
+        if _menu is None:
+            self.report_menu.entryconfigure(0, state=DISABLED)
+        else:
+            self.report_menu.entryconfigure(0, state=NORMAL, menu=_menu)
+        # enable/disable "Delete element" command
+        self.report_menu.entryconfigure(1,
+            state=(NORMAL, DISABLED)[_data.tag in self.FIXED_TAGS])
+
+    def OnPropListResize(self, event=0):
+        """Adjust width of value col in the property list upon window resize"""
+        _hlist = self.pl.hlist
+        _hlist.column_width(1, max(100,
+            _hlist.winfo_width() - int(_hlist.column_width(0))))
+
+    # i18n stub
+    # these methods are noop because we do not have message catalogs yet
+
+    @staticmethod
+    def gettext(msg):
+        return msg
+
+    _ = gettext
+
+    @staticmethod
+    def ngettext(singular, plural, n):
+        if n == 1:
+            return singular
+        else:
+            return plural
+
+    # data processing
+
+    def updateTitle(self):
+        """Change window title when self.filename changes"""
+        if self.filename:
+            _title = self._("%s - PythonReports Designer") \
+                % os.path.basename(self.filename)
+        else:
+            _title = self._("PythonReports Designer")
+        self.title(_title)
+
+    def select(self, path):
+        """Select a node on the tree
+
+        Parameters:
+            path: path for the node to select.
+
+        """
+        _hlist = self.tree.hlist
+        _hlist.see(path)
+        _hlist.selection_clear()
+        _hlist.selection_set(path)
+        _hlist.anchor_set(path)
+        self.OnTreeBrowse(path)
+
+    def getNodeData(self, path):
+        """Return tree node data for given path"""
+        assert (path == "report") or path.startswith("report.")
+        _data = self.data
+        for _nodeid in path.split(".")[1:]:
+            _data = _data.child(_nodeid)
+        return _data
+
+    def deleteNode(self, path):
+        """Delete an element of the tree
+
+        Parameters:
+            path: path for the node to delete.
+
+        """
+        _data = self.getNodeData(path)
+        if _data.tag in self.FIXED_TAGS:
+            # cannot delete
+            return
+        _parent = _data.parent
+        _index = _parent.index(_data)
+        _hlist = self.tree.hlist
+        if _data.tag == "group":
+            # find contained group or detail element -
+            # will replace deleted group
+            for _child in _data:
+                if _child.tag in ("group", "detail"):
+                    _replace = _child
+                    break
+            else:
+                # this could not happen because the tree is verified on load
+                # and we do not allow to remove the detail element.
+                raise RuntimeError("No 'group' or 'detail' child found.")
+            _replace.parent = _parent
+            _parent[_index] = _replace
+            _parent.element[_index] = _replace.element
+            _hlist.delete_entry(path)
+            _replace.addToTree(self.tree)
+            self.tree.autosetmode()
+            self.select(_replace.path)
+        else:
+            _hlist.delete_entry(path)
+            del _parent[_index], _parent.element[_index]
+            if _index < len(_parent):
+                _select = _parent[_index]
+            elif _index > 0:
+                _select = _parent[_index - 1]
+            else:
+                _select = _parent
+            self.select(_select.path)
+
+    @staticmethod
+    def _create_template_element(parent, validator):
+        """Element creation helper: make subelement and all required children
+        """
+        _element = SubElement(parent, validator.tag)
+        for (_child, _restrict) in validator.children:
+            if _restrict in (validator.ONE, validator.ONE_OR_MORE):
+                _create_template_element(_element, _child)
+        return _element
+
+    def insertNode(self, tag, before=sys.maxint):
+        """Insert a child element at currently selected node
+
+        Parameters:
+            tag: element tag for new element
+            before: optional element index (zero-based).
+                If passed, new element will be added before
+                the element at this index.  If omitted, new
+                element will be added to the end.
+                Ignored if the tag is "group".
+
+        """
+        _node = self.getNodeData(self.current_node)
+        (_validator, _restrict) = self.element_validators[(_node.tag, tag)]
+        if tag == "group":
+            _nodeid = tag
+            # "before" is unreliable in this case
+            # because we are deleting the inner element
+            # (group or detail) from the siblings list
+            # and "before" position may shift up or down.
+            # force append to the end of list.
+            before = sys.maxint
+            # find contained group or detail element -
+            # will replace deleted group
+            for _child in _node:
+                if _child.tag in ("group", "detail"):
+                    _inner = _child
+                    break
+            else:
+                raise RuntimeError("No 'group' or 'detail' child found.")
+        elif _restrict in (_validator.ONE, _validator.ZERO_OR_ONE):
+            # there may be only one child with this tag
+            for _child in _node:
+                if _child.tag == tag:
+                    return
+            # single items have nodeids set to tag for aesthetics
+            _nodeid = tag
+        else:
+            # collections compute nodeid in child constructor
+            _nodeid = None
+        # FIXME: _create_template_element lacks "before" argument.
+        #       NodeData/Element sequences may get out of sync.
+        _element = self._create_template_element(_node.element, _validator)
+        _child = TreeNodeData(_node, nodeid=_nodeid, element=_element,
+            validator=_validator)
+        _node.insert(before, _child)
+        if tag == "group":
+            self.tree.hlist.delete_entry(_inner.path)
+            _node.remove(_inner)
+            _node.element.remove(_inner.element)
+            _child.append(_inner)
+            _element.append(_inner.element)
+            _inner.parent = _child
+        self.tree.open(_node.path)
+        if before < (len(_node) - 1):
+            _child.addToTree(self.tree, before=_node[_before + 1].path)
+        else:
+            _child.addToTree(self.tree)
+        self.tree.autosetmode()
+        self.select(_child.path)
+
+    def loadTreeContents(self):
+        """Change the tree contents when new report template is loaded"""
+        _tree = self.tree
+        _tree.hlist.delete_all()
+        self.data = TreeNodeData(None, nodeid="report",
+            element=self.report.getroot(), validator=prt.Report)
+        self.data.addToTree(_tree)
+        _tree.autosetmode()
+        _tree.open("report")
+        self.select("report")
+
+    def loadFile(self, filename):
+        """Load report file"""
+        self.report = prt.load(filename)
+        self.filename = filename
+        self.filedir = os.path.dirname(os.path.abspath(filename))
+        self.updateTitle()
+        self.loadTreeContents()
+
+    def makeReport(self):
+        """Create an empty report tree"""
+        self.report = prt.load(StringIO(NEW_REPORT_TEMPLATE))
+        self.filename = None
+        self.updateTitle()
+        self.loadTreeContents()
+
+    def saveFile(self, filename):
+        """Save report template file
+
+        Parameters:
+            filename: destination filename.
+                if None, open Save File dialog.
+
+        """
+        if not self.updateTree():
+            return
+        if not filename:
+            filename = tkFileDialog.asksaveasfilename(**self.fileoptions)
+            if not filename:
+                return
+        self.report.write(filename)
+        self.report.filename = self.filename = filename
+        self.filedir = os.path.dirname(os.path.abspath(filename))
+
+    def updateTree(self, errors="strict"):
+        """Update template tree from editing buffers
+
+        Parameters:
+            errors: error handling scheme: "strict" or "ignore".
+                If "strict", validation is performed for the
+                template structure.  If "ignore", attributes
+                with invalid values set in property editors
+                will remain unchanged.
+
+        Return value: False if validation failed, True otherwise.
+
+        """
+        try:
+            self.data.updateProperties(recursive=True, errors=errors)
+        except AttributeConversionError, _err:
+            self.select(_err_path)
+            self.update_idletasks()
+            Message(self, icon="error", type="ok",
+                title=self._("Invalid Value"), message=self._(
+                    "Value %(value)r is not valid for attribute \"%(name)s\"\n"
+                    "(value must be of type %(class)s).") % {
+                        "value": _err.value,
+                        "name": _err.attribute,
+                        "class": self._(_err.exception.datatype.__name__)
+                    }
+            ).show()
+            self.nametowidget(self.pl.hlist.item_cget(_err.attribute, 1,
+                "-window")).focus_set()
+            return False
+        if errors == "strict":
+            try:
+                self._validate(self.report, prt.Report)
+            except XmlValidationError, _err:
+                # TODO: make translated messages
+                # for different validation errors
+                # TODO: select tree element that raised the error
+                # (_err contains node path in XPath notation)
+                Message(self, icon="error", type="ok",
+                    title=self._("Validation Error"), message=self._(
+                        "The template contains following error:\n%s"
+                    ) % _err
+                ).show()
+                self.tree.hlist.focus_set()
+                return False
+        return True
+
+    @staticmethod
+    def _validate(tree, validator):
+        # run Template/Printout validator on an ElementTree
+        _root = tree.getroot()
+        validator(tree, _root, "/" + _root.tag)
+
+    def _run_preview(self):
+        if not self.updateTree():
+            return
+        # message boxes take focus away.  remember currently focused widget
+        # to regain the focus after message display.
+        _focus = self.focus_get()
+        # validate the tree
+        self._validate(self.report, prt.Report)
+        # get the data
+        try:
+            _data = self.shell.locals["data"]
+        except KeyError:
+            _msg = Message(self, icon="error", type="okcancel",
+                title=self._("Missing Report data"),
+                message=self._("Report data sequence is not defined.\n"
+                    "Please set \"data\" variable in the shell.\n\n"
+                    "Press <Ok> to run the report with empty sequence\n"
+                    "or <Cancel> to return to designer window."),
+                )
+            if _msg.show() != "ok":
+                _focus.focus_set()
+                return
+            _data = ()
+        else:
+            if not _data:
+                _msg = Message(self, icon="warning", type="okcancel",
+                    title=self._("Missing Report data"),
+                    message=self._("Report data sequence is empty.\n\n"
+                        "Run the report anyway?"),
+                    )
+                if _msg.show() != "ok":
+                    Message(self, icon="info", type="ok",
+                        title=self._("Hint"), message=self._(
+                            "Please set \"data\" variable in the shell"
+                        )).show()
+                    _focus.focus_set()
+                    return
+                _data = ()
+        _focus.focus_set()
+        # build printout tree
+        _printout = Builder(self.report).run(_data)
+        # printout must be validated before it can be displayed
+        self._validate(_printout, prp.Printout)
+        # open preview
+        if self.filename:
+            _title = self._("%s - Report Preview") \
+                % os.path.basename(self.filename)
+        else:
+            _title = self._("Report Preview")
+        _preview = PreviewWindow(master=self, report=_printout, title=_title)
+        _preview.geometry("%ix%i" % (self.winfo_width(), self.winfo_height()))
+        _preview.focus_set()
+
+    def preview(self):
+        """Show Report Preview for current template"""
+        try:
+            self["cursor"] = "watch"
+            self._run_preview()
+        finally:
+            self["cursor"] = ""
+
+def run(argv=sys.argv):
+    if len(argv) > 2:
+        print "Usage: %s [template]" % argv[0]
+        sys.exit(2)
+    _root = Tk()
+    _root.withdraw()
+    _win = Designer(*argv[1:])
+    _root.wait_window(_win)
+
+if __name__ == "__main__":
+    run()
+
+# vim: set et sts=4 sw=4 :

@@ -1,0 +1,71 @@
+============
+Introduction
+============
+
+PythonReports_ is a toolkit aimed to build database reports
+in |Python(r)| programs.  The toolkit includes report template_
+designer, report builder and several printout_ renderers for
+GUI and graphic file output.
+
+Report builder applies a template_ to a sequence of uniform data
+objects and produces a printout_ structure that can be saved in
+a file and/or rendered by one of the front-end drivers to screen,
+printer, HTML [*]_, PDF etc.
+
+.. [*] HTML output is not implemented yet.
+
+============
+Requirements
+============
+
+PythonReports_ require Python_ version 2.4 or newer.  No support
+is planned for earlier Python versions.
+
+All parts of the PythonReports_ toolkit require the ElementTree_
+module.  Python 2.5 includes this module as part of standard library.
+Users of older Python versions can download separate distribution
+package from http://effbot.org/downloads/ (cElementTree_ add-on is
+highly recommended too).
+
+Report building requires either ReportLab_ or PIL_ or wxPython_
+(in that order of preference).  If report template contains
+images then either `Python Imaging Library`_ (PIL_) or wxPython_
+must be installed.
+
+Requirements for printout_ rendering depend on selected frontend:
+  * PDF output requires the ReportLab_ Toolkit;
+  * wx-based preview and printing require wxPython_;
+  * Tk-based report preview requires Tkinter
+    (part of the Python Standard Library).
+
+Report template designer requires Tkinter with Tix_ support
+(standard Python installer for Windows includes Tix_; on some
+platforms Tix_ must be installed separately).
+
+===========
+Quick Start
+===========
+
+No documentation yet.  Please look at the `test script`_
+for report building example.  All printout rendering modules
+(``pdf``, ``Tk`` and ``wxPrint``) have command line interface
+that can serve as their API usage example.
+
+.. _External hyperlink targets:
+
+.. _PythonReports: http://pythonreports.sourceforge.net/
+.. _template: http://pythonreports.sourceforge.net/prt.html
+.. _printout: http://pythonreports.sourceforge.net/prp.html
+.. _Python: http://www.python.org/
+.. _ElementTree: http://effbot.org/zone/element-index.htm
+.. _cElementTree: http://effbot.org/zone/celementtree.htm
+.. _ReportLab: http://www.reportlab.org/rl_toolkit.html
+.. _Python Imaging Library:
+.. _PIL: http://www.pythonware.com/products/pil/
+.. _wxPython: http://www.wxpython.org/
+.. _Tix: http://tix.sourceforge.net/
+.. _test script: http://pythonreports.cvs.sourceforge.net/pythonreports/PythonReports/test/test_build.py?view=markup
+
+.. |Python(r)| unicode:: Python U+00AE
+
+.. vim: set et ft=rst sts=2 sw=2 :

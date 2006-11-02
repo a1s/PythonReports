@@ -1,5 +1,7 @@
 """PythonReports Template Designer"""
+
 """History (most recent first):
+02-nov-2006 [als]   pop up menus on right-click and insert key in the list
 31-oct-2006 [als]   boolean property checkbuttons have grey background;
                     fix: ElementTree not updated on element deletion;
                     shift group/detail on group insertion
@@ -16,8 +18,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:07:02 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/02 18:42:21 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -699,6 +701,8 @@ class Designer(Toplevel):
         _tree_hlist = self.tree.hlist
         _tree_hlist.bind("<Delete>",
             lambda event: self.deleteNode(self.current_node))
+        _tree_hlist.bind("<Insert>", self.OnTreeInsert)
+        _tree_hlist.bind("<Button-3>", self.OnTreeRClick)
         self.hp.add(self.tree)
         # Tkish way to get standard visual attributes is .option_get(),
         # but on X windows that returns empty strings, not suitable
@@ -883,6 +887,42 @@ class Designer(Toplevel):
         # enable/disable "Delete element" command
         self.report_menu.entryconfigure(1,
             state=(NORMAL, DISABLED)[_data.tag in self.FIXED_TAGS])
+
+    def _get_popup_position(self):
+        """Return position for the tree popup menu
+
+        Menu is popped up with it's top left corner just below
+        currently selected tree node, offset from the left side
+        by the nesting level.
+
+        Return value: 2-element tuple (x, y).
+
+        """
+        _hlist = self.tree.hlist
+        _bbox = _hlist.tk.call(str(_hlist), "info", "bbox", self.current_node)
+        _ypos = _hlist.winfo_rooty() + int(_bbox.split(" ")[3])
+        _xpos = _hlist.winfo_rootx() + 20 * (self.current_node.count(".") + 1)
+        return (_xpos, _ypos)
+
+    def OnTreeRClick(self, event):
+        """Right click on the tree list - open pulldown menu"""
+        # set focus to the tree: click moves selection pointer
+        # and it looks like the pointer can further be moved
+        # by keyboard.  not true unless we force focus to the tree.
+        _hlist = self.tree.hlist
+        _hlist.focus_set()
+        # select tree node nearest to the click position
+        _path = _hlist.nearest(event.y)
+        self.select(_path)
+        # menu will be popped up below selected row,
+        # horizontally near to the click position
+        self.report_menu.tk_popup(event.x_root, self._get_popup_position()[1])
+
+    def OnTreeInsert(self, event):
+        """Insert key pressed in the tree - pop up insert element menu"""
+        _menu = self.insert_menus[self.getNodeData(self.current_node).tag]
+        if _menu:
+            _menu.tk_popup(*self._get_popup_position())
 
     def OnPropListResize(self, event=0):
         """Adjust width of value col in the property list upon window resize"""

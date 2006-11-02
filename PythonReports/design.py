@@ -1,6 +1,7 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+02-nov-2006 [als]   create automatic hotkeys in insertion menus
 02-nov-2006 [als]   pop up menus on right-click and insert key in the list
 31-oct-2006 [als]   boolean property checkbuttons have grey background;
                     fix: ElementTree not updated on element deletion;
@@ -18,8 +19,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/02 18:42:21 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/11/02 19:55:38 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -786,12 +787,21 @@ class Designer(Toplevel):
         # create submenu for "insert element" cascade
         _menu = Menu(self.report_menu, tearoff=False)
         self.insert_menus[_tag] = _menu
+        _hotkeys = set()
         for (_child, _restrict) in validator.children:
             self.element_validators[(_tag, _child.tag)] = (_child, _restrict)
             self.buildInsertionMenus(_child)
+            # FIXED_TAGS cannot be inserted
             if _child.tag not in self.FIXED_TAGS:
-                # FIXED_TAGS cannot be inserted
-                self._build_menu_item(_menu, _child.tag,
+                # find the first letter of the element tag
+                # not used as a hot key yet
+                for (_underline, _letter) in enumerate(_child.tag):
+                    if _letter not in _hotkeys:
+                        _hotkeys.add(_letter)
+                        break
+                else:
+                    _underline = -1
+                self._build_menu_item(_menu, _child.tag, underline=_underline,
                     command=lambda tag=_child.tag: self.insertNode(tag))
 
     @staticmethod

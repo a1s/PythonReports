@@ -22,10 +22,10 @@ PythonReports_ require Python_ version 2.4 or newer.  No support
 is planned for earlier Python versions.
 
 All parts of the PythonReports_ toolkit require the ElementTree_
-module.  Python 2.5 includes this module as part of standard library.
-Users of older Python versions can download separate distribution
-package from http://effbot.org/downloads/ (cElementTree_ add-on is
-highly recommended too).
+module.  Python 2.5 includes this module as part of the standard
+library.  Users of older Python versions can download separate
+distribution package from http://effbot.org/downloads/
+(cElementTree_ add-on is highly recommended too).
 
 Report building requires either ReportLab_ or PIL_ or wxPython_
 (in that order of preference).  If report template contains

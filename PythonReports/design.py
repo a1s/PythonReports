@@ -1,6 +1,10 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+02-nov-2006 [als]   fix ColorSelection: hide indicator when color is unset,
+                        bell when invalid value entered,
+                        pass rgb string to askcolor(),
+                        retake focus after askcolor
 02-nov-2006 [als]   pop up the tree menu on Shift+F10;
                     added element reordering commands "move up" and "move down"
 02-nov-2006 [als]   create automatic hotkeys in insertion menus
@@ -21,8 +25,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/11/03 11:29:24 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/11/03 12:49:31 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -286,32 +290,42 @@ class ColorSelection(Frame):
         Frame.__init__(self, master=master, cnf=cnf, **kw)
         self["background"] = self.winfo_toplevel().color_panel
         _select = CodeSelection(self, editable=True, variable=self.var,
-            values=sorted(Color.names.keys()), validatecmd=self.OnEntry)
+            values=sorted(Color.names.keys()), validatecmd=self.updateColor)
         _select.grid(row=0, column=0)
-        self.indicator = Frame(self, relief=RIDGE, borderwidth=4,
-            background=self.var.get())
-        self.indicator.grid(row=0, column=1, sticky=NE+SW, padx=5, pady=1)
-        _btn = Button(self, command=self.OnButton,
+        self.indicator = Frame(self, relief=RIDGE, borderwidth=4)
+        self.button = Button(self, command=self.OnButton,
             text=self.winfo_toplevel()._("..."))
-        _btn.grid(row=0, column=2)
+        self.button.grid(row=0, column=2)
         self.columnconfigure(1, weight=1)
+        self.updateColor()
 
-    def OnEntry(self, value):
-        """Validate the combo box value"""
-        try:
-            _color = Color.fromValue(value)
-        except InvalidLiteral:
-            value = self.var.get()
+    def updateColor(self, value=NOTHING):
+        """Validate the combo box value; update color indicator"""
+        if value is NOTHING:
+            _color = Color.fromValue(self.var.get())
         else:
+            try:
+                _color = Color.fromValue(value)
+            except InvalidLiteral:
+                self.bell()
+                # validation will return current value
+                value = self.var.get()
+                _color = Color.fromValue(value)
+            else:
+                self.var.set(value)
+        if _color:
             self.indicator["background"] = _color
+            self.indicator.grid(row=0, column=1, sticky=NE+SW, padx=5, pady=1)
+        else:
+            self.indicator.grid_forget()
         return value
 
     def OnButton(self):
         # askcolor returns ((r, g, b), "#rrggbb") or (None, None)
-        _color = askcolor(self.var.get())[1]
+        _color = askcolor(Color.fromValue(self.var.get()))[1]
         if _color:
-            self.var.set(_color)
-            self.indicator["background"] = _color
+            self.updateColor(_color)
+        self.button.focus_set()
 
 class PropertyEntry(Frame):
 

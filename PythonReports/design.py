@@ -1,11 +1,13 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
-02-nov-2006 [als]   fix ColorSelection: hide indicator when color is unset,
+03-nov-2006 [als]   handle file loading errors;
+                    prompt to save changes on open file/new file/exit
+03-nov-2006 [als]   fix ColorSelection: hide indicator when color is unset,
                         bell when invalid value entered,
                         pass rgb string to askcolor(),
                         retake focus after askcolor
-02-nov-2006 [als]   pop up the tree menu on Shift+F10;
+03-nov-2006 [als]   pop up the tree menu on Shift+F10;
                     added element reordering commands "move up" and "move down"
 02-nov-2006 [als]   create automatic hotkeys in insertion menus
 02-nov-2006 [als]   pop up menus on right-click and insert key in the list
@@ -25,8 +27,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/11/03 12:49:31 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2006/11/03 16:33:34 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -676,6 +678,7 @@ class Designer(Toplevel):
     filedir = None
     report = None
     current_node = None
+    terminated = False
 
     @property
     def fileoptions(self):
@@ -697,17 +700,17 @@ class Designer(Toplevel):
         """
         Toplevel.__init__(self, class_="PythonReportsDesigner", **options)
         self.build()
+        # build a pristine tree to use if filename is not passed
+        # or cannot be opened.
+        self.makeReport()
         if filename:
             self.loadFile(filename)
-        else:
-            self.makeReport()
 
     # layout
 
     def build(self):
         """Do the window layout"""
         self.buildMenu()
-        # statusbar
         self.statusbar = Label(self, borderwidth=1, relief=SUNKEN)
         self.statusbar.pack(side=BOTTOM, fill=X)
         self.vp = PanedWindow(self, orient="vertical")
@@ -751,6 +754,7 @@ class Designer(Toplevel):
         self.canvas = Canvas(self.vp, borderwidth=2, relief=SUNKEN,
             width=720, height=100)
         self.vp.add(self.canvas)
+        self.bind("<Destroy>", self.OnWindowClose)
 
     def buildMenu(self):
         """Create system menu"""
@@ -760,7 +764,7 @@ class Designer(Toplevel):
             fill=X)
         # File menu
         _popup = self._build_menu_item(_menu, ''"_File", type="cascade")
-        self._build_menu_item(_popup, ''"_New", command=self.makeReport)
+        self._build_menu_item(_popup, ''"_New", command=self.OnMenuFileNew)
         self._build_menu_item(_popup, ''"_Open", command=self.OnMenuFileOpen)
         self._build_menu_item(_popup, ''"_Save",
             command=lambda: self.saveFile(self.filename))
@@ -885,15 +889,37 @@ class Designer(Toplevel):
         if _widget:
             _widget.event_generate(event)
 
+    def OnWindowClose(self, event):
+        """Handle Destroy event for the toplevel window"""
+        # this handler gets destroy events for all child widgets,
+        # including Message dialogs.  Check update when the first
+        # child of the tree widget gets destroyed, ignore all others.
+        if not self.terminated and event.widget.startswith(str(self.tree)):
+            # some of the window widgets have been destroyed yet
+            # and the window looks weird.  hide it away.
+            # (we cannot return to the editor anyway.)
+            self.withdraw()
+            self.checkUpdate(dlgtype="yesno")
+            self.terminated = True
+
+    def OnMenuFileNew(self):
+        """Create new empty template"""
+        if not self.checkUpdate():
+            return
+        self.makeReport()
+
     def OnMenuFileOpen(self):
         """Load template file"""
+        if not self.checkUpdate():
+            return
         _filename = tkFileDialog.askopenfilename(**self.fileoptions)
         if _filename:
             self.loadFile(_filename)
 
     def OnMenuQuit(self):
         """Exit the application"""
-        # TODO: save file
+        if not self.checkUpdate():
+            return
         self.destroy()
 
     def OnMenuAbout(self):
@@ -1192,10 +1218,26 @@ class Designer(Toplevel):
         _tree.autosetmode()
         _tree.open("report")
         self.select("report")
+        # Note: str(report) returns normalized text,
+        # may differ from contents of the loaded file.
+        # Note: loaded_text must be evaluated
+        # after TreeNodeData construction (that may
+        # make some unsignificant changes to the tree)
+        self.loaded_text = str(self.report)
 
     def loadFile(self, filename):
         """Load report file"""
-        self.report = prt.load(filename)
+        try:
+            self.report = prt.load(filename)
+        except Exception, _err:
+            _focus = self.focus_get() or self.tree.hlist
+            Message(self, icon="error", type="ok",
+                title=self._("File load error"),
+                message=self._("Error loading file %(file)s:\n%(error)s")
+                % {"file": os.path.abspath(filename), "error": _err}).show()
+            # FIXME: still unfocused...
+            _focus.focus_set()
+            return
         self.filename = filename
         self.filedir = os.path.dirname(os.path.abspath(filename))
         self.updateTitle()
@@ -1215,16 +1257,21 @@ class Designer(Toplevel):
             filename: destination filename.
                 if None, open Save File dialog.
 
+        Return value: True if the template saved successfully,
+            False otherwise.
+
         """
         if not self.updateTree():
-            return
+            return False
         if not filename:
             filename = tkFileDialog.asksaveasfilename(**self.fileoptions)
             if not filename:
-                return
+                return False
         self.report.write(filename)
         self.report.filename = self.filename = filename
         self.filedir = os.path.dirname(os.path.abspath(filename))
+        self.loaded_text = str(self.report)
+        return True
 
     def updateTree(self, errors="strict"):
         """Update template tree from editing buffers
@@ -1273,6 +1320,43 @@ class Designer(Toplevel):
                 return False
         return True
 
+    def checkUpdate(self, dlgtype="yesnocancel"):
+        """Check if the template has unsaved changes; prompt to save
+
+        Parameters:
+            dlgtype: MessageBox type - "yesno" or "yesnocancel".
+
+        If there are unsaved changes in the tree, prompt user
+        to save the template.  By default, the prompt dialog
+        has buttons "Yes", "No" and "Cancel".  When the window
+        is closed by operational system, the operation cannot
+        be canceled, so there may be only "Yes" and "No" buttons,
+        giving the user one last chance to save changes.
+
+        Return value: False to cancel operation, True to proceed.
+
+        """
+        # first, do silent update (saveFile will do validating update later)
+        self.updateTree(errors="ignore")
+        if str(self.report) == self.loaded_text:
+            # no changes
+            return True
+        _focus = self.focus_get()
+        if self.filename:
+            _msg = self._("Do you want to save the changes you made to %s?") \
+                % os.path.basename(self.filename)
+        else:
+            _msg = self._("Do you want to save the changes"
+                " you made to new template?")
+        _okcancel = Message(self, icon="warning", type=dlgtype,
+            title=self._("Unsaved changes detected"), message=_msg).show()
+        _focus.focus_set()
+        if _okcancel == "cancel":
+            return False
+        elif _okcancel == "no":
+            return True
+        return self.saveFile(self.filename)
+
     @staticmethod
     def _validate(tree, validator):
         # run Template/Printout validator on an ElementTree
@@ -1286,6 +1370,7 @@ class Designer(Toplevel):
         # to regain the focus after message display.
         _focus = self.focus_get()
         # validate the tree
+        # XXX seems to be a repetition (done in updateTree?) - unneeded
         self._validate(self.report, prt.Report)
         # get the data
         try:

@@ -1,6 +1,8 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+03-nov-2006 [als]   disable drawing canvas;
+                    force fixed font for the shell
 03-nov-2006 [als]   handle file loading errors;
                     prompt to save changes on open file/new file/exit
 03-nov-2006 [als]   fix ColorSelection: hide indicator when color is unset,
@@ -27,8 +29,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2006/11/03 16:33:34 $"[7:-2]
+__version__ = "$Revision: 1.7 $"[11:-2]
+__date__ = "$Date: 2006/11/03 17:18:25 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -736,6 +738,7 @@ class Designer(Toplevel):
         self.color_text = _tree_hlist["foreground"]
         # FIXME? on X windows, this makes entries slightly darker
         self.color_window = _tree_hlist["background"]
+        self.base_font = self.tk.splitlist(_tree_hlist["font"])
         # XXX on X windows, selected item is shown grey on grey!
         if _tree_hlist["selectforeground"] == _tree_hlist["selectbackground"]:
             if _tree_hlist["selectforeground"] == self.color_text:
@@ -749,11 +752,17 @@ class Designer(Toplevel):
         self.pl.hlist.bind("<Configure>", self.OnPropListResize)
         self.hp.add(self.pl)
         self.vp.add(self.hp)
-        self.shell = Shell(self.vp, borderwidth=2, relief=SUNKEN, height=10)
+        # on windows, the shell gets proportional font.
+        # not sure what it will be on other platforms
+        # (Gentoo Linux makes it Courier); try Courer
+        self.shell = Shell(self.vp, borderwidth=2, relief=SUNKEN,
+            width=80, height=20, font=("Courier", self.base_font[1]))
         self.vp.add(self.shell.frame)
-        self.canvas = Canvas(self.vp, borderwidth=2, relief=SUNKEN,
-            width=720, height=100)
-        self.vp.add(self.canvas)
+        # it was planned to have a drag-and-click-style visual editor
+        # on the third pane.  maybe somewhen it'll be implemented too.
+        #self.canvas = Canvas(self.vp, borderwidth=2, relief=SUNKEN,
+        #    width=720, height=100)
+        #self.vp.add(self.canvas)
         self.bind("<Destroy>", self.OnWindowClose)
 
     def buildMenu(self):
@@ -1015,7 +1024,7 @@ class Designer(Toplevel):
         """
         _hlist = self.tree.hlist
         _bbox = _hlist.tk.call(str(_hlist), "info", "bbox", self.current_node)
-        _ypos = _hlist.winfo_rooty() + int(_bbox.split(" ")[3])
+        _ypos = _hlist.winfo_rooty() + int(self.tk.splitlist(_bbox)[3])
         _xpos = _hlist.winfo_rootx() + 20 * (self.current_node.count(".") + 1)
         return (_xpos, _ypos)
 

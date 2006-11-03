@@ -11,13 +11,11 @@ printout rendering modules directly.
 
 """
 """History:
+03-nov-2006 [als]   import __version__ and __date__ from the version module
 01-nov-2006 [als]   fix: Builder not imported
 01-nov-2006 [als]   added API exports
 30-jun-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:15:32 $"[7:-2]
 
 __all__ = [
     "template", "load_template",
@@ -29,6 +27,7 @@ from PythonReports import template, printout
 from PythonReports.template import load as load_template
 from PythonReports.printout import load as load_printout
 from PythonReports.builder import Builder
+from PythonReports.version import *
 
 try:
     from PythonReports import pdf

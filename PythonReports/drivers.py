@@ -5,6 +5,7 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+03-nov-2006 [als]   fix image drivers loading (broken in revision 1.3)
 01-nov-2006 [als]   get_driver won't fail if no image driver found
                     (but the first image operation will raise an error)
 01-nov-2006 [als]   driver classes have backend name property
@@ -12,8 +13,8 @@ and exports API function `get_driver`, used to get a driver implementation.
 05-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/11/01 19:21:55 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/11/03 17:52:24 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -47,7 +48,15 @@ def get_driver(type, backend=None):
     # if this is the first call for selected driver type,
     # load all available drivers
     if not _drivers:
-        _driver = None
+        if type == "Image":
+            # Use ImageDriver class from this module as dummy fallback driver
+            # (will be overwritten as soon as any actual driver is found).
+            # This will raise NotImplementdedError when the first image
+            # operation is attempted, but if there are no images in report
+            # then we can get through without image driver.
+            _driver = _image_drivers[None] = ImageDriver
+        else:
+            _driver = None
         # NOTE backend preference:
         #   RL (ReportLab) is best for texts
         #   PIL is best for images (ReportLab image handling uses PIL too)
@@ -243,13 +252,6 @@ class ImageDriver(object):
             # should cut, but the image is smaller than cut frame
             _rv = self.getdata()
         return _rv
-
-# Use above ImageDriver class as dummy fallback driver
-# (will be overwritten as soon as any actual driver is found).
-# This will raise NotImplementdedError when the first image
-# operation is attempted, but if there are no images in report
-# then we can get through without image driver.
-_image_drivers[None] = ImageDriver
 
 class TextDriver(object):
 

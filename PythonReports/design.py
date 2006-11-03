@@ -1,6 +1,8 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+02-nov-2006 [als]   pop up the tree menu on Shift+F10;
+                    added element reordering commands "move up" and "move down"
 02-nov-2006 [als]   create automatic hotkeys in insertion menus
 02-nov-2006 [als]   pop up menus on right-click and insert key in the list
 31-oct-2006 [als]   boolean property checkbuttons have grey background;
@@ -19,8 +21,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/11/02 19:55:38 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/11/03 11:29:24 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -704,6 +706,8 @@ class Designer(Toplevel):
             lambda event: self.deleteNode(self.current_node))
         _tree_hlist.bind("<Insert>", self.OnTreeInsert)
         _tree_hlist.bind("<Button-3>", self.OnTreeRClick)
+        _tree_hlist.bind("<Shift-F10>", lambda event:
+            self.report_menu.tk_popup(*self._get_popup_position()))
         self.hp.add(self.tree)
         # Tkish way to get standard visual attributes is .option_get(),
         # but on X windows that returns empty strings, not suitable
@@ -761,6 +765,9 @@ class Designer(Toplevel):
         self._build_menu_item(_popup, ''"_Insert...", type="cascade", menu="")
         self._build_menu_item(_popup, ''"_Delete element",
             command=lambda: self.deleteNode(self.current_node))
+        self._build_menu_item(_popup, ''"Move _Up", command=self.OnMenuMoveUp)
+        self._build_menu_item(_popup, ''"Move Dow_n",
+            command=self.OnMenuMoveDown)
         _popup.add_separator()
         self._build_menu_item(_popup, ''"Print Pre_view", command=self.preview)
         # Help menu
@@ -878,10 +885,59 @@ class Designer(Toplevel):
     def OnMenuAbout(self):
         """Display "About..." dialog"""
 
-    def OnTreeBrowse(self, node):
+    def OnMenuMoveUp(self):
+        """Move selected node before it's previous sibling"""
+        _path = self.current_node
+        _data = self.getNodeData(_path)
+        _parent = _data.parent
+        if not _parent:
+            # can't happen - menu item should be disabled
+            return
+        _idx = _parent.index(_data)
+        if _idx < 1:
+            # can't happen either
+            return
+        _sibling = _parent[_idx - 1]
+        _parent[_idx-1:_idx+1] = (_data, _sibling)
+        self.tree.hlist.delete_entry(_path)
+        _data.addToTree(self.tree, before=_sibling.path)
+        self.tree.autosetmode()
+        self.select(_path)
+
+    def OnMenuMoveDown(self):
+        """Move selected node after it's next sibling"""
+        _path = self.current_node
+        _data = self.getNodeData(_path)
+        _parent = _data.parent
+        if not _parent:
+            # can't happen - menu item should be disabled
+            return
+        _idx = _parent.index(_data)
+        if (_idx + 1) >= len(_parent):
+            # can't happen either
+            return
+        _parent[_idx:_idx+2] = (_parent[_idx+1], _data)
+        self.tree.hlist.delete_entry(_path)
+        try:
+            _before = _parent[_idx+2]
+        except IndexError:
+            # at the end of the siblings list
+            _before = None
+        else:
+            _before = _before.path
+        _data.addToTree(self.tree, before=_before)
+        self.tree.autosetmode()
+        self.select(_path)
+
+    @staticmethod
+    def _enabled(enable):
+        """Return Tk widget state constant for boolean value"""
+        return (DISABLED, NORMAL)[bool(enable)]
+
+    def OnTreeBrowse(self, node, force=False):
         """Select new item on the tree"""
         # XXX why the browse event always comes twice?
-        if node == self.current_node:
+        if (node == self.current_node) and not force:
             return
         # TODO? if self.current_node is not None,
         # update from the properties list
@@ -889,14 +945,23 @@ class Designer(Toplevel):
         _data.loadPropertyList(self.pl.hlist)
         self.current_node = node
         # replace insertion menu
-        _menu = self.insert_menus[_data.tag]
-        if _menu is None:
-            self.report_menu.entryconfigure(0, state=DISABLED)
+        _rmenu = self.report_menu
+        _imenu = self.insert_menus[_data.tag]
+        if _imenu is None:
+            _rmenu.entryconfigure(0, state=DISABLED)
         else:
-            self.report_menu.entryconfigure(0, state=NORMAL, menu=_menu)
-        # enable/disable "Delete element" command
-        self.report_menu.entryconfigure(1,
-            state=(NORMAL, DISABLED)[_data.tag in self.FIXED_TAGS])
+            _rmenu.entryconfigure(0, state=NORMAL, menu=_imenu)
+        # enable/disable other element commands
+        _rmenu.entryconfigure(1,
+            state=self._enabled(_data.tag not in self.FIXED_TAGS))
+        if _data.parent is None:
+            _rmenu.entryconfigure(2, state=DISABLED)
+            _rmenu.entryconfigure(3, state=DISABLED)
+        else:
+            _index = _data.parent.index(_data)
+            _rmenu.entryconfigure(2, state=self._enabled(_index > 0))
+            _rmenu.entryconfigure(3,
+                state=self._enabled((_index + 1) < len(_data.parent)))
 
     def _get_popup_position(self):
         """Return position for the tree popup menu
@@ -979,7 +1044,7 @@ class Designer(Toplevel):
         _hlist.selection_clear()
         _hlist.selection_set(path)
         _hlist.anchor_set(path)
-        self.OnTreeBrowse(path)
+        self.OnTreeBrowse(path, force=True)
 
     def getNodeData(self, path):
         """Return tree node data for given path"""

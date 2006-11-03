@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+03-nov-2006 [als]   ElementTree: string conversion returns full XML text
 20-oct-2006 [als]   added Structure
 29-sep-2006 [als]   ElementTree: keep filename after .parse()
 25-sep-2006 [als]   Color: added .rgbf
@@ -52,8 +53,8 @@ except ImportError:
         import xml.etree.ElementTree as ET
 
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:03:32 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/03 11:51:17 $"[7:-2]
 
 # export element factories from ElementTree
 Element = ET.Element
@@ -1162,6 +1163,12 @@ class ElementTree(ET.ElementTree):
         elif encoding not in ("utf-8", "us-ascii"):
             file.write("<?xml version='1.0' encoding='%s'?>\n" % encoding)
         self.root_validator.writexml(file, self._root, encoding)
+
+    def __str__(self):
+        """Return string representation of the tree"""
+        _stream = StringIO()
+        self.write(_stream)
+        return _stream.getvalue()
 
 ### elements common for templates and printouts
 

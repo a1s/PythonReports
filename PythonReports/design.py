@@ -1,6 +1,7 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+03-nov-2006 [als]   fix IntegerSelection: mega widget has no .select_range()
 03-nov-2006 [als]   disable drawing canvas;
                     force fixed font for the shell
 03-nov-2006 [als]   handle file loading errors;
@@ -29,8 +30,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2006/11/03 17:18:25 $"[7:-2]
+__version__ = "$Revision: 1.8 $"[11:-2]
+__date__ = "$Date: 2006/11/03 17:32:21 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -369,6 +370,11 @@ class IntegerSelection(PropertyEntry):
         LPAD = 0
     else:
         LPAD = 5
+
+    def OnSetFocus(self, event):
+        _entry = self.widget.entry
+        _entry.focus_set()
+        _entry.select_range(0, "end")
 
 class BooleanSelection(PropertyEntry):
 

@@ -1,0 +1,8 @@
+#! /usr/bin/env python
+#
+# PythonReports Designer command-line interface
+
+from PythonReports import design
+design.run()
+
+# vim: set et sts=4 sw=4 :

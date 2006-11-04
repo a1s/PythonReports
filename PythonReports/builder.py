@@ -66,8 +66,8 @@ from PythonReports import template as prt
 from PythonReports import printout as prp
 from PythonReports.datatypes import *
 
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/04 14:38:24 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/11/04 14:53:17 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -938,7 +938,7 @@ class Builder(object):
     layout_parents = {}
 
     def __init__(self, template, data=(), parameters=None,
-        item_callback=None, text_driver=None, image_driver=None,
+        item_callback=None, text_backend=None, image_backend=None,
     ):
         """Initialize builder
 
@@ -1207,7 +1207,7 @@ class Builder(object):
             _callback = self.callback
         # initialize fonts - moved from __init__() to allow backend switching
         self.text_drivers = dict([(_name, self.text_driver_factory(_font))
-            for (_name, _font) in template.fonts.iteritems()])
+            for (_name, _font) in self.template.fonts.iteritems()])
         _data_iter = self.start(data, parameters)
         if _callback:
             _callback()

@@ -1,6 +1,9 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+04-nov-2006 [als]   capture report preview errors;
+                    print traceback on the console when showing error message;
+                    use Tk backend for report building
 03-nov-2006 [als]   fix IntegerSelection: mega widget has no .select_range()
 03-nov-2006 [als]   disable drawing canvas;
                     force fixed font for the shell
@@ -30,13 +33,14 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.8 $"[11:-2]
-__date__ = "$Date: 2006/11/03 17:32:21 $"[7:-2]
+__version__ = "$Revision: 1.9 $"[11:-2]
+__date__ = "$Date: 2006/11/04 14:56:15 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
 import os
 import sys
+import traceback
 
 from Tix import *
 # override Tix.PanedWindow with Tkinter.PanedWindow
@@ -761,6 +765,8 @@ class Designer(Toplevel):
         # on windows, the shell gets proportional font.
         # not sure what it will be on other platforms
         # (Gentoo Linux makes it Courier); try Courer
+        # FIXME: it is possible to look for monospaced
+        # font family names in tkFont.families().
         self.shell = Shell(self.vp, borderwidth=2, relief=SUNKEN,
             width=80, height=20, font=("Courier", self.base_font[1]))
         self.vp.add(self.shell.frame)
@@ -1245,11 +1251,14 @@ class Designer(Toplevel):
         try:
             self.report = prt.load(filename)
         except Exception, _err:
+            traceback.print_exc()
             _focus = self.focus_get() or self.tree.hlist
             Message(self, icon="error", type="ok",
                 title=self._("File load error"),
-                message=self._("Error loading file %(file)s:\n%(error)s")
-                % {"file": os.path.abspath(filename), "error": _err}).show()
+                message=self._("Error loading file %(file)s:\n%(error)s") % {
+                    "file": os.path.abspath(filename),
+                    "error": str(_err) or _err.__class__.__name__,
+                }).show()
             # FIXME: still unfocused...
             _focus.focus_set()
             return
@@ -1419,7 +1428,9 @@ class Designer(Toplevel):
                 _data = ()
         _focus.focus_set()
         # build printout tree
-        _printout = Builder(self.report).run(_data)
+        # Note: it is best to use same backend for both building and rendering.
+        # since we'll surely use Tk renderer, use Tk backend for builder too.
+        _printout = Builder(self.report, text_backend="Tk").run(_data)
         # printout must be validated before it can be displayed
         self._validate(_printout, prp.Printout)
         # open preview
@@ -1434,11 +1445,20 @@ class Designer(Toplevel):
 
     def preview(self):
         """Show Report Preview for current template"""
+        _focus = self.focus_get() or self.tree.hlist
         try:
-            self["cursor"] = "watch"
-            self._run_preview()
-        finally:
-            self["cursor"] = ""
+            try:
+                self["cursor"] = "watch"
+                self._run_preview()
+            finally:
+                self["cursor"] = ""
+        except Exception, _err:
+            traceback.print_exc()
+            Message(self, icon="error", type="ok",
+                title=self._("Report preview error"),
+                message=self._("Error running report preview:\n%s")
+                % (str(_err) or _err.__class__.__name__)).show()
+            _focus.focus_set()
 
 def run(argv=sys.argv):
     if len(argv) > 2:

@@ -2,14 +2,16 @@
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
 """History:
+04-nov-2006 [als]   added maintainer_email and download_url;
+                    name the license and platform in addition to classifiers
 03-nov-2006 [als]   read version number from the package sources;
                     generate htmls automatically (skip if no docutils);
                     added docs, scripts and package metadata
 03-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/03 19:49:45 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/11/04 07:20:18 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -87,10 +89,16 @@ def run():
     setup(name="PythonReports",
         version=get_version(),
         url="http://pythonreports.sourceforge.net/",
+        download_url=
+            "http://sourceforge.net/project/showfiles.php?group_id=181233",
         description="Database report generator",
         long_description=DESCRIPTION,
         author="alexander smishlajev",
-        author_email="alex@tycobka.lv",
+        author_email="alex@Tycobka.lv",
+        # XXX maintainer_email always overwrites author_email.
+        #   (good thing too, but PyPI has two slots, and i'd like to
+        #   have both filled.)
+        maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
             "Development Status :: 3 - Alpha",
             "Environment :: Win32 (MS Windows)",
@@ -103,6 +111,13 @@ def run():
             "Topic :: Database :: Front-Ends",
             "Topic :: Printing",
         ],
+        # cheeseshop says "you should enter a full description here
+        # only if appropriate classifiers aren't available", but
+        # if license and platforms settings are not present,
+        # they are filled with word "UNKNOWN" in PKG-INFO and PyPI
+        # registration.
+        license="MIT License",
+        platforms=["OS Independent"],
         packages=["PythonReports"],
         scripts=SCRIPTS,
         data_files=[(DOC_DIR,

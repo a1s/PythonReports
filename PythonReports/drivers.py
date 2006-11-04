@@ -5,6 +5,8 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+04-nov-2006 [als]   added text driver backend "Tk";
+                    have different backend lists for texts and images
 03-nov-2006 [als]   fix image drivers loading (broken in revision 1.3)
 01-nov-2006 [als]   get_driver won't fail if no image driver found
                     (but the first image operation will raise an error)
@@ -13,8 +15,8 @@ and exports API function `get_driver`, used to get a driver implementation.
 05-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/11/03 17:52:24 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/11/04 14:24:01 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -55,13 +57,17 @@ def get_driver(type, backend=None):
             # operation is attempted, but if there are no images in report
             # then we can get through without image driver.
             _driver = _image_drivers[None] = ImageDriver
+            # most preferred backend goes last
+            _backends = ("wx", "PIL")
         else:
             _driver = None
+            _backends = ("Tk", "wx", "PIL", "RL")
         # NOTE backend preference:
-        #   RL (ReportLab) is best for texts
+        #   RL (ReportLab) is best for texts, no image support
         #   PIL is best for images (ReportLab image handling uses PIL too)
-        #   wx can handle both, but with serious drawbacks.
-        for _backend in ("wx", "PIL", "RL"): # most preferred last
+        #   wx can handle both but has serious drawbacks
+        #   Tk has no image support, does not need 3rd party modules
+        for _backend in _backends:
             _vars = {}
             try:
                 exec("from PythonReports.%sDrivers import %sDriver as Driver"

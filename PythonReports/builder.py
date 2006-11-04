@@ -1,6 +1,8 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+04-nov-2006 [als]   Builder: delay text_drivers initialization until run,
+                        added backend selection parameters for __init__
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 20-oct-2006 [als]   Structure moved to datatypes
 09-oct-2006 [als]   round section height to integer points after stretching
@@ -64,8 +66,8 @@ from PythonReports import template as prt
 from PythonReports import printout as prp
 from PythonReports.datatypes import *
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:05:19 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/04 14:38:24 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -935,17 +937,24 @@ class Builder(object):
     # parent elements for report sections
     layout_parents = {}
 
-    def __init__(self, template, data=(), parameters=None, item_callback=None):
+    def __init__(self, template, data=(), parameters=None,
+        item_callback=None, text_driver=None, image_driver=None,
+    ):
         """Initialize builder
 
         Parameters:
-            template: PRT file name or ElementTree With loaded report template
+            template: PRT file name or ElementTree
+                with loaded report template
             data: report data sequence
             parameters: values for report parameters
                 (dictionary or sequence of (key, value) pairs)
             item_callback: if passed, must be a callable
                 that will be called without arguments
                 for each item of the data sequence.
+            text_backend: optional name of preferred text
+                driver backend, e.g. "wx" or "Tk".
+            image_backend: optional name of preferred image
+                driver backend, e.g. "wx".
 
         """
         super(Builder, self).__init__()
@@ -958,8 +967,8 @@ class Builder(object):
         else:
             self.parameters = {}
         self.callback = item_callback
-        self.text_driver_factory = drivers.get_driver("Text")
-        self.image_driver_factory = drivers.get_driver("Image")
+        self.text_driver_factory = drivers.get_driver("Text", text_backend)
+        self.image_driver_factory = drivers.get_driver("Image", image_backend)
         self.basedir = template.getroot().get("basedir", None)
         if not self.basedir:
             if template.filename:
@@ -968,8 +977,6 @@ class Builder(object):
                 self.basedir = os.getcwd()
         self.variables = [Variable(_item)
             for _item in template.variables.itervalues()]
-        self.text_drivers = dict([(_name, self.text_driver_factory(_font))
-            for (_name, _font) in template.fonts.iteritems()])
         # image collections:
         #   - kept in files
         self.images_filed = {}
@@ -1198,6 +1205,9 @@ class Builder(object):
             _callback = item_callback
         else:
             _callback = self.callback
+        # initialize fonts - moved from __init__() to allow backend switching
+        self.text_drivers = dict([(_name, self.text_driver_factory(_font))
+            for (_name, _font) in template.fonts.iteritems()])
         _data_iter = self.start(data, parameters)
         if _callback:
             _callback()

@@ -1,6 +1,7 @@
 """PythonReports Template Designer"""
 
 """History (most recent first):
+04-nov-2006 [als]   added About dialog
 04-nov-2006 [als]   capture report preview errors;
                     print traceback on the console when showing error message;
                     use Tk backend for report building
@@ -33,12 +34,14 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.9 $"[11:-2]
-__date__ = "$Date: 2006/11/04 14:56:15 $"[7:-2]
+__version__ = "$Revision: 1.10 $"[11:-2]
+__date__ = "$Date: 2006/11/05 11:09:45 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
+import datetime
 import os
+from subprocess import Popen
 import sys
 import traceback
 
@@ -50,7 +53,8 @@ from tkColorChooser import askcolor
 from tkMessageBox import Message
 import tkFileDialog
 
-from PythonReports import datatypes, drivers, template as prt, printout as prp
+from PythonReports import datatypes, drivers, version
+from PythonReports import template as prt, printout as prp
 from PythonReports.builder import Builder
 from PythonReports.datatypes import *
 from PythonReports.Tk import PreviewWindow
@@ -66,6 +70,18 @@ NEW_REPORT_TEMPLATE = """<report>
  </layout>
 </report>
 """
+
+PYTHONREPORTS_URL = "http://pythonreports.sourceforge.net/"
+if os.name == "nt":
+    URL_HANDLER_COMMAND = "start %s"
+else:
+    # url_handler.sh is part of urlview package.
+    # it's the best way i can think of...
+    # perhaps could try /usr/local/bin/netscape, /usr/local/bin/lynx,
+    # /usr/local/bin/w3m etc and see which one is executable.
+    URL_HANDLER_COMMAND = "/usr/local/bin/url_handler.sh %s"
+
+COPYRIGHT_YEAR = 2006
 
 ### shell
 
@@ -678,6 +694,28 @@ class TreeNodeData(list):
 
 # the application
 
+class Url(Label):
+
+    """Clickable URL widget"""
+
+    DEFAULTS = (
+        ("foreground", "blue"),
+        ("cursor", "hand2"),
+        ("underline", True),
+    )
+
+    def __init__(self, master=None, cnf={}, **kw):
+        for (_option, _default) in self.DEFAULTS:
+            kw.setdefault(_option, _default)
+        Label.__init__(self, master, cnf, **kw)
+        self.bind("<Button-1>", self.OnClick)
+
+    def OnClick(self, event):
+        _url = self["text"]
+        if _url:
+            Popen(URL_HANDLER_COMMAND % _url, shell=True)
+
+
 class Designer(Toplevel):
 
     """PythonReports Template Designer"""
@@ -776,6 +814,39 @@ class Designer(Toplevel):
         #    width=720, height=100)
         #self.vp.add(self.canvas)
         self.bind("<Destroy>", self.OnWindowClose)
+
+    def buildAboutDialog(self):
+        """Create dialog window for menu command "About..."
+
+        Return value: toplevel widget
+
+        """
+        _release_date = datetime.date(*map(int, version.__date__.split("-")))
+        _dlg = Toplevel(self)
+        _dlg.title(self._("About PythonReports Designer"))
+        _body = Frame(_dlg)
+        Label(_body, justify=CENTER, text = self._(
+            "PythonReports Designer\n"
+            "Version %(version)s  %(date)s\n"
+            "Copyright %(year)s alexander smishlajev"
+        ) % {
+            "version": version.__version__,
+            "date": _release_date.strftime(self._("%d-%b-%Y")),
+            "year": COPYRIGHT_YEAR,
+        }).pack(side=TOP, padx=10)
+        Url(_body, text=PYTHONREPORTS_URL).pack(side=TOP, padx=10)
+        _body.pack(side=TOP, padx=10, pady=10)
+        (_ul, _text) = self.find_underline(self._("_Ok"))
+        _dlg.btn = Button(_dlg, text=_text, underline=_ul,
+            command=lambda: _dlg.destroy())
+        _dlg.btn.pack(side=BOTTOM, ipadx=10, padx=10, pady=10)
+        _dlg.update_idletasks()
+        _dlg_x = self.winfo_rootx() \
+                + (self.winfo_width() - _dlg.winfo_width()) / 2
+        _dlg_y = self.winfo_rooty() \
+                + (self.winfo_height() - _dlg.winfo_height()) / 2
+        _dlg.geometry("+%i+%i" % (_dlg_x, _dlg_y))
+        return _dlg
 
     def buildMenu(self):
         """Create system menu"""
@@ -945,6 +1016,12 @@ class Designer(Toplevel):
 
     def OnMenuAbout(self):
         """Display "About..." dialog"""
+        _focus = self.focus_get() or self.tree.hlist
+        _dlg = self.buildAboutDialog()
+        _dlg.btn.focus_set()
+        _dlg.grab_set()
+        self.wait_window(_dlg)
+        _focus.focus_set()
 
     def OnMenuMoveUp(self):
         """Move selected node before it's previous sibling"""

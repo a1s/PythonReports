@@ -1,7 +1,24 @@
 PythonReports release history
 =============================
 
+version 0.2.0 (07-nov-2006)
+---------------------------
+
+Features:
+
+  - added Tkinter-based text backend driver
+  - report builder allows explicit selection of text and image backends
+  - when template designer gets file loading or report preview error,
+    full traceback is printed to console along with concise error message
+    dialog.
+
+Fixes:
+
+  - capture report preview errors in template designer
+
 version 0.1.0 (03-nov-2006)
 ---------------------------
 
   first public release
+
+.. vim: set et ft=rst sts=2 sw=2 :

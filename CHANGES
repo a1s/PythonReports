@@ -10,7 +10,8 @@ Features:
   - report builder allows explicit selection of text and image backends
   - when template designer gets file loading or report preview error,
     full traceback is printed to console along with concise error message
-    dialog.
+    dialog
+  - distribution packages include documentation in HTML and reST formats
 
 Fixes:
 

@@ -2,6 +2,7 @@
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
 """History:
+07-nov-2006 [als]   data_files include source (*.txt) documents
 07-nov-2006 [als]   fix: rst2html failed when there is no target file
 04-nov-2006 [als]   added maintainer_email and download_url;
                     name the license and platform in addition to classifiers
@@ -11,8 +12,8 @@
 03-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/11/07 05:36:49 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/11/07 06:02:24 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -122,8 +123,8 @@ def run():
         platforms=["OS Independent"],
         packages=["PythonReports"],
         scripts=SCRIPTS,
-        data_files=[(DOC_DIR,
-            ["README", "LICENSE", "CHANGES"] + glob.glob("doc/*.html"))],
+        data_files=[(DOC_DIR, ["README", "LICENSE", "CHANGES"]
+            + glob.glob("doc/*.txt") + glob.glob("doc/*.html"))],
     )
 
 if __name__ == "__main__":

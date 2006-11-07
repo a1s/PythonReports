@@ -2,6 +2,7 @@
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
 """History:
+07-nov-2006 [als]   fix: rst2html failed when there is no target file
 04-nov-2006 [als]   added maintainer_email and download_url;
                     name the license and platform in addition to classifiers
 03-nov-2006 [als]   read version number from the package sources;
@@ -10,8 +11,8 @@
 03-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/11/04 07:20:18 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/11/07 05:36:49 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -61,7 +62,8 @@ def rst2html(source, target, force=False):
 
     """
     if not force:
-        force = os.stat(source).st_mtime > os.stat(target).st_mtime
+        force = (not os.path.isfile(target)) \
+            or (os.stat(source).st_mtime > os.stat(target).st_mtime)
     if force:
         print "Generating %s => %s" % (source, target)
         publish_cmdline(writer_name='html', argv=[

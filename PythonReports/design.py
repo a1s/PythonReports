@@ -1,6 +1,8 @@
+#! /usr/bin/env python
 """PythonReports Template Designer"""
 
 """History (most recent first):
+07-Nov-2006 [phd]   Added shebang.
 04-nov-2006 [als]   added About dialog
 04-nov-2006 [als]   capture report preview errors;
                     print traceback on the console when showing error message;
@@ -34,8 +36,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.10 $"[11:-2]
-__date__ = "$Date: 2006/11/05 11:09:45 $"[7:-2]
+__version__ = "$Revision: 1.11 $"[11:-2]
+__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO

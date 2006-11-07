@@ -1,13 +1,15 @@
+#! /usr/bin/env python
 """Tk output for PythonReports"""
 
 """History (most recent first):
+07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 12-oct-2006 [als]   added zoom
 12-oct-2006 [als]   added page controls and panning on right mouse
 10-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:44:04 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
 
 __all__ = []
 

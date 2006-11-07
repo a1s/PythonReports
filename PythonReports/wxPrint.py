@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 """wxPython print classes
 
 Warning: this module is malfunctional.  Print preview is badly broken
@@ -5,6 +6,7 @@ due to wxDC limitations.  Printer output may be broken too.
 
 """
 """History (most recent first):
+07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 20-oct-2006 [als]   added command-line application
 03-oct-2006 [als]   support images
@@ -14,8 +16,8 @@ due to wxDC limitations.  Printer output may be broken too.
                     remove -1 offset at bottom right corner of line boxes
 30-aug-2006 [als]   ported from previous implementation
 """
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:06:14 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
 
 from cStringIO import StringIO
 import re

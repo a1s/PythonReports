@@ -1,5 +1,7 @@
+#! /usr/bin/env python
 """PDF output for PythonReports"""
 """History (most recent first):
+07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 03-oct-2006 [als]   support images
 27-sep-2006 [als]   fix: borderless rectangles toggled off dashed lines
@@ -8,8 +10,8 @@
                     center texts vertically within their bounding boxes
 25-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:06:39 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 

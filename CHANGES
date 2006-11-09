@@ -1,6 +1,14 @@
 PythonReports release history
 =============================
 
+version 0.2.1 (09-nov-2006)
+---------------------------
+
+Fixes:
+
+  - shebangs added to all modules implementing command line interface
+  - fixed barcode doctests
+
 version 0.2.0 (07-nov-2006)
 ---------------------------
 

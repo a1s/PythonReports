@@ -1,5 +1,7 @@
 """PythonReports Template (PRT) structures"""
 """History:
+05-dec-2006 [als]   style: imports come after version, date and exports;
+                    sweep pylint warnings
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 22-sep-2006 [als]   BarCode: X dimension is a number of mills
 06-sep-2006 [als]   Box sizes default to -1
@@ -16,11 +18,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-
-from PythonReports.datatypes import *
-
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:04:20 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:57:21 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -29,6 +28,8 @@ __all__ = [
     "Detail", "Header", "Footer", "Title", "Summary",
     "Columns", "Group", "Layout", "Report", "load",
 ]
+
+from PythonReports.datatypes import *
 
 Parameter = Validator(tag="parameter",
     validate=Validator.Unique("parameters"),
@@ -260,6 +261,8 @@ def _need_subgroup_or_detail(tree, element, path):
     The element must have either Group or Detail child.
 
     """
+    # pylint: disable-msg=W0613
+    # W0613: Unused argument 'tree'
     _group = element.find("group")
     _detail = element.find("detail")
     if _group and _detail:
@@ -319,6 +322,9 @@ Layout = Validator(tag="layout",
 
 def Report(tree, element, path):
     """Prevalidator for "report" element: initialize template structures"""
+    # pylint: disable-msg=W0613
+    # W0613: Unused arguments 'element', 'path'
+
     # these collections may also be initialized by Unique constraints,
     # but we want them to be present always, even if there are no
     # elements in some collection (makes processing easier)

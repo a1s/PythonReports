@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+05-dec-2006 [als]   sweep pylint warnings
 03-nov-2006 [als]   ElementTree: string conversion returns full XML text
 20-oct-2006 [als]   added Structure
 29-sep-2006 [als]   ElementTree: keep filename after .parse()
@@ -26,10 +27,11 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:22:48 $"[7:-2]
 
 import binascii
 import bz2
-import codecs
 import cPickle as pickle
 import sys
 import zlib
@@ -49,12 +51,11 @@ except ImportError:
         # preferred to batteries just because you bothered to install it
         import elementtree.ElementTree as ET
     except ImportError:
+        # pylint: disable-msg=E0611
+        # E0611: No name 'etree' in module 'xml' - true for python <2.5
+        # ... pylint still reports this error
         # last resort; should always success in python2.5 and newer
         import xml.etree.ElementTree as ET
-
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/03 11:51:17 $"[7:-2]
 
 # export element factories from ElementTree
 Element = ET.Element
@@ -220,9 +221,18 @@ class DuplicateElement(XmlValidationError):
             "Duplicate name '%s' in %s" % (name, collection),
             element=element, path=path)
 
-# special value used instead of default in attribute declarations
-# to indicate that the attribute is required.
-class REQUIRED(object): pass
+class REQUIRED(object):
+
+    """"Value is required" value
+
+    The singleton instance of this class is a special value
+    used instead of default in attribute declarations
+    to indicate that the attribute is required.
+
+    """
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
+
 # XXX should NOTHING be different from REQUIRED?
 REQUIRED = NOTHING = REQUIRED()
 
@@ -238,6 +248,8 @@ class Structure:
     access times.
 
     """
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
 
     def __init__(self, **kwargs):
         for (_name, _value) in kwargs.iteritems():
@@ -334,6 +346,9 @@ class Integer(int, _Value):
 
 class Number(float, _Value):
 
+    """Base class for fixed-point numeric classes, also used as integer number
+    """
+
     # number of digits in the fractional part
     PRECISION = 0
 
@@ -358,11 +373,19 @@ def Numeric(precision):
         precision: number or digits in the fractional part.
 
     """
+    # pylint: disable-msg=W0602
+    # W0602: Using global for '_numeric_classes' but no assigment is done
     global _numeric_classes
     try:
         return _numeric_classes[precision]
     except KeyError:
+        # pylint: disable-msg=C0111,W0104
+        # W0104: Statement seems to have no effect
+        # C0111: Missing docstring
+        # The statement has the effect of setting the docstring.
+        # and the above pylint hint doesn't help anyway.
         class _Number(Number):
+            """Fixed point number with %i decimal digits""" % precision
             PRECISION = precision
         _numeric_classes[precision] = _Number
         return _Number
@@ -418,16 +441,20 @@ class Dimension(float, _Value):
 
 class _MetaColor(type):
 
-    def __getitem__(self, name):
-        return self.names[name.upper()]
+    """Implement access to named colors as class attributes or items"""
 
-    def __getattr__(self, name):
+    def __getitem__(mcs, name):
+        return mcs.names[name.upper()]
+
+    def __getattr__(mcs, name):
         try:
-            return self.names[name.upper()]
+            return mcs.names[name.upper()]
         except KeyError:
             raise AttributeError, name
 
 class Color(_Value):
+
+    """Color value"""
 
     __metaclass__ = _MetaColor
 
@@ -539,6 +566,7 @@ class Color(_Value):
         (see `encode` method for details).
 
         """
+        super(Color, self).__init__()
         self.value = self.encode(color)
 
     red = property(lambda self: int(self.value[1:3], 16),
@@ -569,9 +597,12 @@ class String(unicode, _Value):
 
     """String value used in element attributes"""
 
-    def __new__(cls, value, *args, **kwargs):
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods (39) - most come from unicode.
+
+    def __new__(cls, value):
         try:
-            return unicode.__new__(cls, value, *args, **kwargs)
+            return unicode.__new__(cls, value)
         except (TypeError, ValueError):
             # note: unicode errors are subclasses of ValueError
             raise InvalidLiteral(cls, value)
@@ -582,6 +613,9 @@ class String(unicode, _Value):
 
 class Expression(String):
 
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
+
     """Python expressions used in PRT element attributes"""
     # This is same as String, put to separate class just to make things clearer
 
@@ -590,6 +624,9 @@ class Expression(String):
 class _Codes(String):
 
     """String value from a domain of allowed values"""
+
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     # list of allowed values for this class
     # must be overridden in subclasses
@@ -608,30 +645,40 @@ class _Codes(String):
 class AlignHorizontal(_Codes):
 
     """Horizontal alignment type"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("left", "center", "right")
 
 class AlignVertical(_Codes):
 
     """Vertical alignment type"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("top", "center", "bottom")
 
 class BarCodeType(_Codes):
 
     """Bar Code type"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("Code128", "Code39", "2of5i")
 
 class BitmapScale(_Codes):
 
     """Bitmap scale type"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("cut", "fill", "grow")
 
 class BitmapType(_Codes):
 
     """Bitmap image format"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     # TODO: list all supported image types
     VALUES = ("png", "jpeg", "gif")
@@ -639,28 +686,40 @@ class BitmapType(_Codes):
 class Calculation(_Codes):
 
     """Calculation type for report variables"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("count", "sum", "avg", "min", "max", "std", "var", "first")
 
 class Compress(_Codes):
 
     """Compression for 'data' elements"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("zlib", "bz2")
 
 class EjectType(_Codes):
 
     """Type of 'eject' elements"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("page", "column")
 
 class Encoding(_Codes):
 
     """Binary value encoding for 'data' elements"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("base64", "uu", "qp")
 
 class PageSize(_Codes):
+
+    """Standard paper size names, evaluating to page dimensions"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     DIMENSIONS = {
         # ISO216 paper sizes
@@ -716,11 +775,14 @@ class PenType(_Codes):
     hairline strokes.
 
     """
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("dot", "dash", "dashdot")
 
     @classmethod
     def fromValue(cls, value):
+        """Return Dimension or type code or None"""
         try:
             return Dimension.fromValue(value)
         except InvalidLiteral:
@@ -729,12 +791,16 @@ class PenType(_Codes):
 class TextAlignment(_Codes):
 
     """Alignment type for text fields"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("left", "center", "right", "justified")
 
 class VariableIteration(_Codes):
 
     """Iteration/Reset type for report variables"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
 
     VALUES = ("report", "page", "column", "group", "detail")
 
@@ -763,6 +829,9 @@ class Validator(object):
 
         """
 
+        # pylint: disable-msg=R0903
+        # R0903: Too few public methods
+
         def __init__(self, attrname, collection_name=None):
             """Initialize uniqueness validator
 
@@ -776,8 +845,9 @@ class Validator(object):
             self.attrname = attrname
             if collection_name is None:
                 # e.g. "report groups" for attrname=="groups"
-                collection_name = "report %s" % attrname
-            self.collection_name = collection_name
+                self.collection_name = "report %s" % attrname
+            else:
+                self.collection_name = collection_name
 
         def __call__(self, tree, element, path):
             """Perform validation"""
@@ -831,6 +901,7 @@ class Validator(object):
         else:
             self.attributes = {}
         self.children = children
+        # W0612: Unused variable '_restrict'
         self.child_validators = dict([(_validator.tag, _validator)
             for (_validator, _restrict) in children])
         if prevalidate is not None:
@@ -869,7 +940,7 @@ class Validator(object):
                 try:
                     _value = _cls.fromValue(_attrib[_name])
                 except:
-                    (_exc_type, _err, _tb) = sys.exc_info()
+                    (_err, _tb) = sys.exc_info()[1:]
                     raise AttributeConversionError(_name, _value, _err,
                         element, path), None, _tb
             elif _default is REQUIRED:
@@ -911,7 +982,7 @@ class Validator(object):
         _items = [element.tag]
         for (_name, _val) in sorted(element.items()):
             try:
-                (_cls, _default) = self.attributes[_name]
+                _default = self.attributes[_name][1]
             except KeyError:
                 # ignore undeclared attributes
                 continue
@@ -1032,29 +1103,32 @@ class _DataBlock(Validator):
         if not data:
             return _elem
         if attrib.get("pickle"):
-            data = pickle.dumps(data, pickle.HIGHEST_PROTOCOL)
+            _data = pickle.dumps(data, pickle.HIGHEST_PROTOCOL)
         elif data is None:
             # don't encode data
             return _elem
+        else:
+            # start with plaintext contents
+            _data = data
         _compress = attrib.get("compress")
         if _compress == "zlib":
-            data = zlib.compress(data)
+            _data = zlib.compress(_data)
         elif _compress == "bz2":
-            data = bz2.compress(data)
+            _data = bz2.compress(_data)
         _encoding = attrib.get("encoding")
         if _encoding == "base64":
-            data = binascii.b2a_base64(data)
-            data = "\n".join([""] + [data[_ii:_ii+76]
-                for _ii in xrange(0, len(data), 76)])
+            _data = binascii.b2a_base64(_data)
+            _data = "\n".join([""] + [_data[_ii:_ii+76]
+                for _ii in xrange(0, len(_data), 76)])
         elif _encoding == "uu":
-            data = "".join(["\n"] + [binascii.b2a_uu(data[_ii:_ii+45])
-                for _ii in xrange(0, len(data), 45)])
+            _data = "".join(["\n"] + [binascii.b2a_uu(_data[_ii:_ii+45])
+                for _ii in xrange(0, len(_data), 45)])
         elif _encoding == "qp":
-            data = "\n" + binascii.b2a_qp(data, True, False) + "\n"
+            _data = "\n" + binascii.b2a_qp(_data, True, False) + "\n"
         else:
             # encoded data is ASCII.  non-encoded must be unicode.
-            data = unicode(data)
-        _elem.text = data
+            _data = unicode(_data)
+        _elem.text = _data
         return _elem
 
     @staticmethod
@@ -1100,10 +1174,13 @@ class _DataBlock(Validator):
             newl: string used to put each element on different line
 
         """
-        # must not add blank spaces to non-encoded values
+        # pylint: disable-msg=W0613
+        # W0613: Unused argument 'addindent' - API comes from Validator,
+        #   but there are no child elements in the data element
         if element.get("encoding"):
             _indent2 = indent
         else:
+            # must not add blank spaces to non-encoded values
             _indent2 = ""
         # there are no children for this element, just text
         # (the text, if any, must be already encoded by .make_element)
@@ -1127,10 +1204,16 @@ class ElementTree(ET.ElementTree):
                 if passed, the tree is loaded from this file
 
         """
+        # pylint: disable-msg=W0231,W0622
+        # W0231: __init__ method from base class 'ElementTree' is not called
+        #   - ain't it?
+        # W0622: Redefining built-in 'file' - the name comes from base class
+
         # FIXME: this instantiation seems to be obsolete
         if isinstance(validator, type):
-            validator = validator()
-        self.root_validator = validator
+            self.root_validator = validator()
+        else:
+            self.root_validator = validator
         ET.ElementTree.__init__(self, element=element, file=file)
 
     def parse(self, source, parser=None):
@@ -1155,6 +1238,9 @@ class ElementTree(ET.ElementTree):
             - output is indented
 
         """
+        # pylint: disable-msg=C0103,W0622
+        # C0103: Invalid names "file", "encoding" - fancy defaults
+        # W0622: Redefining built-in 'file' - the name comes from base class
         assert self._root is not None
         if not hasattr(file, "write"):
             file = open(file, "wb")
@@ -1370,6 +1456,8 @@ class Box(object):
                 if omitted or None, use scale_x.
 
         """
+        # pylint: disable-msg=C0103
+        # C0103: Invalid name "scale_y" - fancy default
         if scale_y == None:
             scale_y = scale_x
         self.x = round(self.x * scale_x, self.PRECISION)
@@ -1383,9 +1471,9 @@ class Box(object):
 
 # export constants and all non-private callables and constants
 __all__ = ["REQUIRED", "NOTHING", "Data", "Font"] + [
-    _name for (_name, _item) in globals().items()
-    if callable(_item) and not _name.startswith("_")
+    _global_name for (_global_name, _global_item) in globals().items()
+    if callable(_global_item) and not _global_name.startswith("_")
 ]
-del _name, _item
+del _global_name, _global_item
 
 # vim: set et sts=4 sw=4 :

@@ -6,6 +6,8 @@ due to wxDC limitations.  Printer output may be broken too.
 
 """
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings;
+                    remove WrapLines - all texts must be wrapped by builder
 07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 20-oct-2006 [als]   added command-line application
@@ -16,8 +18,8 @@ due to wxDC limitations.  Printer output may be broken too.
                     remove -1 offset at bottom right corner of line boxes
 30-aug-2006 [als]   ported from previous implementation
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 17:12:47 $"[7:-2]
 
 from cStringIO import StringIO
 import re
@@ -30,6 +32,11 @@ from PythonReports import printout as prp
 
 class Printout(wx.Printout):
 
+    """wxWidgets printout document"""
+
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - most come from the base class
+
     def __init__(self, report, title=None):
         """Initialize printout
 
@@ -39,21 +46,25 @@ class Printout(wx.Printout):
 
         """
         if isinstance(report, basestring):
+            # pylint: disable-msg=C0103
+            # C0103: Invalid names "report", "title"
             if title is None:
                 title = report
             report = prp.load(report)
         elif title is None:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "title"
             title = "Report Printout"
         super(Printout, self).__init__(title=title)
         self.report = report
         self.pages = report.findall("page")
         # element handlers
         self.handlers = {
-            "line": self.DrawLine,
-            "rectangle": self.DrawRectangle,
-            "image": self.DrawImage,
-            "text": self.DrawText,
-            "barcode": self.DrawBarcode,
+            "line": self.drawLine,
+            "rectangle": self.drawRectangle,
+            "image": self.drawImage,
+            "text": self.drawText,
+            "barcode": self.drawBarcode,
         }
         _fonts = {}
         for (_name, _font) in report.fonts.iteritems():
@@ -82,40 +93,43 @@ class Printout(wx.Printout):
             for _element in report.findall("data")])
 
     def GetPageInfo(self):
+        """Return available page ranges"""
         _numpages = len(self.pages)
         return (1, _numpages, 1, _numpages)
 
     def HasPage(self, pageno):
+        """Return True for existing page number"""
         return (1 <= pageno <= len(self.pages))
 
-    def GetColor(self, color):
+    @staticmethod
+    def getColor(color):
         """Return wx.Color object for color value of an element attribute"""
         if color:
             return wx.Colour(*Color(color).rgb)
         else:
             return wx.NullColour
 
-    def SetPen(self, type, color):
+    def setPen(self, pen_type, color):
         """Change the pen of the DC
 
         Parameters:
-            type: value returned by PenType.fromValue()
+            pen_type: value returned by PenType.fromValue()
                 (PenType or Dimension instance)
             color: pen color (Color instance)
 
         """
         _width = 1
-        if type == "dot":
+        if pen_type == "dot":
             _style = wx.DOT
-        elif type == "dash":
+        elif pen_type == "dash":
             _style = wx.SHORT_DASH
-        elif type == "dashdot":
+        elif pen_type == "dashdot":
             _style = wx.DOT_DASH
         else:
             _style = wx.SOLID
-            _width = int(type)
+            _width = int(pen_type)
         if _width:
-            _pen = wx.Pen(self.GetColor(color), _width, _style)
+            _pen = wx.Pen(self.getColor(color), _width, _style)
         else:
             _pen = wx.TRANSPARENT_PEN
         self.GetDC().SetPen(_pen)
@@ -133,10 +147,11 @@ class Printout(wx.Printout):
         if color is None:
             _brush = wx.Brush(wx.NullColour, wx.TRANSPARENT)
         else:
-            _brush = wx.Brush(self.GetColor(color))
+            _brush = wx.Brush(self.getColor(color))
         return _brush
 
     def OnPrintPage(self, pageno):
+        """Draw selected page to the output device context"""
         try:
             _page = self.pages[pageno - 1]
         except IndexError:
@@ -157,8 +172,9 @@ class Printout(wx.Printout):
                 _handler(_item)
         return True
 
-    def DrawLine(self, line):
-        self.SetPen(line.get("pen"), line.get("color"))
+    def drawLine(self, line):
+        """Draw a line"""
+        self.setPen(line.get("pen"), line.get("color"))
         _box = Box.from_element(line.find("box"))
         _dc = self.GetDC()
         if line.get("backslant"):
@@ -166,19 +182,21 @@ class Printout(wx.Printout):
         else:
             _dc.DrawLine(_box.left, _box.top, _box.right, _box.bottom)
 
-    def DrawRectangle(self, rect):
+    def drawRectangle(self, rect):
+        """Draw a rectangle"""
         _box = Box.from_element(rect.find("box"))
         _radius = rect.get("radius")
         _dc = self.GetDC()
         _dc.SetBrush(self.GetBrush(rect.get("color")))
-        self.SetPen(rect.get("pen"), rect.get("pencolor"))
+        self.setPen(rect.get("pen"), rect.get("pencolor"))
         if _radius:
             _dc.DrawRoundedRectangle(_box.x, _box.y, _box.width, _box.height,
                 _radius)
         else:
             _dc.DrawRectangle(_box.x, _box.y, _box.width, _box.height)
 
-    def DrawImage(self, image):
+    def drawImage(self, image):
+        """Draw an image"""
         _file = image.get("file")
         if _file:
             _img = wx.Image(_file)
@@ -201,41 +219,14 @@ class Printout(wx.Printout):
             _img.Resize((_box.width, _box.height), (0, 0))
         self.GetDC().DrawBitmap(wx.BitmapFromImage(_img), _box.x, _box.y)
 
-    _word_re = re.compile("\s*\S+\s*")
-    def WrapLines(self, text, width):
-        # allow the text to be 1 point wider (round error?)
-        width += 1
-        # if the text is not wider than required, return early
-        _dc = self.GetDC()
-        (_w, _h) = _dc.GetTextExtent(text)
-        if _w <= width:
-            return text
-        # split text to words.  inter-word spaces go to previous word.
-        _lines = []
-        _words = self._word_re.findall(text)
-        while _words:
-            # scan backwards while the line is too wide
-            _ii = len(_words)
-            while _ii > 1:
-                _line = "".join(_words[:_ii]).rstrip()
-                (_w, _h) = _dc.GetTextExtent(_line)
-                if _w <= width:
-                    break
-                _ii -= 1
-            else:
-                _line = _words[0].rstrip()
-            # move found line from _words to _lines
-            _lines.append(_line)
-            _words = _words[_ii:]
-        return "\n".join(_lines)
-
-    def DrawText(self, text):
+    def drawText(self, text):
+        """Draw a text block"""
         _content = text.find("data").text
         if not _content:
             return
         _dc = self.GetDC()
         _dc.SetFont(self.fonts[text.get("font")])
-        _dc.SetTextForeground(self.GetColor(text.get("color")))
+        _dc.SetTextForeground(self.getColor(text.get("color")))
         _align = text.get("align")
         if _align == "left":
             _alignment = wx.ALIGN_LEFT
@@ -252,7 +243,8 @@ class Printout(wx.Printout):
         #    _x = _re.x + (_re.height / 2)
         #    _dc.DrawLine(_x, _re.y, _x, _re.y + _re.width - 1)
 
-    def DrawBarcode(self, barcode):
+    def drawBarcode(self, barcode):
+        """Draw Bar Code symbol"""
         _stripes = [int(_stripe)
             for _stripe in barcode.get("stripes").split(",")]
         # temporary set DC scale to X-dimension
@@ -286,6 +278,11 @@ class Printout(wx.Printout):
 
 class Preview(wx.PrintPreview):
 
+    """Print Preview manager"""
+
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
+
     def __init__(self, report, title=None, print_data=None):
         """Initialize print preview
 
@@ -301,28 +298,36 @@ class Preview(wx.PrintPreview):
 
 class PrintApp(wx.App):
 
-    def __init__(self, prp, *args, **kwargs):
+    """Simple application for preview and printing of a printout"""
+
+    # pylint: disable-msg=R0901,R0904
+    # R0901: Too many ancestors - sorry, cannot help it
+    # R0904: Too many public methods - same as in the base class
+
+    def __init__(self, printout, *args, **kwargs):
         """Intialize the application
 
         Parameters:
-            prp: name of the printout file
+            printout: name of the printout file
             remaining arguments are passed to the base class.
 
         """
-        self.prp = prp
+        self.prp = printout
         super(PrintApp, self).__init__(*args, **kwargs)
 
     def OnInit(self):
+        """Start the application: create main frame and open report preview"""
         _preview = Preview(self.prp)
         if not _preview.Ok():
             raise RuntimeError, "Cannot initialize preview"
-            return False
+            # if raise is changed to MessageBox, return False here
         _frame = wx.PreviewFrame(_preview, None, self.prp, size=(800, 600))
         _frame.Initialize()
         _frame.Show(True)
         return True
 
 def run(argv=sys.argv):
+    """Command line executable"""
     if len(argv) != 2:
         print "Usage: %s <printout>" % argv[0]
         sys.exit(2)

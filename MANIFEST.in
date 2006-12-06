@@ -1,4 +1,5 @@
 include README LICENSE CHANGES
+include pylintrc
 include PythonReports/*.py
 include scripts/prd scripts/*.bat
 include doc/*.txt doc/*.html doc/default.css doc/Makefile

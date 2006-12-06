@@ -8,9 +8,8 @@ so we can just use PIL ImageDriver instead of wrapping a wrapper.
 01-nov-2006 [als]   driver classes have backend name property
 05-oct-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/01 17:39:00 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:55:16 $"[7:-2]
 
 __all__ = ["TextDriver"]
 

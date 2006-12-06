@@ -1,6 +1,6 @@
 # lint Python modules using external checkers.
 #
-# $Id: pylintrc,v 1.1 2006/12/06 15:46:26 a1s Exp $
+# $Id: pylintrc,v 1.2 2006/12/06 15:59:14 a1s Exp $
 #
 # History (most recent first):
 # 05-dec-2006   [als]   created
@@ -305,7 +305,7 @@ int-import-graph=
 [FORMAT]
 
 # Maximum number of characters on a single line.
-max-line-length=80
+max-line-length=79
 
 # Maximum number of lines in a module
 # Default: max-module-lines=1000

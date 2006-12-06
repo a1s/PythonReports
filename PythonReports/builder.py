@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+05-dec-2006 [als]   fix errors and some warnings reported by pylint
 04-nov-2006 [als]   Builder: delay text_drivers initialization until run,
                         added backend selection parameters for __init__
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
@@ -56,6 +57,10 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:13:37 $"[7:-2]
+
+__all__ = ["Builder"]
 
 import math
 import os
@@ -65,11 +70,6 @@ from PythonReports import barcode, drivers
 from PythonReports import template as prt
 from PythonReports import printout as prp
 from PythonReports.datatypes import *
-
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/11/04 14:53:17 $"[7:-2]
-
-__all__ = ["Builder"]
 
 class Variable(object):
 
@@ -81,62 +81,99 @@ class Variable(object):
 
     """
 
+    # attributes initialized from template element
+    name = REQUIRED
+    expr = REQUIRED
+    init = None
+    calc = "first"
+    iter = "detail"
+    itergrp = None
+    reset = "report"
+    resetgrp = None
+
     # Most variables use builtin list to accumulate values
     # these helper classes are used in special cases
     # for uniform accumulation calls
 
-    class AccumulateDistinct(set):
+    class _Accumulator(object):
+        """Base class for value accumulators"""
+        # pylint: disable-msg=R0903
+        # R0903: Too few public methods
         def append(self, value):
+            """Add a value to the accumulated sequence"""
+
+    class AccumulateDistinct(_Accumulator, set):
+        """Distinct values accumulator"""
+        def append(self, value):
+            """Add a value to the accumulated sequence"""
             self.add(value)
 
-    class AccumulateFloat(list):
+    class AccumulateFloat(_Accumulator, list):
+        """Accumulator forcing all values to be float"""
         def append(self, value):
-            super(AccumulateFloat, self).append(float(value))
+            """Add a value to the accumulated sequence"""
+            super(Variable.AccumulateFloat, self).append(float(value))
 
-    class KeepFirst(list):
+    class KeepFirst(_Accumulator, list):
+        """"Accumulator" always keeping the first value of the sequence"""
         value = NOTHING
         def append(self, value):
+            """Add a value to the accumulated sequence"""
             if self.value is NOTHING:
                 self[:] = [value]
 
-    class UseCurrent(list):
+    class UseCurrent(_Accumulator, list):
+        """"Accumulator" always returning current value of the sequence"""
         def append(self, value):
+            """Add a value to the accumulated sequence"""
             self[:] = [value]
 
     ### calculation types
 
     @staticmethod
     def first(value):
+        """Return the first element of the value sequence"""
         return value[0]
 
     @staticmethod
     def count(value):
+        """Return number of elements in the value sequence"""
         return len(value)
 
     @staticmethod
     def avg(value):
+        """Return an average value of a float sequence"""
         return sum(value) / len(value)
 
     @staticmethod
     def min(value):
+        """Return minimal value of the value sequence"""
         return min(value)
 
     @staticmethod
     def max(value):
+        """Return maximal value of the value sequence"""
         return max(value)
 
     @staticmethod
     def var(value):
-        _avg = avg(value)
-        return sum([(_item - _avg) ** 2 for _item in _value]) / len(value)
+        """Return variance from the average of a float sequence"""
+        _avg = Variable.avg(value)
+        return sum([(_item - _avg) ** 2 for _item in value]) / len(value)
 
     @staticmethod
     def std(value):
-        return math.sqrt(avg(value))
+        """Return standard deviation of a float sequence"""
+        return math.sqrt(Variable.var(value))
 
     # sum must be defined last to use builtin sum in other calculations
     @staticmethod
     def sum(value):
+        """Return sum of the sequence values
+
+        If values are strings, return concatenated string.
+
+        """
         if isinstance(value[0], basestring):
             return "".join(value)
         else:
@@ -204,6 +241,7 @@ class Variable(object):
 
     @property
     def value(self):
+        """Variable evaluation result"""
         if self.values:
             return self._compute(self.values)
         else:
@@ -291,13 +329,13 @@ class Context(object):
 #        for (_name, _var) in self.variables:
 #            self.sysvars[_name] = _var.value
 
-    def add_variables(self, *vars):
+    def add_variables(self, *variables):
         """Add report variable definitions
 
         Arguments are instances of the Variable class.
 
         """
-        for _var in vars:
+        for _var in variables:
             self.variables[_var.name] = _var
 
     def load_imports(self, report):
@@ -325,6 +363,9 @@ class ReportElement(Structure):
 
     """
 
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
+
     ### attributes:
     #
     # section: containing section object
@@ -339,6 +380,9 @@ class ReportElement(Structure):
     #
     # text: text value acquired from data or expression evaluation
     # otext: output text, wrapped to box width
+
+    # make pylint happy
+    section = style = printable = tbox = bbox = obox = text = otext = None
 
 class Section(list):
 
@@ -390,7 +434,8 @@ class Section(list):
         super(Section, self).__init__()
         self.builder = builder
         self.template = template
-        self.tbox = Box.from_element(template.find("box"))
+        self.box = self.tbox = Box.from_element(template.find("box"))
+        self.resizeable = False
         if context:
             self.build(context)
 
@@ -429,12 +474,13 @@ class Section(list):
             if context.eval(_style.get("when")):
                 _printwhen = _style.get("printwhen")
                 if _printwhen:
-                    _rv = bool(contex.eval(_printwhen))
+                    _rv = bool(context.eval(_printwhen))
                     break
         self.printable = _rv
         return _rv
 
-    def compose_style(self, context, need_attrs, styles):
+    @staticmethod
+    def compose_style(context, need_attrs, styles):
         """Return style attributes collected from a style sequence
 
         Parameters:
@@ -777,7 +823,7 @@ class Section(list):
             _template = _element.template
             (_prp_type, _prp_attrs) = self.PRINTOUTS[_template.tag]
             _prp_tag = _prp_type.tag
-            _attrib=dict([(_name, _template.get(_name))
+            _attrib = dict([(_name, _template.get(_name))
                 for _name in _prp_attrs])
             # add style attributes (must be done before constructor is called)
             if _prp_tag == "text":
@@ -860,6 +906,9 @@ class Frame(Structure):
     to containing frame (parent) and contained frame (child).
 
     """
+
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
 
     colcount = 1    # number of columns
     colgap = 0      # space between columns
@@ -959,8 +1008,9 @@ class Builder(object):
         """
         super(Builder, self).__init__()
         if isinstance(template, basestring):
-            template = prt.load(template)
-        self.template = template
+            self.template = prt.load(template)
+        else:
+            self.template = template
         self.data = data
         if parameters:
             self.parameters = dict(parameters)
@@ -969,14 +1019,16 @@ class Builder(object):
         self.callback = item_callback
         self.text_driver_factory = drivers.get_driver("Text", text_backend)
         self.image_driver_factory = drivers.get_driver("Image", image_backend)
-        self.basedir = template.getroot().get("basedir", None)
+        self.basedir = self.template.getroot().get("basedir", None)
         if not self.basedir:
-            if template.filename:
-                self.basedir = os.path.dirname(template.filename)
+            if self.template.filename:
+                self.basedir = os.path.dirname(self.template.filename)
             else:
                 self.basedir = os.getcwd()
         self.variables = [Variable(_item)
-            for _item in template.variables.itervalues()]
+            for _item in self.template.variables.itervalues()]
+        # text rendering drivers, will be re-evaluated in .run()
+        self.text_drivers = {}
         # image collections:
         #   - kept in files
         self.images_filed = {}
@@ -986,7 +1038,7 @@ class Builder(object):
         #       and files with embed=yes.  keyed by image data.
         self.images_loaded = {}
         #
-        _layout = template.find("layout")
+        _layout = self.template.find("layout")
         self.template_pagefooter = _layout.find("footer")
         # list of group templates
         self.groups = []
@@ -1051,7 +1103,7 @@ class Builder(object):
                 _imgdata = self.template.datablocks[_name]
                 _imgdata = Data.get_data(_imgdata)
                 _image = self.image_driver_factory.fromdata(
-                    _imgdata, type=_type, name=_name)
+                    _imgdata, img_type=_type, name=_name)
                 self.images_named[_name] = _image
                 self.images_loaded[_imgdata] = _image
                 return _image
@@ -1066,7 +1118,7 @@ class Builder(object):
             _imgdata = Data.get_data(_data)
             if _imgdata not in self.images_loaded:
                 _image = self.image_driver_factory.fromdata(_imgdata,
-                    type=_type)
+                    img_type=_type)
                 self.images_loaded[_imgdata] = _image
         return self.images_loaded[_imgdata]
 
@@ -1164,7 +1216,7 @@ class Builder(object):
             return parent_frame
         _colcount = _columns.get("count")
         _colgap = _columns.get("gap")
-        _width=(parent_frame.width - ((_colcount - 1) * _colgap)) / _colcount
+        _width = (parent_frame.width - ((_colcount - 1) * _colgap)) / _colcount
         _frame = parent_frame.make_child(width=_width,
             colcount=_colcount, colgap=_colgap)
         self.section_frames[_columns] = _frame
@@ -1200,7 +1252,7 @@ class Builder(object):
         # Timings: for 1000 items of test data,
         # processing takes about 10s
         # and output generation takes about .4s
-        _start_time = time.time()
+        #_start_time = time.time()
         if item_callback:
             _callback = item_callback
         else:
@@ -1276,7 +1328,7 @@ class Builder(object):
         for (_name, _parm) in _template.parameters.iteritems():
             if _name not in _parameters:
                 _value = _context.eval(_parm.get("default"))
-                if _item_prompt:
+                if _parm.prompt:
                     # TODO? parameter input with wx or Tkinter GUI
                     _input = raw_input("%s [%s]: " % (_name, _value))
                     if _input:
@@ -1521,10 +1573,12 @@ class Builder(object):
         if template is None:
             return None
         if context is None:
-            context = self.context
+            _context = self.context
+        else:
+            _context = context
         _frame = self.section_frames[template]
-        context["COLUMN_NUMBER"] = _frame.column + 1
-        _section = Section(self, template, context)
+        _context["COLUMN_NUMBER"] = _frame.column + 1
+        _section = Section(self, template, _context)
         if not _section.printable:
             return None
         _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
@@ -1534,8 +1588,8 @@ class Builder(object):
         elif ((_section.box.y + _section.box.height) > _frame.bottom) \
         and (_section.template.tag != "footer"):
             self.eject(_frame)
-            context["COLUMN_NUMBER"] = _frame.column + 1
-            _section.build(context)
+            _context["COLUMN_NUMBER"] = _frame.column + 1
+            _section.build(_context)
             if not _section.printable:
                 return None
             _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)

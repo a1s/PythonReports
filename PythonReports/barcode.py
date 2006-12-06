@@ -1,13 +1,13 @@
 """BarCode routines"""
 """History:
+05-dec-2006 [als]   sweep pylint warnings
 07-nov-2006 [als]   fix doctests (no quet zones encoded)
 22-sep-2006 [als]   encoding calls return sequences w/o quiet zones;
                     added .add_qz(), .min_height()
 12-sep-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/07 13:16:42 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 15:49:57 $"[7:-2]
 
 __all__ = ["code2of5i", "code39", "code128"]
 
@@ -19,6 +19,8 @@ _re_digit = re.compile("\d")
 _re_nondigit = re.compile("\D")
 
 class InvalidLiteral(ValueError):
+
+    """Error raised when a character cannot be encoded"""
 
     def __init__(self, text, barcode):
         ValueError.__init__(self, text, barcode)
@@ -199,6 +201,7 @@ class Code2of5i(BarCode):
                 If X dimension is less than 20 mils, ratio must exceed 2.2.
 
         """
+        super(Code2of5i, self).__init__()
         if w2n is None:
             self.w2n = self.W2N
         else:
@@ -221,13 +224,13 @@ class Code2of5i(BarCode):
 
     def __call__(self, text, errors="stict"):
         # ensure that the text contains only digits
-        text = self._clean(text, errors)
+        _text = self._clean(text, errors)
         # pad with zero if necessary
-        if len(text) & 1:
-            text = "0" + text
+        if len(_text) & 1:
+            _text = "0" + _text
         # encode text
         _seq = []
-        for _pair in zip(text[::2], text[1::2]):
+        for _pair in zip(_text[::2], _text[1::2]):
             _seq.extend(itertools.chain(
                 *zip(*[self.PATTERNS[int(_digit)] for _digit in _pair])))
         # add start/stop and encode stripe widths
@@ -237,10 +240,11 @@ class Code2of5i(BarCode):
         return tuple(_seq)
 
     def check_digit(self, text, errors="strict"):
-        text = self._clean(text, errors)
-        _odd = (len(text) & 1)
-        _sum = sum([(int(_digit) * 3) for _digit in text[1-_odd::2]]) \
-            + sum([int(_digit) for _digit in text[_odd::2]])
+        """Return the check character for given code text"""
+        _text = self._clean(text, errors)
+        _odd = (len(_text) & 1)
+        _sum = sum([(int(_digit) * 3) for _digit in _text[1-_odd::2]]) \
+            + sum([int(_digit) for _digit in _text[_odd::2]])
         return str(10 -(_sum %10))[-1]
 
 code2of5i = Code2of5i()
@@ -277,7 +281,7 @@ class Code39(BarCode):
 
     """
 
-    CHARS ="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%"
+    CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%"
 
     # default wide-to-narrow multiple
     W2N = 3
@@ -352,6 +356,7 @@ class Code39(BarCode):
                 I often equals X.
 
         """
+        super(Code39, self).__init__()
         if w2n is None:
             self.w2n = self.W2N
         else:
@@ -391,6 +396,7 @@ class Code39(BarCode):
         return tuple(_seq)
 
     def check_digit(self, text, errors="strict"):
+        """Return the check character for given code text"""
         _sum = sum(self._encode_chars(text, errors))
         return self.CHARS[_sum % 43]
 
@@ -447,6 +453,10 @@ class Code128(BarCode):
     #   3. Code C
     #   4. Code C, switch to Code A
 
+    # pylint: disable-msg=W0223
+    # W0223: Method 'check_digit' is abstract in class 'BarCode'
+    #   but is not overridden - that's intentional (see docstring)
+
     CHARS_A =" !\"#$%&\'()*+,-./0123456789:;<=>?@" \
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" \
         "\000\001\002\003\004\005\006\007\010\011\012\013" \
@@ -454,7 +464,7 @@ class Code128(BarCode):
         "\030\031\032\033\034\035\036\037"
     CHARS_B =" !\"#$%&\'()*+,-./0123456789:;<=>?@" \
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" \
-        "`abcdefghijklmnopqrstuvwxyz{|}~\177";
+        "`abcdefghijklmnopqrstuvwxyz{|}~\177"
     CHARS_C ="0123456789" # not used
 
     PATTERNS = (
@@ -515,7 +525,8 @@ class Code128(BarCode):
                     raise InvalidLiteral(text, self)
             return text
 
-    def _encode_ab(self, text, chars):
+    @staticmethod
+    def _encode_ab(text, chars):
         """Encode text with character set A or B"""
         _rv = []
         for _char in text:
@@ -596,6 +607,7 @@ class Code128(BarCode):
 code128 = Code128()
 
 def _test():
+    """Run doctests"""
     import doctest
     # textwrap is used in tests to wrap output
     # so that example lines do not exceed allowed

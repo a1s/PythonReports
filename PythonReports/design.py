@@ -4,6 +4,8 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+06-dec-2006 [als]   rebuild insertion menu each time selected node tag changes:
+                    prebuilt menu reuse didn't work reliably
 06-dec-2006 [als]   fix: box attributes not updated
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
 07-Nov-2006 [phd]   Added shebang.
@@ -40,8 +42,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.13 $"[11:-2]
-__date__ = "$Date: 2006/12/06 18:24:52 $"[7:-2]
+__version__ = "$Revision: 1.14 $"[11:-2]
+__date__ = "$Date: 2006/12/06 19:26:57 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -963,13 +965,11 @@ class Designer(Toplevel):
         # may be used to make some menus in different way)
         if _tag in self.insert_menus:
             return
-        # return early if validator has no children (no insert menu)
+        _menu = self.insert_menus[_tag] = []
+        # return early if validator has no children (insert menu empty/unused)
         if not validator.children:
-            self.insert_menus[_tag] = None
             return
         # create submenu for "insert element" cascade
-        _menu = Menu(self.report_menu, tearoff=False)
-        self.insert_menus[_tag] = _menu
         _hotkeys = set()
         for (_child, _restrict) in validator.children:
             self.element_validators[(_tag, _child.tag)] = (_child, _restrict)
@@ -988,8 +988,8 @@ class Designer(Toplevel):
                 # W0631: Using possibly undefined loop variable _underline
                 #   if the loop is empty, the variable is initialized
                 #   in the else clause.
-                self._build_menu_item(_menu, _child.tag, underline=_underline,
-                    command=lambda tag=_child.tag: self.insertNode(tag))
+                _menu.append(dict(label=_child.tag, underline=_underline,
+                    command=lambda tag=_child.tag: self.insertNode(tag)))
 
     @staticmethod
     def find_underline(label):
@@ -1147,18 +1147,29 @@ class Designer(Toplevel):
         # XXX why the browse event always comes twice?
         if (node == self.current_node) and not force:
             return
+        # spare some keystrokes and attribute lookups
+        _rmenu = self.report_menu
         # TODO? if self.current_node is not None,
         # update from the properties list
         _data = self.getNodeData(node)
         _data.loadPropertyList(self.pl.hlist)
+        if (not self.current_node) \
+        or (_data.tag != self.getNodeData(self.current_node).tag):
+            # element type changed - replace insertion menu
+            # destroy current menu, if any
+            _imenu = _rmenu.entrycget(0, "menu")
+            if _imenu:
+                _imenu = _rmenu.nametowidget(_imenu)
+                _rmenu.entryconfigure(0, state=DISABLED, menu="")
+                _imenu.destroy()
+            # build new insertion menu, if any
+            _imenu_def = self.insert_menus[_data.tag]
+            if _imenu_def:
+                _imenu = Menu(_rmenu, tearoff=False)
+                for _args in _imenu_def:
+                    self._build_menu_item(_imenu, **_args)
+                _rmenu.entryconfigure(0, state=NORMAL, menu=_imenu)
         self.current_node = node
-        # replace insertion menu
-        _rmenu = self.report_menu
-        _imenu = self.insert_menus[_data.tag]
-        if _imenu is None:
-            _rmenu.entryconfigure(0, state=DISABLED)
-        else:
-            _rmenu.entryconfigure(0, state=NORMAL, menu=_imenu)
         # enable/disable other element commands
         _rmenu.entryconfigure(1,
             state=self._enabled(_data.tag not in self.FIXED_TAGS))

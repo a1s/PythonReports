@@ -1,7 +1,10 @@
 #! /usr/bin/env python
+# pylint: disable-msg=R0901,R0904
+# R0901: Too many ancestors in all classes derived from Tix widgets
+# R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
-
 """History (most recent first):
+05-dec-2006 [als]   fix errors and some warnings reported by pylint
 07-Nov-2006 [phd]   Added shebang.
 04-nov-2006 [als]   added About dialog
 04-nov-2006 [als]   capture report preview errors;
@@ -36,8 +39,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.11 $"[11:-2]
-__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
+__version__ = "$Revision: 1.12 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:35:20 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -89,6 +92,9 @@ COPYRIGHT_YEAR = 2006
 
 # since we're not interactive, sys does not have ps1 and ps2
 try:
+    # pylint: disable-msg=E1101,W0104
+    # E1101: Module 'sys' has no 'ps1' member - that's what we're trying here
+    # W0104: Statement seems to have no effect
     sys.ps1
 except AttributeError:
     sys.ps1 = ">>> "
@@ -96,15 +102,20 @@ except AttributeError:
 
 class Interpreter(InteractiveInterpreter):
 
+    """Python interpreter shell substituting standard streams for code run"""
+
     def __init__(self, locals, stdin=sys.stdin,
         stdout=sys.stdout, stderr=sys.stderr
     ):
+        # pylint: disable-msg=W0622
+        # W0622: Redefining built-in 'locals' - the name comes from base class
         InteractiveInterpreter.__init__(self, locals)
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
 
     def runcode(self, code):
+        """Execute a code object"""
         # save current standard streams
         _stdin = sys.stdin
         _stdout = sys.stdout
@@ -145,15 +156,18 @@ class ShellOutputStream(object):
 
     @staticmethod
     def isatty():
+        """Return True: the file is connected to a tty-like device"""
         return True
 
     def write(self, text):
+        """Output a text to the window"""
         self.window.insert("end", text, self.tag)
         # window must be refreshed in case we fall into raw_input somewhere
         self.window.see("insert")
         self.window.update_idletasks()
 
     def writelines(self, iterable):
+        """Write a sequence of strings to the window"""
         _write = self.write
         for _line in iterable:
             _write(_line)
@@ -162,16 +176,27 @@ class Shell(ScrolledText):
 
     """Interactive shell widget"""
 
+    # pylint: disable-msg=E0102
+    # E0102: redefinition of the Shell class imported from Tix
+
     @property
     def shell_greeting(self):
+        """Interpreter greeting text"""
         return self._("Python %s on %s\n") % (sys.version, sys.platform)
 
     @property
     def greeting(self):
+        """PythonReports greeting text"""
         return self._(
             "Set \"data\" variable to report data sequence for preview.\n")
 
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102,W0231,W0233
+        # W0102: Dangerous default value {} as argument - that's Tk
+        # W0231: __init__ method from base class 'ScrolledText' is not called
+        # W0233: __init__ method from a non direct base class 'ScrolledText'
+        #   is called
+        # perhaps pylint got confused by Tk/Tix widget hierarchy?
         ScrolledText.__init__(self, master, cnf=cnf, **kw)
         _toplevel = self.winfo_toplevel()
         self._ = self.gettext = _toplevel.gettext
@@ -199,6 +224,7 @@ class Shell(ScrolledText):
         self.bind("<<Paste>>", lambda evt: self.after_idle(self.set_input_tag))
 
     def OnKeyPress(self, event):
+        """Handle window keypress events"""
         # don't process control and navigation keys
         if event.char == "":
             return ""
@@ -228,10 +254,12 @@ class Shell(ScrolledText):
 
     def prompt(self, prompt=sys.ps1):
         """Write new input prompt"""
+        # pylint: disable-msg=E1101
+        # E1101: Module 'sys' has no 'ps1' member - assigned at toplevel if so
         self.mark_set("insert", "end")
         if self.compare("insert", "!=", "insert linestart"):
             self.insert("insert", "\n")
-        self.insert("insert", sys.ps1, "prompt")
+        self.insert("insert", prompt, "prompt")
         self.see("end")
 
     def on_input_line(self, index="insert"):
@@ -245,6 +273,8 @@ class Shell(ScrolledText):
         return True.  Otherwise return False.
 
         """
+        # pylint: disable-msg=E1101
+        # E1101: Module 'sys' has no 'ps1' member - assigned at toplevel if so
         if "input" in self.tag_names(index + " lineend -1c"):
             # the line contains input area
             # FIXME? if there is input text on the line,
@@ -294,7 +324,11 @@ class Shell(ScrolledText):
 
 class CodeSelection(ComboBox):
 
+    """Code value selection"""
+
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102
+        # W0102: Dangerous default value {} as argument - that's Tk
         self.values = kw.pop("values", ())
         ComboBox.__init__(self, master=master, cnf=cnf, **kw)
         for _val in self.values:
@@ -312,7 +346,10 @@ class CodeSelection(ComboBox):
 
 class ColorSelection(Frame):
 
+    """Color value selection"""
+
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102
         self.var = kw.pop("variable")
         Frame.__init__(self, master=master, cnf=cnf, **kw)
         self["background"] = self.winfo_toplevel().color_panel
@@ -328,16 +365,18 @@ class ColorSelection(Frame):
 
     def updateColor(self, value=NOTHING):
         """Validate the combo box value; update color indicator"""
+        _rv = value
         if value is NOTHING:
             _color = Color.fromValue(self.var.get())
         else:
+            # got an entered value - must return validated string
             try:
                 _color = Color.fromValue(value)
             except InvalidLiteral:
                 self.bell()
                 # validation will return current value
-                value = self.var.get()
-                _color = Color.fromValue(value)
+                _rv = self.var.get()
+                _color = Color.fromValue(_rv)
             else:
                 self.var.set(value)
         if _color:
@@ -345,9 +384,10 @@ class ColorSelection(Frame):
             self.indicator.grid(row=0, column=1, sticky=NE+SW, padx=5, pady=1)
         else:
             self.indicator.grid_forget()
-        return value
+        return _rv
 
     def OnButton(self):
+        """Run standard color selection dialog"""
         # askcolor returns ((r, g, b), "#rrggbb") or (None, None)
         _color = askcolor(Color.fromValue(self.var.get()))[1]
         if _color:
@@ -355,6 +395,8 @@ class ColorSelection(Frame):
         self.button.focus_set()
 
 class PropertyEntry(Frame):
+
+    """Generic value entry box"""
 
     # Entry member of the ComboBox is offset to the right.
     # We need to compensate all other widgets too.
@@ -371,6 +413,7 @@ class PropertyEntry(Frame):
     DEFAULT_OPTIONS = ()
 
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102
         Frame.__init__(self, master)
         Frame(self, width=self.LPAD).pack(side=LEFT)
         for (_name, _value) in self.DEFAULT_OPTIONS:
@@ -380,10 +423,13 @@ class PropertyEntry(Frame):
         self.bind("<FocusIn>", self.OnSetFocus)
 
     def OnSetFocus(self, event):
+        """Automatically pass the focus to the inner widget"""
         self.widget.focus_set()
         self.widget.select_range(0, "end")
 
 class IntegerSelection(PropertyEntry):
+
+    """Spinner box for integer value entry"""
 
     WIDGET = Control
     DEFAULT_OPTIONS = (("step", 1),)
@@ -394,11 +440,14 @@ class IntegerSelection(PropertyEntry):
         LPAD = 5
 
     def OnSetFocus(self, event):
+        """Pass the focus to the entry widget"""
         _entry = self.widget.entry
         _entry.focus_set()
         _entry.select_range(0, "end")
 
 class BooleanSelection(PropertyEntry):
+
+    """Checkbox for boolean value entry"""
 
     WIDGET = Checkbutton
     DEFAULT_OPTIONS = (
@@ -412,17 +461,21 @@ class BooleanSelection(PropertyEntry):
         LPAD = 0 # still insufficient
 
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102
         PropertyEntry.__init__(self, master, cnf, **kw)
         # XXX on windows, these checkbuttons get white background
         self.widget["background"] = self.winfo_toplevel().color_panel
 
     # checkbuttons have no .select_range method
     def OnSetFocus(self, event):
+        """Pass the focus to the checkbutton"""
         self.widget.focus_set()
 
 class PropertyEditor(object):
 
     """Widget factory for an attribute data type"""
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
 
     # instantiated factories
     FACTORIES = {}
@@ -481,6 +534,8 @@ class PropertyEditor(object):
 class PropertyData(Structure):
 
     """Data object representing an attribute editable in the properties list"""
+    # pylint: disable-msg=R0903
+    # R0903: Too few public methods
 
 class TreeNodeData(list):
 
@@ -550,8 +605,9 @@ class TreeNodeData(list):
         self.validator = validator
         self.tag = element.tag
         if nodeid is None:
-            nodeid = "%s@%X" % (self.tag, id(self))
-        self.id = nodeid
+            self.id = "%s@%X" % (self.tag, id(self))
+        else:
+            self.id = nodeid
         self.parent = parent
         self.canvas_object = None
         self.is_section = element.tag in ("title", "summary",
@@ -707,12 +763,14 @@ class Url(Label):
     )
 
     def __init__(self, master=None, cnf={}, **kw):
+        # pylint: disable-msg=W0102
         for (_option, _default) in self.DEFAULTS:
             kw.setdefault(_option, _default)
         Label.__init__(self, master, cnf, **kw)
         self.bind("<Button-1>", self.OnClick)
 
     def OnClick(self, event):
+        """Run URL handler program on the URL"""
         _url = self["text"]
         if _url:
             Popen(URL_HANDLER_COMMAND % _url, shell=True)
@@ -857,7 +915,7 @@ class Designer(Toplevel):
         Frame(self, height=2, borderwidth=1, relief=GROOVE).pack(side=TOP,
             fill=X)
         # File menu
-        _popup = self._build_menu_item(_menu, ''"_File", type="cascade")
+        _popup = self._build_menu_item(_menu, ''"_File", item_type="cascade")
         self._build_menu_item(_popup, ''"_New", command=self.OnMenuFileNew)
         self._build_menu_item(_popup, ''"_Open", command=self.OnMenuFileOpen)
         self._build_menu_item(_popup, ''"_Save",
@@ -867,14 +925,15 @@ class Designer(Toplevel):
         _popup.add_separator()
         self._build_menu_item(_popup, ''"E_xit", command=self.OnMenuQuit)
         # Edit menu
-        _popup = self._build_menu_item(_menu, ''"_Edit", type="cascade")
+        _popup = self._build_menu_item(_menu, ''"_Edit", item_type="cascade")
         self._build_menu_item(_popup, ''"Cu_t", event="<<Cut>>")
         self._build_menu_item(_popup, ''"_Copy", event="<<Copy>>")
         self._build_menu_item(_popup, ''"_Paste", event="<<Paste>>")
         # Report menu
-        _popup = self._build_menu_item(_menu, ''"_Report", type="cascade")
+        _popup = self._build_menu_item(_menu, ''"_Report", item_type="cascade")
         self.report_menu = _popup
-        self._build_menu_item(_popup, ''"_Insert...", type="cascade", menu="")
+        self._build_menu_item(_popup, ''"_Insert...", item_type="cascade",
+            menu="")
         self._build_menu_item(_popup, ''"_Delete element",
             command=lambda: self.deleteNode(self.current_node))
         self._build_menu_item(_popup, ''"Move _Up", command=self.OnMenuMoveUp)
@@ -883,7 +942,7 @@ class Designer(Toplevel):
         _popup.add_separator()
         self._build_menu_item(_popup, ''"Print Pre_view", command=self.preview)
         # Help menu
-        _popup = self._build_menu_item(_menu, ''"_Help", type="cascade")
+        _popup = self._build_menu_item(_menu, ''"_Help", item_type="cascade")
         self._build_menu_item(_popup, ''"_About...", command=self.OnMenuAbout)
         # set window menu to created tree
         self["menu"] = _menu
@@ -920,6 +979,10 @@ class Designer(Toplevel):
                         break
                 else:
                     _underline = -1
+                # pylint: disable-msg=W0631
+                # W0631: Using possibly undefined loop variable _underline
+                #   if the loop is empty, the variable is initialized
+                #   in the else clause.
                 self._build_menu_item(_menu, _child.tag, underline=_underline,
                     command=lambda tag=_child.tag: self.insertNode(tag))
 
@@ -933,7 +996,7 @@ class Designer(Toplevel):
             _text = label
         return (_underline, _text)
 
-    def _build_menu_item(self, parent, label, type="command",
+    def _build_menu_item(self, parent, label, item_type="command",
             event=None, **options
     ):
         """Create menu button with popup menu
@@ -945,14 +1008,14 @@ class Designer(Toplevel):
                 will be underlined.  If the label contains more than
                 one underscore character, second and following
                 underscores are displayed.
-            type: item type - "command", "cascade" etc.
+            item_type: item type - "command", "cascade" etc.
                 Default: "command".
             event: optional name of virtual event to post
                 when menu command is selected (overrides "command"
                 procedure set in options, if any).
             additional keyword arguments will be passed right to Tk.
 
-        If type is "cascade", return associated submenu widget.
+        If item_type is "cascade", return associated submenu widget.
         Otherwise return None.
 
         """
@@ -962,10 +1025,10 @@ class Designer(Toplevel):
         if event:
             options["command"] = lambda evt=event: self._post_event(evt)
         try:
-            _make = getattr(parent, "add_" + type)
+            _make = getattr(parent, "add_" + item_type)
         except AttributeError:
-            raise ValueError("Unsupported menu object type: %s" % type)
-        if type == "cascade":
+            raise ValueError("Unsupported menu object type: %s" % item_type)
+        if item_type == "cascade":
             # create submenu unless passed in options
             if "menu" not in options:
                 options["menu"] = Menu(parent, tearoff=False)
@@ -1150,12 +1213,16 @@ class Designer(Toplevel):
 
     @staticmethod
     def gettext(msg):
+        """Return msg translated to selected language"""
         return msg
 
     _ = gettext
 
     @staticmethod
     def ngettext(singular, plural, n):
+        """Translate a message with plural forms lookup"""
+        # pylint: disable-msg=C0103
+        # C0103: Invalid name "n" - I quite agree.
         if n == 1:
             return singular
         else:
@@ -1244,7 +1311,10 @@ class Designer(Toplevel):
         _element = SubElement(parent, validator.tag)
         for (_child, _restrict) in validator.children:
             if _restrict in (validator.ONE, validator.ONE_OR_MORE):
-                _create_template_element(_element, _child)
+                # pylint: disable-msg=W0212
+                # W0212: Access to a protected member _create_template_element
+                #   of a client class - it's not a client, it's this own class.
+                Designer._create_template_element(_element, _child)
         return _element
 
     def insertNode(self, tag, before=sys.maxint):
@@ -1268,6 +1338,8 @@ class Designer(Toplevel):
             # (group or detail) from the siblings list
             # and "before" position may shift up or down.
             # force append to the end of list.
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "before"
             before = sys.maxint
             # find contained group or detail element -
             # will replace deleted group
@@ -1302,7 +1374,7 @@ class Designer(Toplevel):
             _inner.parent = _child
         self.tree.open(_node.path)
         if before < (len(_node) - 1):
-            _child.addToTree(self.tree, before=_node[_before + 1].path)
+            _child.addToTree(self.tree, before=_node[before + 1].path)
         else:
             _child.addToTree(self.tree)
         self.tree.autosetmode()
@@ -1327,6 +1399,8 @@ class Designer(Toplevel):
 
     def loadFile(self, filename):
         """Load report file"""
+        # pylint: disable-msg=W0703
+        # W0703: Catch "Exception" - yep, that's what we do here
         try:
             self.report = prt.load(filename)
         except Exception, _err:
@@ -1367,6 +1441,8 @@ class Designer(Toplevel):
         if not self.updateTree():
             return False
         if not filename:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "filename"
             filename = tkFileDialog.asksaveasfilename(**self.fileoptions)
             if not filename:
                 return False
@@ -1392,7 +1468,7 @@ class Designer(Toplevel):
         try:
             self.data.updateProperties(recursive=True, errors=errors)
         except AttributeConversionError, _err:
-            self.select(_err_path)
+            self.select(_err.path)
             self.update_idletasks()
             Message(self, icon="error", type="ok",
                 title=self._("Invalid Value"), message=self._(
@@ -1462,11 +1538,12 @@ class Designer(Toplevel):
 
     @staticmethod
     def _validate(tree, validator):
-        # run Template/Printout validator on an ElementTree
+        """Run Template/Printout validator on an ElementTree"""
         _root = tree.getroot()
         validator(tree, _root, "/" + _root.tag)
 
     def _run_preview(self):
+        """Build and show the report"""
         if not self.updateTree():
             return
         # message boxes take focus away.  remember currently focused widget
@@ -1524,6 +1601,8 @@ class Designer(Toplevel):
 
     def preview(self):
         """Show Report Preview for current template"""
+        # pylint: disable-msg=W0703
+        # W0703: Catch "Exception" - yep, that's what we do here
         _focus = self.focus_get() or self.tree.hlist
         try:
             try:
@@ -1540,6 +1619,7 @@ class Designer(Toplevel):
             _focus.focus_set()
 
 def run(argv=sys.argv):
+    """Command line executable"""
     if len(argv) > 2:
         print "Usage: %s [template]" % argv[0]
         sys.exit(2)

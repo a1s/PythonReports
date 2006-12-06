@@ -1,5 +1,6 @@
 """PythonReports Printout (PRP) structures"""
 """History:
+05-dec-2006 [als]   style: imports come after version, date and exports
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 26-sep-2006 [als]   removed Text.bgcolor
 22-sep-2006 [als]   Rectangle: fix names of color attributes
@@ -10,16 +11,15 @@
 17-jul-2006 [als]   fix Page: missing tag
 10-jul-2006 [als]   created
 """
-
-from PythonReports.datatypes import *
-
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:04:43 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:54:39 $"[7:-2]
 
 __all__ = [
     "Text", "Line", "Rectangle", "Image", "BarCode",
     "Box", "Page", "Data", "Font", "Printout", "load",
 ]
+
+from PythonReports.datatypes import *
 
 Box = Validator(tag="box",
     attributes={

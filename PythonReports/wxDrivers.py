@@ -1,11 +1,10 @@
 """Rendering utilities for wxPython backend"""
-
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings
 01-nov-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 17:44:32 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/12/06 17:05:46 $"[7:-2]
 
 __all__ = ["ImageDriver", "TextDriver"]
 
@@ -52,37 +51,37 @@ class ImageDriver(drivers.ImageDriver):
     }
 
     @classmethod
-    def _get_type_flag(cls, type):
+    def _get_type_flag(cls, img_type):
         """Return wxImage construction flag for given image type"""
         try:
-            return cls.TYPE_FLAGS[type]
+            return cls.TYPE_FLAGS[img_type]
         except KeyError:
-            raise ValueError("Unsupported image type: %r" % type)
+            raise ValueError("Unsupported image type: %r" % img_type)
 
     @classmethod
-    def fromfile(cls, filepath, type):
+    def fromfile(cls, filepath, img_type):
         """Create an image source from existing file
 
         Parameters:
             filepath: full path to the image file
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
 
         Return value: new image wrapper object.
 
         """
         _rv = cls()
         _rv.filepath = filepath
-        _rv.type = type
-        _rv._image = wx.Image(filepath, cls._get_type_flag(type))
+        _rv.img_type = img_type
+        _rv._image = wx.Image(filepath, cls._get_type_flag(img_type))
         return _rv
 
     @classmethod
-    def fromdata(cls, data, type, name=None):
+    def fromdata(cls, data, img_type, name=None):
         """Create an image source from data block
 
         Parameters:
             data: image data
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
             name: optional name of a report block containing data
 
         Return value: new image wrapper object.
@@ -90,11 +89,11 @@ class ImageDriver(drivers.ImageDriver):
         """
         _rv = cls()
         _rv.name = name
-        _rv.type = type
+        _rv.img_type = img_type
         #_rv._image = wx.ImageFromStream(wx.InputStream(StringIO(data)),
-        #    cls._get_type_flag(type))
+        #    cls._get_type_flag(img_type))
         _rv._image = wx.ImageFromStream(StringIO(data),
-            cls._get_type_flag(type))
+            cls._get_type_flag(img_type))
         return _rv
 
     def getsize(self):
@@ -105,61 +104,63 @@ class ImageDriver(drivers.ImageDriver):
         """
         return (self._image.GetWidth(), self._image.GetHeight())
 
-    def _get_image_data(self, image, type=None):
+    def _get_image_data(self, image, img_type=None):
         """Return image data as string
 
         Parameters:
             image: wx.Image object
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         This is a helper method for all methods returning image data.
 
         """
-        if not type:
-            type = self.preferred_type
+        if not img_type:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "img_type"
+            img_type = self.preferred_type
         # XXX shoud use a MemoryFileSystem to avoid creating a temporary file.
         _filename = os.tempnam(None, "primg")
-        image.SaveFile(_filename, self._get_type_flag(type))
+        image.SaveFile(_filename, self._get_type_flag(img_type))
         _file = open(_filename, "rb")
         _rv = _file.read()
         _file.close()
         os.remove(_filename)
         return _rv
 
-    def getdata(self, type=None):
+    def getdata(self, img_type=None):
         """Return image data as string
 
         Parameters:
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
 
         """
-        return self._get_image_data(self._image, type)
+        return self._get_image_data(self._image, img_type)
 
-    def scale(self, width, height, type=None):
+    def scale(self, width, height, img_type=None):
         """Return a scaled image
 
         Parameters:
             width: target image width
             height: target image height
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
 
         """
-        return self._get_image_data(self._image.Scale(width, height), type)
+        return self._get_image_data(self._image.Scale(width, height), img_type)
 
-    def _cut(self, width, height, type):
+    def _cut(self, width, height, img_type):
         """Return an image cut to dimensions
 
         Parameters:
             width: target image width
             height: target image height
-            type: image type, e.g. "jpeg" or "gif"
+            img_type: image type, e.g. "jpeg" or "gif"
 
         Return value: image data as string.
 
@@ -170,7 +171,7 @@ class ImageDriver(drivers.ImageDriver):
 
         """
         _img = self._image.Size((width, height), (0, 0))
-        return self._get_image_data(_img, type)
+        return self._get_image_data(_img, img_type)
 
 class TextDriver(drivers.TextDriver):
 

@@ -5,11 +5,11 @@ does not provide sufficient image functionality.
 
 """
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings
 04-nov-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/04 14:18:45 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/12/06 17:03:25 $"[7:-2]
 
 __all__ = ["TextDriver"]
 
@@ -36,6 +36,9 @@ class TextDriver(drivers.TextDriver):
             font: report font definition (element instance)
 
         """
+        # pylint: disable-msg=W0212
+        # W0212: Access to a protected member _root of a client class -
+        #   any ideas how to get fpixels another way?
         super(TextDriver, self).__init__(font)
         self._font = self._get_font(font)
         self.height = self._font["size"]

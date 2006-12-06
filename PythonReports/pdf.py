@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 """PDF output for PythonReports"""
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings;
+                    remove pdf autostart (can be easily done in command line)
 07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 03-oct-2006 [als]   support images
@@ -10,8 +12,8 @@
                     center texts vertically within their bounding boxes
 25-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:48:56 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 
@@ -53,7 +55,7 @@ class PdfWriter(object):
     font = None
     wordspace = 0
 
-    def __init__(self, report, filepath=None):
+    def __init__(self, report):
         """Initialize the writer
 
         Parameters:
@@ -62,20 +64,21 @@ class PdfWriter(object):
         """
         super(PdfWriter, self).__init__()
         if isinstance(report, basestring):
-            report = prp.load(report)
-        self.report = report
+            self.report = prp.load(report)
+        else:
+            self.report = report
         # element handlers
         self.handlers = {
-            "line": self.DrawLine,
-            "rectangle": self.DrawRectangle,
-            "text": self.DrawText,
-            "barcode": self.DrawBarcode,
+            "line": self.drawLine,
+            "rectangle": self.drawRectangle,
+            "text": self.drawText,
+            "barcode": self.drawBarcode,
         }
         if Image:
             # PIL is loaded - can process images
-            self.handlers["image"] = self.DrawImage
+            self.handlers["image"] = self.drawImage
             _images = {}
-            for _element in report.findall("data"):
+            for _element in self.report.findall("data"):
                 _data = StringIO(Data.get_data(_element))
                 # data blocks may be used for other purposes too.
                 # if PIL says it's not an image, skip it.
@@ -88,7 +91,7 @@ class PdfWriter(object):
             self.named_images = _images
         _fonts = {}
         _registered = set()
-        for (_name, _font) in report.fonts.iteritems():
+        for (_name, _font) in self.report.fonts.iteritems():
             _typeface = _font.get("typeface")
             _bold = _font.get("bold")
             _italic = _font.get("italic")
@@ -269,7 +272,8 @@ class PdfWriter(object):
         return (_box.get("x"), self.pagesize[1] - _box.get("y") - _height,
             _box.get("width"), _height)
 
-    def DrawLine(self, line):
+    def drawLine(self, line):
+        """Draw a line"""
         # set line style, return if the line is not visible
         if not (self.setStrokeColor(line.get("color"))
             and self.setPen(line.get("pen"))
@@ -286,7 +290,8 @@ class PdfWriter(object):
         # draw
         self.canvas.line(_x1, _y1, _x2, _y2)
 
-    def DrawRectangle(self, rect):
+    def drawRectangle(self, rect):
+        """Draw a rectangle"""
         _stroke = self.setStrokeColor(rect.get("pencolor")) \
             and self.setPen(rect.get("pen"))
         _fill = self.setFillColor(rect.get("color"))
@@ -297,7 +302,8 @@ class PdfWriter(object):
         else:
             self.canvas.rect(*(self.getDimensions(rect) + (_stroke, _fill)))
 
-    def DrawImage(self, image):
+    def drawImage(self, image):
+        """Draw an image"""
         _scale = image.get("scale", True)
         _img = image.get("file")
         if _img:
@@ -322,7 +328,8 @@ class PdfWriter(object):
                 (0, 0, min(_width, _img_width), min(_height, _img_height)))
             self.canvas.drawImage(ImageReader(_img), _x, _y)
 
-    def DrawText(self, text):
+    def drawText(self, text):
+        """Draw a text block"""
         _content = text.find("data").text
         if not _content:
             return
@@ -376,7 +383,8 @@ class PdfWriter(object):
                 self.setWordSpace(_pad / _line.count(" "))
             _tobj.textLine(_line)
 
-    def DrawBarcode(self, barcode):
+    def drawBarcode(self, barcode):
+        """Draw Bar Code symbol"""
         _xdim = barcode.get("module") / 1000. * 72.
         _stripes = [int(_stripe) * _xdim
             for _stripe in barcode.get("stripes").split(",")]
@@ -411,6 +419,7 @@ def write(report, filepath):
     PdfWriter(report).write(filepath)
 
 def run(argv=sys.argv):
+    """Command line executable"""
     if len(argv) not in (2, 3):
         print "Usage: %s <printout> [<pdf>]" % argv[0]
         sys.exit(2)
@@ -420,8 +429,6 @@ def run(argv=sys.argv):
     else:
         _pdf = os.path.splitext(_printout)[0] + ".pdf"
     write(_printout, _pdf)
-    # XXX DEBUG: run the pdf
-    os.system(_pdf)
 
 if __name__ == "__main__":
     run()

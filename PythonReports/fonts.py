@@ -4,9 +4,8 @@
 26-sep-2006 [als]   add font paths on windows (required by reportlab)
 26-sep-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:01:34 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:46:22 $"[7:-2]
 
 __all__ = ["fontfile", "register"]
 

@@ -1,6 +1,6 @@
 """Rendering utilities for Python Imaging Library (PIL) backend"""
-
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings
 01-nov-2006 [als]   driver classes have backend name property
 05-oct-2006 [als]   use base classes for the rendering drivers
 02-oct-2006 [als]   ImageDriver: added .nullimage()
@@ -12,9 +12,8 @@
                     added TTF_NAMEs for Times New Roman and Courier New fonts
 29-aug-2006 [als]   TextDriver ported from previous implementation
 """
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/01 17:38:34 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:52:18 $"[7:-2]
 
 __all__ = ["ImageDriver", "TextDriver"]
 
@@ -40,45 +39,54 @@ class ImageDriver(drivers.ImageDriver):
 
     _image = None   # PIL image object (not for external access)
 
-    # "compute once" property, setting object type from image content
     @property
-    def type(self):
+    def img_type(self):
+        """image type, e.g. "jpeg" or "png"
+
+        This is "compute once" property,
+        setting object type from image content.
+
+        """
         _rv = self._image.format.lower()
-        self.__dict__["type"] = _rv
+        self.__dict__["img_type"] = _rv
         return _rv
 
-    # Note: type argument is not used by object factories in PIL driver.
+    # Note: img_type argument is not used by object factories in PIL driver.
 
     @classmethod
-    def fromfile(cls, filepath, type):
+    def fromfile(cls, filepath, img_type):
         """Create an image source from existing file
 
         Parameters:
             filepath: full path to the image file
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
                 (Note: not used by PIL driver.)
 
         Return value: new image wrapper object.
 
         """
+        # pylint: disable-msg=W0613
+        # W0613: Unused argument 'img_type' - the type is guessed from contents
         _rv = cls()
         _rv.filepath = filepath
         _rv._image = Image.open(filepath)
         return _rv
 
     @classmethod
-    def fromdata(cls, data, type, name=None):
+    def fromdata(cls, data, img_type, name=None):
         """Create an image source from data block
 
         Parameters:
             data: image data
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
                 (Note: not used by PIL driver.)
             name: optional name of a report block containing data
 
         Return value: new image wrapper object.
 
         """
+        # pylint: disable-msg=W0613
+        # W0613: Unused argument 'img_type' - the type is guessed from contents
         _rv = cls()
         _rv.name = name
         _rv._image = Image.open(StringIO(data))
@@ -92,48 +100,52 @@ class ImageDriver(drivers.ImageDriver):
         """
         return self._image.size
 
-    def getdata(self, type=None):
+    def getdata(self, img_type=None):
         """Return image data as string
 
         Parameters:
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
 
         """
-        if not type:
-            type = self.preferred_type
+        if not img_type:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "img_type"
+            img_type = self.preferred_type
         _buffer = StringIO()
-        self._image.save(_buffer, format=type)
+        self._image.save(_buffer, format=img_type)
         return _buffer.getvalue()
 
-    def scale(self, width, height, type=None):
+    def scale(self, width, height, img_type=None):
         """Return a scaled image
 
         Parameters:
             width: target image width
             height: target image height
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
 
         """
-        if not type:
-            type = self.preferred_type
+        if not img_type:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "img_type"
+            img_type = self.preferred_type
         _img = self._image.resize((width, height), Image.ANTIALIAS)
         _buffer = StringIO()
-        _img.save(_buffer, format=type)
+        _img.save(_buffer, format=img_type)
         return _buffer.getvalue()
 
-    def _cut(self, width, height, type):
+    def _cut(self, width, height, img_type):
         """Return an image cut to dimensions
 
         Parameters:
             width: target image width
             height: target image height
-            type: image type, e.g. "jpeg" or "gif"
+            img_type: image type, e.g. "jpeg" or "gif"
 
         Return value: image data as string.
 
@@ -145,7 +157,7 @@ class ImageDriver(drivers.ImageDriver):
         """
         _img = self._image.crop((0, 0, width, height))
         _buffer = StringIO()
-        _img.save(_buffer, format=type)
+        _img.save(_buffer, format=img_type)
         return _buffer.getvalue()
 
 class TextDriver(drivers.TextDriver):

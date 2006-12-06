@@ -1,15 +1,15 @@
 #! /usr/bin/env python
 """Tk output for PythonReports"""
-
 """History (most recent first):
+05-dec-2006 [als]   fix errors and some warnings reported by pylint
 07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
 12-oct-2006 [als]   added zoom
 12-oct-2006 [als]   added page controls and panning on right mouse
 10-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/07 13:32:02 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2006/12/06 17:02:22 $"[7:-2]
 
 __all__ = []
 
@@ -38,17 +38,18 @@ class Painter(object):
             report: PRP file name or ElementTree with loaded report printout
 
         """
-        if isinstance(report, basestring):
-            report = prp.load(report)
         super(Painter, self).__init__()
-        self.report = report
-        self.pages = report.findall("page")
+        if isinstance(report, basestring):
+            self.report = prp.load(report)
+        else:
+            self.report = report
+        self.pages = self.report.findall("page")
         # element handlers
         self.handlers = {
-            "line": self.DrawLine,
-            "rectangle": self.DrawRectangle,
-            "text": self.DrawText,
-            "barcode": self.DrawBarcode,
+            "line": self.drawLine,
+            "rectangle": self.drawRectangle,
+            "text": self.drawText,
+            "barcode": self.drawBarcode,
         }
         try:
             self.image_driver = drivers.get_driver("Image")
@@ -57,10 +58,10 @@ class Painter(object):
             self.image_driver = None
         else:
             # can process images
-            self.handlers["image"] = self.DrawImage
+            self.handlers["image"] = self.drawImage
             self.named_images = {}
         _fonts = {}
-        for (_name, _font) in report.fonts.iteritems():
+        for (_name, _font) in self.report.fonts.iteritems():
             _modifiers = []
             if _font.get("bold"):
                 _modifiers.append("bold")
@@ -107,10 +108,11 @@ class Painter(object):
         # set the scale and compute scaled font sizes
         if scale < .1:
             # zoom to less than 10% is disallowed
-            scale = .1
-        self.scale = scale
+            self.scale = .1
+        else:
+            self.scale = scale
         self.scaled_fonts = dict([
-            (_name, (_face, max(1, int(round(_size * scale))), _options))
+            (_name, (_face, max(1, int(round(_size * self.scale))), _options))
             for (_name, (_face, _size, _options)) in self.fonts.iteritems()])
         # draw elements
         for _item in _page:
@@ -162,14 +164,16 @@ class Painter(object):
         return tuple(dimension(_dim * self.scale)
             for _dim in (_box.left, _box.top, _box.right, _box.bottom))
 
-    def DrawLine(self, canvas, line):
+    def drawLine(self, canvas, line):
+        """Draw a line"""
         (_x0, _y0, _x1, _y1) = self.getDimensions(line)
         if not line.get("backslant"):
             (_y0, _y1) = (_y1, _y0)
         canvas.create_line(_x0, _y0, _x1, _y1, fill=str(line.get("color")),
             **self._lineattrs(line.get("pen")))
 
-    def DrawRectangle(self, canvas, rect):
+    def drawRectangle(self, canvas, rect):
+        """Draw a rectangle"""
         _options = {"outline": str(rect.get("pencolor"))}
         _options.update(self._lineattrs(rect.get("pen")))
         _color = rect.get("color")
@@ -177,10 +181,15 @@ class Painter(object):
             _options["fill"] = str(_color)
         canvas.create_rectangle(*self.getDimensions(rect), **_options)
 
-    def _get_named_image(self, name, type):
+    def _get_named_image(self, name, img_type):
         """Return an image loaded from a named data element"""
+        # pylint: disable-msg=W0631,W0704
+        # W0631: Using possibly undefined loop variable '_element' -
+        #   if the loop didn't run, raise error before the variable is used
+        # W0704: Except doesn't do anything - if the image was
+        #   not loaded yet, it will be handled after try/except block.
         try:
-            return self.named_images[(name, type)]
+            return self.named_images[(name, img_type)]
         except KeyError:
             pass
         for _element in self.report.findall("data"):
@@ -188,11 +197,12 @@ class Painter(object):
                 break
         else:
             raise KeyError("data element with name=%r cannot be found" % name)
-        _img = self.image_driver.fromdata(Data.get_data(_element), type)
-        self.named_images[(name, type)] = _img
+        _img = self.image_driver.fromdata(Data.get_data(_element), img_type)
+        self.named_images[(name, img_type)] = _img
         return _img
 
-    def DrawImage(self, canvas, image):
+    def drawImage(self, canvas, image):
+        """Draw an image"""
         _type = image.get("type")
         _img = image.get("file")
         if _img:
@@ -210,13 +220,15 @@ class Painter(object):
         _height = canvas.winfo_pixels(
             dimension(_box.get("height") * self.scale))
         # data for PhotoImage must be base64-encoded gif
-        _data = _img.resize(_width, _height, image.get("scale"), type="gif")
+        _data = _img.resize(_width, _height, image.get("scale"),
+            img_type="gif")
         _img = PhotoImage(data=base64.b64encode(_data))
         canvas.printout_images.append(_img)
         canvas.create_image(anchor=NW, image=_img,
             *self.getDimensions(image)[:2])
 
-    def DrawText(self, canvas, text):
+    def drawText(self, canvas, text):
+        """Draw a text block"""
         _content = text.find("data").text
         if not _content:
             return
@@ -226,6 +238,9 @@ class Painter(object):
             "fill": str(text.get("color")),
         }
         if "\n" in _content:
+            # pylint: disable-msg=W0704
+            # W0704: Except doesn't do anything - if justify code is unknown,
+            #   we just ignore it (resulting in left-justified text).
             # can use Tk text justify
             try:
                 _options["justify"] = {
@@ -251,7 +266,8 @@ class Painter(object):
                 _x = _box.left
             canvas.create_text(dimension(_x), dimension(_box.top), **_options)
 
-    def DrawBarcode(self, canvas, barcode):
+    def drawBarcode(self, canvas, barcode):
+        """Draw Bar Code symbol"""
         _xdim = barcode.get("module") / 1000. * 72.
         _stripes = [int(_stripe) * _xdim * self.scale
             for _stripe in barcode.get("stripes").split(",")]
@@ -281,6 +297,8 @@ class Painter(object):
 class PreviewWidget(Frame):
 
     """Printout display widget"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - from base class
 
     PAGE_PADDING = 10 # padding around the page on the preview canvas
 
@@ -298,8 +316,10 @@ class PreviewWidget(Frame):
         """
         Frame.__init__(self, master, class_="PythonReportsWidget", **options)
         if isinstance(report, basestring):
-            report = prp.load(report)
-        self.painter = Painter(report)
+            self.report = prp.load(report)
+        else:
+            self.report = report
+        self.painter = Painter(self.report)
         self.pageno = 1
         self.pagevar = StringVar()
         self.scale = 1.0
@@ -385,21 +405,22 @@ class PreviewWidget(Frame):
         """
         # make sure pageno is in range
         _pagecount = self.painter.pagecount()
-        if pageno < 0:
-            pageno += _pagecount
-        if pageno > _pagecount:
-            pageno = _pagecount
-        elif pageno < 1:
-            pageno = 1
+        _pageno = pageno # don't update argument to make pylint happy
+        if _pageno < 0:
+            _pageno += _pagecount
+        if _pageno > _pagecount:
+            _pageno = _pagecount
+        elif _pageno < 1:
+            _pageno = 1
         # enable/disable navigation buttons
-        if pageno == 1:
+        if _pageno == 1:
             self.button_first["state"] = DISABLED
             self.button_prev["state"] = DISABLED
         elif self.pageno == 1:
             # previous state was DISABLED
             self.button_first["state"] = NORMAL
             self.button_prev["state"] = NORMAL
-        if pageno == _pagecount:
+        if _pageno == _pagecount:
             self.button_next["state"] = DISABLED
             self.button_last["state"] = DISABLED
         elif self.pageno == _pagecount:
@@ -409,7 +430,7 @@ class PreviewWidget(Frame):
         _canvas = self.canvas
         _canvas.delete("ALL")
         # update canvas dimensions
-        (_width, _height) = self.painter.pagesize(pageno - 1)
+        (_width, _height) = self.painter.pagesize(_pageno - 1)
         _width *= self.scale
         _height *= self.scale
         _canvas["scrollregion"] = tuple(map(dimension, (
@@ -418,37 +439,45 @@ class PreviewWidget(Frame):
         # display the page
         _canvas.create_rectangle(0, 0, dimension(_width), dimension(_height),
             fill="white", width="1p")
-        self.painter.paint(_canvas, pageno - 1, self.scale)
+        self.painter.paint(_canvas, _pageno - 1, self.scale)
         _canvas.addtag_all("ALL")
         # update state
-        self.pageno = pageno
-        self.pagevar.set(str(pageno))
+        self.pageno = _pageno
+        self.pagevar.set(str(_pageno))
 
     def OnButtonFirst(self):
+        """Go to the first page"""
         self.ShowPage(1)
 
     def OnButtonPrev(self):
+        """Go to previous page"""
         self.ShowPage(self.pageno - 1)
 
     def OnButtonNext(self):
+        """Go to next page"""
         self.ShowPage(self.pageno + 1)
 
     def OnButtonLast(self):
+        """Go to the last page"""
         self.ShowPage(self.painter.pagecount())
 
     def OnPageNumber(self, event):
+        """Go to the specified page number"""
         _value = self.pagevar.get()
         event.widget.select_range(0, len(_value))
         self.ShowPage(int(_value))
 
     def OnBeginDrag(self, event):
+        """Start dragging the image"""
         self.canvas["cursor"] = "fleur"
         self.canvas.scan_mark(event.x, event.y)
 
     def OnDrag(self, event):
+        """Drag the preview image"""
         self.canvas.scan_dragto(event.x, event.y)
 
     def OnEndDrag(self, event):
+        """End preview dragging"""
         self.canvas["cursor"] = ""
 
     def _get_zoom_value(self):
@@ -457,11 +486,14 @@ class PreviewWidget(Frame):
         If entry value is not valid, return current zoom level.
 
         """
+        # pylint: disable-msg=W0702
+        # W0702: No exception's type specified
+        #   i wonder what type of exception can occur here?
         _val = self.zoomvar.get().replace("%", "")
         try:
             return int(_val)
         except:
-            return self.zoom
+            return int(self.scale * 100)
 
     def OnZoomSpin(self, direction):
         """Change zoom level by 10% up or down"""
@@ -473,6 +505,7 @@ class PreviewWidget(Frame):
         self.Zoom(_z10 * 10)
 
     def OnZoomEntry(self, event):
+        """Zoom to entered value"""
         self.Zoom(self._get_zoom_value())
 
     def Zoom(self, percentage):
@@ -483,6 +516,8 @@ class PreviewWidget(Frame):
 
         """
         if percentage < 10:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "percentage"
             percentage = 10
         self.scale = percentage / 100.
         self.zoomvar.set("%i%%" % percentage)
@@ -491,6 +526,8 @@ class PreviewWidget(Frame):
 class PreviewWindow(Toplevel):
 
     """Toplevel window displaying a printout"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - from base class
 
     def __init__(self, report, title=None, **options):
         """Create the window
@@ -502,10 +539,14 @@ class PreviewWindow(Toplevel):
 
         """
         if isinstance(report, basestring):
+            # pylint: disable-msg=C0103
+            # C0103: Invalid names "report", "title"
             if title is None:
                 title = report
             report = prp.load(report)
         elif title is None:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "title"
             title = "Report Printout"
         Toplevel.__init__(self, class_="PythonReportsWindow", **options)
         self.title(title)
@@ -513,6 +554,7 @@ class PreviewWindow(Toplevel):
         _preview.pack(fill=BOTH, expand=1)
 
 def run(argv=sys.argv):
+    """Command line executable"""
     if len(argv) != 2:
         print "Usage: %s <printout>" % argv[0]
         sys.exit(2)

@@ -4,6 +4,7 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+06-dec-2006 [als]   fix: box attributes not updated
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
 07-Nov-2006 [phd]   Added shebang.
 04-nov-2006 [als]   added About dialog
@@ -39,8 +40,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.12 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:35:20 $"[7:-2]
+__version__ = "$Revision: 1.13 $"[11:-2]
+__date__ = "$Date: 2006/12/06 18:24:52 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -722,6 +723,7 @@ class TreeNodeData(list):
 
         """
         _element = self.element
+        _box = _element.find("box")
         for _prop in self.properties:
             _val = _prop.var.get()
             try:
@@ -730,7 +732,10 @@ class TreeNodeData(list):
                 if errors == "strict":
                     raise AttributeConversionError(_prop.name, _val, _err,
                         element=_element, path=self.path)
-            _element.set(_prop.name, _val)
+            if (_box is not None) and (_prop.name in Box.__slots__):
+                _box.set(_prop.name, _val)
+            else:
+                _element.set(_prop.name, _val)
         if recursive:
             for _child in self:
                 _child.updateProperties(recursive=True, errors=errors)

@@ -5,6 +5,7 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+05-dec-2006 [als]   sweep pylint warnings
 04-nov-2006 [als]   added text driver backend "Tk";
                     have different backend lists for texts and images
 03-nov-2006 [als]   fix image drivers loading (broken in revision 1.3)
@@ -14,9 +15,8 @@ and exports API function `get_driver`, used to get a driver implementation.
 11-oct-2006 [als]   fix variable name in ImageDriver.resize
 05-oct-2006 [als]   created
 """
-
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/11/04 14:24:01 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2006/12/06 16:40:34 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -31,26 +31,26 @@ PIXEL = '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00' \
 _image_drivers = {}
 _text_drivers = {}
 
-def get_driver(type, backend=None):
+def get_driver(driver_type, backend=None):
     """Return a rendering driver
 
     Parameters:
-        type: "Text" or "Image"
+        driver_type: "Text" or "Image"
         backend: optional name of preferred backend,
             like "PIL" or "wx".  If omitted or None,
             use system preference.
 
     """
-    if type == "Text":
+    if driver_type == "Text":
         _drivers = _text_drivers
-    elif type == "Image":
+    elif driver_type == "Image":
         _drivers = _image_drivers
     else:
-        raise ValueError("Invalid driver type: %r" % type)
+        raise ValueError("Invalid driver type: %r" % driver_type)
     # if this is the first call for selected driver type,
     # load all available drivers
     if not _drivers:
-        if type == "Image":
+        if driver_type == "Image":
             # Use ImageDriver class from this module as dummy fallback driver
             # (will be overwritten as soon as any actual driver is found).
             # This will raise NotImplementdedError when the first image
@@ -70,15 +70,17 @@ def get_driver(type, backend=None):
         for _backend in _backends:
             _vars = {}
             try:
+                # pylint: disable-msg=W0122
+                # W0122: Use of the exec statement
                 exec("from PythonReports.%sDrivers import %sDriver as Driver"
-                    % (_backend, type), _vars)
+                    % (_backend, driver_type), _vars)
             except ImportError:
                 continue
             else:
                 _driver = _vars["Driver"]
                 _drivers[_backend] = _driver
         if _driver is None:
-            raise RuntimeError("No %s driver found" % type)
+            raise RuntimeError("No %s driver found" % driver_type)
         # last loaded driver is used by default
         _drivers[None] = _driver
     try:
@@ -104,7 +106,7 @@ class ImageDriver(object):
     backend = None  # backend name, must be set in child classes
     filepath = None # set when loaded from disk file
     name = None     # name of data block
-    type = None     # image type, e.g. "jpeg" or "png"
+    img_type = None # image type, e.g. "jpeg" or "png"
     use_count = 0   # number of references to this source, set/read by builder
 
     @property
@@ -115,18 +117,18 @@ class ImageDriver(object):
         Otherwise return png (preferred lossless storage format).
 
         """
-        if self.type.lower() in ("jpeg", "jpg"):
+        if self.img_type.lower() in ("jpeg", "jpg"):
             return "jpeg"
         else:
             return "png"
 
     @classmethod
-    def fromfile(cls, filepath, type):
+    def fromfile(cls, filepath, img_type):
         """Create an image source from existing file
 
         Parameters:
             filepath: full path to the image file
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
 
         Return value: new image wrapper object.
 
@@ -134,12 +136,12 @@ class ImageDriver(object):
         raise NotImplementedError
 
     @classmethod
-    def fromdata(cls, data, type, name=None):
+    def fromdata(cls, data, img_type, name=None):
         """Create an image source from data block
 
         Parameters:
             data: image data
-            type: image type, e.g. "jpeg" or "png"
+            img_type: image type, e.g. "jpeg" or "png"
             name: optional name of a report block containing data
 
         Return value: new image wrapper object.
@@ -160,11 +162,11 @@ class ImageDriver(object):
         """
         raise NotImplementedError
 
-    def getdata(self, type=None):
+    def getdata(self, img_type=None):
         """Return image data as string
 
         Parameters:
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
@@ -172,13 +174,13 @@ class ImageDriver(object):
         """
         raise NotImplementedError
 
-    def scale(self, width, height, type=None):
+    def scale(self, width, height, img_type=None):
         """Return a scaled image
 
         Parameters:
             width: target image width
             height: target image height
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
@@ -186,13 +188,13 @@ class ImageDriver(object):
         """
         raise NotImplementedError
 
-    def _cut(self, width, height, type):
+    def _cut(self, width, height, img_type):
         """Return an image cut to dimensions
 
         Parameters:
             width: target image width
             height: target image height
-            type: image type, e.g. "jpeg" or "gif"
+            img_type: image type, e.g. "jpeg" or "gif"
 
         Return value: image data as string.
 
@@ -204,13 +206,13 @@ class ImageDriver(object):
         """
         raise NotImplementedError
 
-    def cut(self, width, height, type=None):
+    def cut(self, width, height, img_type=None):
         """Return an image cut to dimensions
 
         Parameters:
             width: target image width
             height: target image height
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
@@ -223,12 +225,15 @@ class ImageDriver(object):
         do not support transparency).
 
         """
-        if not type:
-            type = self.preferred_type
-        (_my_width, _my_height) = self._image.size
-        return self._cut(min(width, _my_width), min(height, _my_height), type)
+        if not img_type:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "img_type"
+            img_type = self.preferred_type
+        (_my_width, _my_height) = self.getsize()
+        return self._cut(min(width, _my_width), min(height, _my_height),
+            img_type)
 
-    def resize(self, width, height, scale=False, type=None):
+    def resize(self, width, height, scale=False, img_type=None):
         """Return resized image
 
         Parameters:
@@ -236,24 +241,26 @@ class ImageDriver(object):
             height: target image height
             scale: if False (default), the image is cut to given size.
                 If True, the image is scaled to the size.
-            type: optional image type, e.g. "jpeg" or "gif".
+            img_type: optional image type, e.g. "jpeg" or "gif".
                 Default: preferred output type (jpeg or png).
 
         Return value: image data as string.
             Returned image may be smaller than requested size.
 
         """
-        if not type:
-            type = self.preferred_type
+        if not img_type:
+            # pylint: disable-msg=C0103
+            # C0103: Invalid name "img_type"
+            img_type = self.preferred_type
         (_my_width, _my_height) = self.getsize()
         if (width == _my_width) and (height == _my_height):
             # own size is ok
             _rv = self.getdata()
         elif scale:
             # may adjust to any size
-            _rv = self.scale(width, height, type=type)
-        elif (width > _my_width) or (heigth > _my_height):
-            _rv = self.cut(width, height, type=type)
+            _rv = self.scale(width, height, img_type=img_type)
+        elif (width > _my_width) or (height > _my_height):
+            _rv = self.cut(width, height, img_type=img_type)
         else:
             # should cut, but the image is smaller than cut frame
             _rv = self.getdata()
@@ -280,6 +287,8 @@ class TextDriver(object):
             font: report font definition (element instance)
 
         """
+        # pylint: disable-msg=W0613
+        # W0613: Unused argument 'font'
         super(TextDriver, self).__init__()
 
     def getsize(self, text):
@@ -350,11 +359,14 @@ class TextDriver(object):
 
         Return value: 2-element tuple (width, height).
         Returned width is less than or equal to passed width.
-        Returned height may by less than or greater than passed height.
+        Returned height may be less than or greater than passed height.
 
         """
+        # pylint: disable-msg=W0613
+        # W0613: Unused argument 'height'
         if width > 0:
-            text = self.wrap(text, width)
-        return self.getsize(text)
+            return self.getsize(self.wrap(text, width))
+        else:
+            return self.getsize(text)
 
 # vim: set et sts=4 sw=4 :

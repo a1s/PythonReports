@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
 """History:
+07-dec-2006 [als]   added Rectangle.opaque
 07-dec-2006 [als]   removed "transparent" attribute of the "box" element
 05-dec-2006 [als]   style: imports come after version, date and exports;
                     sweep pylint warnings
@@ -19,8 +20,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/07 12:50:44 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/12/07 13:08:40 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -154,6 +155,7 @@ Rectangle = Validator(tag="rectangle",
     attributes={
         "pen": (PenType, REQUIRED),
         "radius": (Dimension, 0),
+        "opaque": (Boolean, True),
     }, children=(
         (Box, Validator.ZERO_OR_ONE),
         (Style, Validator.UNRESTRICTED),

@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 """PDF output for PythonReports"""
 """History (most recent first):
+07-dec-2006 [als]   fix: diagonal lines were offset down by the box height
 05-dec-2006 [als]   sweep pylint warnings;
                     remove pdf autostart (can be easily done in command line)
 07-Nov-2006 [phd]   Added shebang.
@@ -12,8 +13,8 @@
                     center texts vertically within their bounding boxes
 25-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:48:56 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/12/07 12:21:50 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 
@@ -283,10 +284,10 @@ class PdfWriter(object):
         (_x1, _y1, _width, _height) = self.getDimensions(line)
         _x2 = _x1 + _width
         if line.get("backslant"):
-            _y2 = _y1 - _height
-        else:
             _y2 = _y1
-            _y1 = _y2 - _height
+            _y1 = _y2 + _height
+        else:
+            _y2 = _y1 + _height
         # draw
         self.canvas.line(_x1, _y1, _x2, _y2)
 

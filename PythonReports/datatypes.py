@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+07-dec-2006 [als]   fix decoding of qp-encoded data
 05-dec-2006 [als]   sweep pylint warnings
 03-nov-2006 [als]   ElementTree: string conversion returns full XML text
 20-oct-2006 [als]   added Structure
@@ -27,8 +28,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:22:48 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/12/07 19:29:26 $"[7:-2]
 
 import binascii
 import bz2
@@ -1149,7 +1150,10 @@ class _DataBlock(Validator):
         elif _encoding == "uu":
             _data = binascii.a2b_uu(_data)
         elif _encoding == "qp":
-            _data = binascii.b2a_qp(_data, True, False)
+            # .write() adds blank space to encoded data.
+            # it must be stripped here or it will be
+            # escaped on repeated write
+            _data = binascii.a2b_qp(_data.strip())
         _compress = element.get("compress")
         if _compress == "zlib":
             _data = zlib.decompress(_data)

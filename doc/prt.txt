@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.1.0
-:Date: 20-oct-2006
+:Version: 0.3.0
+:Date: 07-dec-2006
 
 .. TODO: variables iterated at start of section;
          groups have title/summary instead of header/footer
@@ -420,7 +420,6 @@ Attributes:
                                   `image`_ and `barcode`_ elements:
                                   ``top``, ``bottom`` or ``center``.
                                   Default: ``bottom``.
-``transparent``    O    boolean   If set to False, the box is opaque.
 ================= ===== ========= ======================================
 
 .. Note: ``valign`` defaults to ``bottom`` to align in line texts

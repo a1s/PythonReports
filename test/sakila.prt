@@ -208,6 +208,15 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
     <rectangle pen="0">
      <style printwhen="PAGE_COUNT % 2" />
     </rectangle>
+    <!--
+     Note: color setting style and rectangle may be combined like this:
+
+      <rectangle pen="0">
+       <style bgcolor="#F3EDE7" printwhen="PAGE_COUNT % 2" />
+      </rectangle>
+
+     They are left separate to run through different branches of processing.
+    -->
     <field expr="film['title']" stretch="true">
      <box height="10" width="35mm" />
     </field>

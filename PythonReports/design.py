@@ -4,6 +4,8 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+07-dec-2006 [als]   CodeSelection: always have an empty value in the list;
+                    edit data block contents
 07-dec-2006 [als]   write printouts
 06-dec-2006 [als]   rebuild insertion menu each time selected node tag changes:
                     prebuilt menu reuse didn't work reliably
@@ -43,8 +45,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.15 $"[11:-2]
-__date__ = "$Date: 2006/12/07 11:17:27 $"[7:-2]
+__version__ = "$Revision: 1.16 $"[11:-2]
+__date__ = "$Date: 2006/12/07 19:48:09 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -339,6 +341,10 @@ class CodeSelection(ComboBox):
         # W0102: Dangerous default value {} as argument - that's Tk
         self.values = kw.pop("values", ())
         ComboBox.__init__(self, master=master, cnf=cnf, **kw)
+        # we always allow empty value here.
+        # tree validation will check for mandatory attributes elsewhere
+        if "" not in self.values:
+            self.insert("end", "")
         for _val in self.values:
             self.insert("end", _val)
         _designer = self.winfo_toplevel()
@@ -537,6 +543,135 @@ class PropertyEditor(object):
             cls.FACTORIES[value] = _rv
         return _rv
 
+class DataBlockEditor(Frame):
+
+    """PropertyEditor-alike editor for data block contents"""
+
+    # Same As in PropertyEntry
+    if os.name == "nt":
+        LPAD = 3
+    else:
+        LPAD = 7
+
+    def __init__(self, data, master=None, cnf={}, **kw):
+        """Create editor frame
+
+        Parameters:
+            data: editor data object.  must have following properties:
+                node: containing TreeNodeData object
+                contents: data block contents
+                filename: keeps the name of load/save file
+                    across instantiations
+                filepath: ditto, for default file directory
+
+        """
+        # pylint: disable-msg=W0102
+        Frame.__init__(self, master, cnf, **kw)
+        _toplevel = self.winfo_toplevel()
+        self["background"] = _toplevel.color_panel
+        self._ = self.winfo_toplevel()._
+        self.data = data
+        # layout
+        Frame(self, width=self.LPAD).pack(side=LEFT)
+        _btn_frame = Frame(self)
+        _btn_frame.pack(side=TOP)
+        self.btn_load = Button(_btn_frame, text=self._("Load File..."),
+            command=self.loadFile)
+        self.btn_load.pack(side=LEFT, padx=2)
+        self.btn_save = Button(_btn_frame, text=self._("Save File..."),
+            command=self.saveFile)
+        self.btn_save.pack(side=LEFT, padx=2)
+        self.text = Text(self, background=_toplevel.color_window)
+        self.updateState()
+        self.bind("<FocusIn>", lambda event: self.updateState())
+        self.bind("<FocusOut>", lambda event: self.textToContents())
+
+    def isBinary(self):
+        """Return True if data contents seem to be binary
+
+        If the element has non-empty compression or encoding,
+        the data is not editable in the text window.
+
+        WARNING: the caller must ensure that element attributes
+        are updated from peer property editors.
+
+        """
+        _element = self.data.node.element
+        return bool(_element.get("compress") or _element.get("encoding"))
+
+    def textToContents(self):
+        """If data is textual, update data contents from the text window"""
+        if not self.isBinary():
+            # the text widget adds one line feed,
+            # but i'd like to trim all trailing space
+            self.data.contents = self.text.get("1.0", "end").rstrip()
+
+    def updateState(self):
+        """Set text contents and visibility, disable save if text is empty"""
+        self.data.node.updateAttributes()
+        _text = self.text
+        _binary_data = self.isBinary()
+        if _binary_data:
+            _text.pack_forget()
+        else:
+            _text.pack_configure(side=LEFT, fill=X)
+            if self.data.contents != _text.get("1.0", "end"):
+                _text.delete("1.0", "end")
+                _text.insert("1.0", self.data.contents or "")
+                _text.mark_set("insert", "1.0")
+                _text.mark_set("sel_first", "1.0")
+                _text.mark_set("sel_last", "end")
+        # disable save button if data is empty
+        self.btn_save["state"] = ("disabled", "normal")[not _binary_data
+            or bool(self.data.contents)]
+
+    def loadFile(self):
+        """Load file contents into the variable"""
+        _filename = tkFileDialog.askopenfilename(
+            initialfile=self.data.filename,
+            initialdir=(self.data.filepath or os.getcwd()),
+            filetypes=[(self._("All Files"), "*")])
+        if not _filename:
+            return
+        _binary_data = self.isBinary()
+        _file = open(_filename, ("rU", "rb")[_binary_data])
+        _contents = _file.read()
+        _file.close()
+        if not _binary_data:
+            # FIXME: encoding should be designer property (probably changeable)
+            _contents = _contents.decode("utf-8")
+        self.data.contents = _contents
+        self.setFileName(_filename)
+        self.updateState()
+
+    def saveFile(self):
+        """Save variable contents to disk file"""
+        _filename = tkFileDialog.asksaveasfilename(
+            initialfile=self.data.filename,
+            initialdir=(self.data.filepath or os.getcwd()),
+            filetypes=[(self._("All Files"), "*")])
+        if not _filename:
+            return
+        if self.isBinary():
+            _file_mode = "wb"
+            _contents = self.data.contents
+        else:
+            self.textToContents()
+            _file_mode = "wt"
+            # FIXME: encoding should be designer property (probably changeable)
+            _contents = unicode(self.data.contents).encode("utf-8")
+            # add terminating newline for conveninence
+            _contents += "\n"
+        _file = open(_filename, _file_mode)
+        _file.write(_contents)
+        _file.close()
+        self.setFileName(_filename)
+
+    def setFileName(self, filename):
+        """Update default file path after successful load or save"""
+        self.data.filename = filename
+        self.data.filepath = os.path.dirname(filename)
+
 # data objects
 
 class PropertyData(Structure):
@@ -639,17 +774,34 @@ class TreeNodeData(list):
                 self.append(TreeNodeData(self, nodeid=_id,
                     element=_child, validator=_child_validators[_tag]))
         # attribute edit support
+        self.properties = self._build_properties()
+        # if this is data element, make a structure for contents editing
+        if self.tag == "data":
+            self.data = PropertyData(node=self,
+                contents=Data.get_data(self.element),
+                filename="", filepath="")
+        else:
+            self.data = None
+
+    def _build_properties(self):
+        """Return a sorted tuple of PropertyData objects
+
+        This is part of the TreeNodeData initialization.
+
+        """
         _properties = []
-        for (_name, (_cls, _default)) in validator.attributes.iteritems():
+        for (_name, (_cls, _default)) in self.validator.attributes.iteritems():
             _properties.append(PropertyData(name=_name, type=_cls,
-                default=_default, element=element, box=False))
+                default=_default, element=self.element, box=False))
         if self.is_printable or self.is_section:
             # we need a box element.  if there's no box, add default one
-            _box = element.find("box")
+            _box = self.element.find("box")
             _box_attrs = prt.Box.attributes
             if _box is None:
-                _box = SubElement(element, "box", attrib=dict((_name, _default)
-                    for (_name, (_cls, _default)) in _box_attrs.iteritems()))
+                _box = SubElement(self.element, "box",
+                    attrib=dict((_name, _default)
+                        for (_name, (_cls, _default))
+                        in _box_attrs.iteritems()))
             if self.is_printable:
                 for (_name, (_cls, _default)) in _box_attrs.iteritems():
                     _properties.append(PropertyData(name=_name, type=_cls,
@@ -670,15 +822,14 @@ class TreeNodeData(list):
             else:
                 _val = unicode(_val)
             _prop.var.set(_val)
-            # TODO: it is possible to add a write callback to the var
+            # TODO? it is possible to add a write callback to the var
             # and update the element attribute as soon as the value
             # is changed in the editor.
             _prop.widget = PropertyEditor.forType(_prop.type)
             _prop.mandatory = _prop.default is REQUIRED
         _properties.sort(
             key=lambda prop: (prop.box, not prop.mandatory, prop.name))
-        # XXX does the properties container need to be a dictionary?
-        self.properties = tuple(_properties)
+        return tuple(_properties)
 
     def addToTree(self, tree, before=None):
         """Create a subtree from this data
@@ -717,16 +868,27 @@ class TreeNodeData(list):
             _win = _prop.widget(_prop.var, hlist, background=_window_color)
             hlist.item_create(_prop.name, 1, itemtype=WINDOW, window=_win,
                 style=self.PROP_VALUE_STYLE)
+        # if this is a data element, add nonstandard controls
+        if self.data:
+            hlist.add("data")
+            _win = DataBlockEditor(self.data, hlist, background=_window_color)
+            hlist.item_create("data", 1, itemtype=WINDOW, window=_win,
+                style=self.PROP_VALUE_STYLE)
         # grow the first column if needed
         _col_width = max(_col_width, int(hlist.column_width(0)))
         hlist.column_width(0, _col_width)
 
-    def updateProperties(self, recursive=False, errors="strict"):
-        """Load property values from Tkinter variables
+    def updateAttributes(self, errors="ignore"):
+        """Load element attributes from edit variables
 
         Parameters:
-            recursive: if set, also update children
             errors: error handling scheme: "strict" or "ignore".
+
+        Unlike updateProperties method (defined below),
+        updateAttributes sets only attributes of current
+        node element and its' box.  It does not touch
+        contents for data elements and never descends
+        down the tree.
 
         """
         _element = self.element
@@ -739,10 +901,27 @@ class TreeNodeData(list):
                 if errors == "strict":
                     raise AttributeConversionError(_prop.name, _val, _err,
                         element=_element, path=self.path)
-            if (_box is not None) and (_prop.name in Box.__slots__):
+            if _prop.box:
+                # the box must be valid element - created in __init__ if needed
                 _box.set(_prop.name, _val)
             else:
                 _element.set(_prop.name, _val)
+
+    def updateProperties(self, recursive=False, errors="strict"):
+        """Load property values from Tkinter variables
+
+        Parameters:
+            recursive: if set, also update children
+            errors: error handling scheme: "strict" or "ignore".
+
+        """
+        self.updateAttributes()
+        if self.data:
+            _parent = self.parent.element
+            _new = Data.make_element(_parent,
+                self.element.attrib, self.data.contents)
+            _parent.remove(self.element)
+            self.element = _new
         if recursive:
             for _child in self:
                 _child.updateProperties(recursive=True, errors=errors)

@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+07-dec-2006 [als]   support rectangle opacity
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
 04-nov-2006 [als]   Builder: delay text_drivers initialization until run,
                         added backend selection parameters for __init__
@@ -57,8 +58,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:13:37 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/12/07 13:11:06 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -833,7 +834,8 @@ class Section(list):
                 _attrib["color"] = _element.style["color"]
             elif _prp_tag == "rectangle":
                 _attrib["pencolor"] = _element.style["color"]
-                _attrib["color"] = _element.style["bgcolor"]
+                if _template.get("opaque"):
+                    _attrib["color"] = _element.style["bgcolor"]
             elif _prp_tag == "barcode":
                 _attrib["stripes"] = ",".join([str(_stripe)
                     for _stripe in _element.stripes])

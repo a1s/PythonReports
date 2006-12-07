@@ -4,6 +4,7 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+07-dec-2006 [als]   write printouts
 06-dec-2006 [als]   rebuild insertion menu each time selected node tag changes:
                     prebuilt menu reuse didn't work reliably
 06-dec-2006 [als]   fix: box attributes not updated
@@ -42,8 +43,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.14 $"[11:-2]
-__date__ = "$Date: 2006/12/06 19:26:57 $"[7:-2]
+__version__ = "$Revision: 1.15 $"[11:-2]
+__date__ = "$Date: 2006/12/07 11:17:27 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -66,6 +67,10 @@ from PythonReports import template as prt, printout as prp
 from PythonReports.builder import Builder
 from PythonReports.datatypes import *
 from PythonReports.Tk import PreviewWindow
+try:
+    from PythonReports import pdf
+except ImportError:
+    pdf = None
 
 NEW_REPORT_TEMPLATE = """<report>
  <font name="body" typeface="Arial" size="8" />
@@ -948,6 +953,8 @@ class Designer(Toplevel):
             command=self.OnMenuMoveDown)
         _popup.add_separator()
         self._build_menu_item(_popup, ''"Print Pre_view", command=self.preview)
+        self._build_menu_item(_popup, ''"_Write Printout...",
+            command=self.printout)
         # Help menu
         _popup = self._build_menu_item(_menu, ''"_Help", item_type="cascade")
         self._build_menu_item(_popup, ''"_About...", command=self.OnMenuAbout)
@@ -1558,10 +1565,14 @@ class Designer(Toplevel):
         _root = tree.getroot()
         validator(tree, _root, "/" + _root.tag)
 
-    def _run_preview(self):
-        """Build and show the report"""
+    def _get_report_data(self):
+        """Return data sequence for report preview or output
+
+        If the report cannot be run, return None
+
+        """
         if not self.updateTree():
-            return
+            return None
         # message boxes take focus away.  remember currently focused widget
         # to regain the focus after message display.
         _focus = self.focus_get()
@@ -1581,7 +1592,7 @@ class Designer(Toplevel):
                 )
             if _msg.show() != "ok":
                 _focus.focus_set()
-                return
+                return None
             _data = ()
         else:
             if not _data:
@@ -1596,9 +1607,16 @@ class Designer(Toplevel):
                             "Please set \"data\" variable in the shell"
                         )).show()
                     _focus.focus_set()
-                    return
+                    return None
                 _data = ()
         _focus.focus_set()
+        return _data
+
+    def _run_preview(self):
+        """Build and show the report"""
+        _data = self._get_report_data()
+        if _data is None:
+            return
         # build printout tree
         # Note: it is best to use same backend for both building and rendering.
         # since we'll surely use Tk renderer, use Tk backend for builder too.
@@ -1633,6 +1651,35 @@ class Designer(Toplevel):
                 message=self._("Error running report preview:\n%s")
                 % (str(_err) or _err.__class__.__name__)).show()
             _focus.focus_set()
+
+    def printout(self):
+        """Build and save report printout"""
+        _data = self._get_report_data()
+        if _data is None:
+            return
+        if self.filename:
+            _filename = os.path.splitext(self.filename)[0]
+        else:
+            _filename = ""
+        _filetypes = [
+            (self._("PythonReports Printouts"), ".prp"),
+            (self._("All Files"), "*"),
+        ]
+        if pdf:
+            _filetypes.insert(1, (self._("Adobe PDF Files"), ".pdf"))
+        _filename = tkFileDialog.asksaveasfilename(
+            initialfile=_filename, initialdir=(self.filedir or os.getcwd()),
+            filetypes=_filetypes, defaultextension=".prp")
+        if not _filename:
+            return
+        _printout = Builder(self.report).run(_data)
+        # printout must be validated before it can be saved
+        self._validate(_printout, prp.Printout)
+        # take output type from file extension
+        if pdf and _filename.lower().endswith(".pdf"):
+            pdf.write(_printout, _filename)
+        else:
+            _printout.write(_filename)
 
 def run(argv=sys.argv):
     """Command line executable"""

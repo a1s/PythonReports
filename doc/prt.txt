@@ -640,6 +640,8 @@ Attributes:
                                   Use ``0`` to disable outline.
 ``radius``         O    dimension Corner radius for rounded rectangles.
                                   Default: 0
+``opaque``         O    boolean   If set to False, the rectangle will be
+                                  drawn transparent.  Default: True.
 ================= ===== ========= ======================================
 
 ``image``

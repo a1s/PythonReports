@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 """Tk output for PythonReports"""
 """History (most recent first):
+05-dec-2006 [als]   fix dashed lines: option is "dash", not "stipple"
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
 07-Nov-2006 [phd]   Added shebang.
 20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
@@ -8,8 +9,8 @@
 12-oct-2006 [als]   added page controls and panning on right mouse
 10-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 17:02:22 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2006/12/07 11:56:49 $"[7:-2]
 
 __all__ = []
 
@@ -137,13 +138,11 @@ class Painter(object):
         """
         _rv = {}
         if pen == "dot":
-            _rv["stipple"] = "gray25"
+            _rv["dash"] = ". "
         elif pen == "dash":
-            # TODO: draw bitmap
-            _rv["stipple"] = "gray25"
+            _rv["dash"] = "- "
         elif pen == "dashdot":
-            # TODO: draw bitmap
-            _rv["stipple"] = "gray25"
+            _rv["dash"] = "- . "
         elif pen == 0:
             _rv["width"] = 0
         else:

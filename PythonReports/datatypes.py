@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+07-dec-2006 [als]   fix: qp-encoded data was accumulating spaces at the end
 07-dec-2006 [als]   fix decoding of qp-encoded data
 05-dec-2006 [als]   sweep pylint warnings
 03-nov-2006 [als]   ElementTree: string conversion returns full XML text
@@ -28,8 +29,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/07 19:29:26 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/12/08 12:52:06 $"[7:-2]
 
 import binascii
 import bz2
@@ -1181,15 +1182,20 @@ class _DataBlock(Validator):
         # pylint: disable-msg=W0613
         # W0613: Unused argument 'addindent' - API comes from Validator,
         #   but there are no child elements in the data element
+        _text = element.text or ""
         if element.get("encoding"):
             _indent2 = indent
+            # we will be adding certain amount of space before the closing tag
+            # to make it certain amount indeed, make sure there aren't any
+            # spaces yet.
+            _text = _text.rstrip(" ")
         else:
             # must not add blank spaces to non-encoded values
             _indent2 = ""
         # there are no children for this element, just text
         # (the text, if any, must be already encoded by .make_element)
         _text = u"%s<%s>%s%s</%s>%s" % (indent, self.starttag(element),
-            element.text or "", _indent2, self.tag, newl)
+            _text, _indent2, self.tag, newl)
         writer.write(_text.encode(encoding, "xmlcharrefreplace"))
 
 class ElementTree(ET.ElementTree):

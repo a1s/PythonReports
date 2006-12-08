@@ -4,6 +4,12 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+08-dec-2006 [als]   invalidate .current_node when new file is loaded;
+                    ditto, when selected node is being deleted;
+                    fix node deletion when parent node had a hidden
+                    child elements (e.g. box sub-element);
+                    when last child is deleted, remove open/close indicator;
+                    fix Insert key handler: obtain current insertion menu
 07-dec-2006 [als]   CodeSelection: always have an empty value in the list;
                     edit data block contents
 07-dec-2006 [als]   write printouts
@@ -45,8 +51,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.16 $"[11:-2]
-__date__ = "$Date: 2006/12/07 19:48:09 $"[7:-2]
+__version__ = "$Revision: 1.17 $"[11:-2]
+__date__ = "$Date: 2006/12/08 15:29:07 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -476,9 +482,12 @@ class BooleanSelection(PropertyEntry):
 
     def __init__(self, master=None, cnf={}, **kw):
         # pylint: disable-msg=W0102
+        # When TreeNodeData instantiates PropertyEditors,
+        # it passes background color suitable for text entries.
+        # This does not look good with check boxes, so remove
+        # background color if it is set in the options.
+        kw.pop("background", None)
         PropertyEntry.__init__(self, master, cnf, **kw)
-        # XXX on windows, these checkbuttons get white background
-        self.widget["background"] = self.winfo_toplevel().color_panel
 
     # checkbuttons have no .select_range method
     def OnSetFocus(self, event):
@@ -568,8 +577,7 @@ class DataBlockEditor(Frame):
         # pylint: disable-msg=W0102
         Frame.__init__(self, master, cnf, **kw)
         _toplevel = self.winfo_toplevel()
-        self["background"] = _toplevel.color_panel
-        self._ = self.winfo_toplevel()._
+        self._ = self.gettext = _toplevel.gettext
         self.data = data
         # layout
         Frame(self, width=self.LPAD).pack(side=LEFT)
@@ -603,7 +611,7 @@ class DataBlockEditor(Frame):
         """If data is textual, update data contents from the text window"""
         if not self.isBinary():
             # the text widget adds one line feed,
-            # but i'd like to trim all trailing space
+            # but i want to trim all trailing space, even manually entered
             self.data.contents = self.text.get("1.0", "end").rstrip()
 
     def updateState(self):
@@ -615,13 +623,13 @@ class DataBlockEditor(Frame):
             _text.pack_forget()
         else:
             _text.pack_configure(side=LEFT, fill=X)
-            if self.data.contents != _text.get("1.0", "end"):
+            if self.data.contents != _text.get("1.0", "end").rstrip():
                 _text.delete("1.0", "end")
                 _text.insert("1.0", self.data.contents or "")
                 _text.mark_set("insert", "1.0")
                 _text.mark_set("sel_first", "1.0")
                 _text.mark_set("sel_last", "end")
-        # disable save button if data is empty
+        # disable save button if data is empty and cannot be entered (binary)
         self.btn_save["state"] = ("disabled", "normal")[not _binary_data
             or bool(self.data.contents)]
 
@@ -777,7 +785,7 @@ class TreeNodeData(list):
         self.properties = self._build_properties()
         # if this is data element, make a structure for contents editing
         if self.tag == "data":
-            self.data = PropertyData(node=self,
+            self.data = Structure(node=self,
                 contents=Data.get_data(self.element),
                 filename="", filepath="")
         else:
@@ -871,7 +879,7 @@ class TreeNodeData(list):
         # if this is a data element, add nonstandard controls
         if self.data:
             hlist.add("data")
-            _win = DataBlockEditor(self.data, hlist, background=_window_color)
+            _win = DataBlockEditor(self.data, hlist)
             hlist.item_create("data", 1, itemtype=WINDOW, window=_win,
                 style=self.PROP_VALUE_STYLE)
         # grow the first column if needed
@@ -1400,9 +1408,9 @@ class Designer(Toplevel):
 
     def OnTreeInsert(self, event):
         """Insert key pressed in the tree - pop up insert element menu"""
-        _menu = self.insert_menus[self.getNodeData(self.current_node).tag]
+        _menu = self.report_menu.entrycget(0, "menu")
         if _menu:
-            _menu.tk_popup(*self._get_popup_position())
+            self.nametowidget(_menu).tk_popup(*self._get_popup_position())
 
     def OnPropListResize(self, event=0):
         """Adjust width of value col in the property list upon window resize"""
@@ -1474,8 +1482,11 @@ class Designer(Toplevel):
         if _data.tag in self.FIXED_TAGS:
             # cannot delete
             return
+        if path == self.current_node:
+            self.current_node = None
         _parent = _data.parent
         _index = _parent.index(_data)
+        _element_index = _parent.element.getchildren().index(_data.element)
         _hlist = self.tree.hlist
         if _data.tag == "group":
             # find contained group or detail element -
@@ -1490,20 +1501,22 @@ class Designer(Toplevel):
                 raise RuntimeError("No 'group' or 'detail' child found.")
             _replace.parent = _parent
             _parent[_index] = _replace
-            _parent.element[_index] = _replace.element
+            _parent.element[_element_index] = _replace.element
             _hlist.delete_entry(path)
             _replace.addToTree(self.tree)
             self.tree.autosetmode()
             self.select(_replace.path)
         else:
             _hlist.delete_entry(path)
-            del _parent[_index], _parent.element[_index]
+            del _parent[_index], _parent.element[_element_index]
             if _index < len(_parent):
                 _select = _parent[_index]
             elif _index > 0:
                 _select = _parent[_index - 1]
             else:
                 _select = _parent
+                # deleted last child - remove open/close indicator
+                self.tree.setmode(_parent.path, "none")
             self.select(_select.path)
 
     @staticmethod
@@ -1627,6 +1640,7 @@ class Designer(Toplevel):
         self.report = prt.load(StringIO(NEW_REPORT_TEMPLATE))
         self.filename = None
         self.updateTitle()
+        self.current_node = None
         self.loadTreeContents()
 
     def saveFile(self, filename):

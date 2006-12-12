@@ -5,6 +5,7 @@ and exports API function `get_driver`, used to get a driver implementation.
 
 """
 """History (most recent first):
+12-dec-2006 [als]   fix misleading comment
 06-dec-2006 [als]   more lint fixes
 05-dec-2006 [als]   sweep pylint warnings
 04-nov-2006 [als]   added text driver backend "Tk";
@@ -16,8 +17,8 @@ and exports API function `get_driver`, used to get a driver implementation.
 11-oct-2006 [als]   fix variable name in ImageDriver.resize
 05-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2006/12/06 19:37:20 $"[7:-2]
+__version__ = "$Revision: 1.8 $"[11:-2]
+__date__ = "$Date: 2006/12/12 10:42:02 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -278,8 +279,7 @@ class TextDriver(object):
 
     backend = None  # backend name, must be set in child classes
     height = None   # line height, in points
-    leading = None  # distance between baselines of two subsequent rows,
-                    # in points
+    leading = None  # distance between rows, in points
 
     def __init__(self, font):
         """Create text driver instance

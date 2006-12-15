@@ -3,10 +3,9 @@ PythonReports Templates
 =======================
 
 :Version: 0.3.0
-:Date: 07-dec-2006
+:Date: 15-dec-2006
 
-.. TODO: variables iterated at start of section;
-         groups have title/summary instead of header/footer
+.. TODO: variables iterated at start of section
 
 .. TODO: subreports, backgrounds, outline tags
 
@@ -53,7 +52,7 @@ and possible `header`_ and `footer`_ elements.
 
 The `group`_ element contains one `group`_ or `detail`_ element and
 may contain a sequence of `style`_ elements and possible `columns`_,
-`header`_ and `footer`_ elements.
+`title`_ and `summary`_ elements.
 
 Report template may contain only one `detail`_ section (innermost
 in the `layout`_/`group`_ hierarchy).
@@ -465,47 +464,51 @@ Attributes:
 ``title``
 ---------
 
-A child element of `layout`_ element containing a summary printed before
-report data.
+A child element of `layout`_ or `group`_ element containing a summary
+printed before report data.
 
-While `title`_ is processed, all ``*_COUNT`` values are set to zero
-(see `predefined variables`_.)
+While report `title`_ is processed, all ``*_COUNT`` values are set to
+zero (see `predefined variables`_.)
 
 Attributes:
 
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``swapheader``     O    boolean   If True, title section is printed
-                                  before the first page header.
+``swapheader``     O    boolean   When used in report title section,
+                                  value of True lets the title section
+                                  be printed before the first page
+                                  header.  Ignored for group titles.
 ================= ===== ========= ======================================
 
 ``summary``
 -----------
 
-A child element of `layout`_ element containing a summary printed after
-report data.
+A child element of `layout`_ or `group`_ element containing a summary
+printed after report data.
 
 Attributes:
 
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``swapfooter``     O    boolean   If True, the last page footer is
-                                  printed before the summary section
+``swapfooter``     O    boolean   When used in report summary section,
+                                  True means that the last page footer
+                                  is printed before the report summary.
+                                  Ignored for group summaries.
 ================= ===== ========= ======================================
 
 ``header``
 ----------
 
-A child element of `layout`_, `columns`_ or `group`_ describing header
-layout for report page, column or group respectively.
+A child element of `layout`_ or `columns`_ describing header layout
+for report page or column respectively.
 
 ``footer``
 ----------
 
-A child element of `layout`_, `columns`_ or `group`_ describing footer
-layout for report page, column or group respectively.
+A child element of `layout`_ or `columns`_ describing footer layout
+for report page or column respectively.
 
 ``layout``
 ----------
@@ -543,6 +546,11 @@ Attributes:
 
 Arranges report data for multi-column output.  May be used in `layout`_
 and `group`_ elements.
+
+**Please note**: although it is possible to make nested column templates
+(you may have `columns`_ in `layout`_ and then in data `group`_ and again
+in a nested `group`_), that does not work well.  It is highly recommended
+to have only one (or none) `columns`_ element per report template.
 
 Attributes:
 

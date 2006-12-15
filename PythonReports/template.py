@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
 """History (most recent first):
+15-dec-2006 [als]   Eject type defaults to "page"
 15-dec-2006 [als]   allow empty detail section;
                     fix Layout: require either pagesize or width and height
 15-dec-2006 [als]   group header an footer renamed to title and summary
@@ -23,8 +24,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2006/12/15 11:36:08 $"[7:-2]
+__version__ = "$Revision: 1.7 $"[11:-2]
+__date__ = "$Date: 2006/12/15 13:24:48 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -108,7 +109,7 @@ Box = Validator(tag="box",
 
 Eject = Validator(tag="eject",
     attributes={
-        "type": (EjectType, REQUIRED),
+        "type": (EjectType, "page"),
         "require": (Dimension, None),
         "when": (Expression, None),
     },

@@ -175,7 +175,7 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
    </footer>
   </columns>
   <group name="customer" expr="customer_id">
-   <header>
+   <title>
     <box height="14" />
     <style font="bold" color="#000900" />
     <field expr="(customer['last_name'], customer['first_name'])"
@@ -189,8 +189,8 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
     <line pen="2">
      <box y="-2" height="0" />
     </line>
-   </header>
-   <footer>
+   </title>
+   <summary>
     <box height="16" />
     <style font="bold" color="#000900" />
     <line pen="2">
@@ -201,7 +201,7 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
      format="Total for %s, %s: %.2f" align="right" stretch="true">
      <box y="4" />
     </field>
-   </footer>
+   </summary>
    <detail>
     <box height="12" />
     <style bgcolor="#F3EDE7" when="PAGE_COUNT % 2" />

@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+15-dec-2006 [als]   group header an footer renamed to title and summary
 07-dec-2006 [als]   support rectangle opacity
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
 04-nov-2006 [als]   Builder: delay text_drivers initialization until run,
@@ -58,8 +59,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/12/07 13:11:06 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2006/12/15 08:32:44 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -1190,15 +1191,13 @@ class Builder(object):
         _frame = self.make_column_frames(_layout, _frame)
         # process all groups
         for _group in self.groups:
-            # group header and footer use containing frame, columns are inside
-            # group header and footer are *not* frame header and footer
-            # (not printed on each page; don't reserve space)
-            _header = _group.find("header")
-            if _header is not None:
-                self.section_frames[_header] = _frame
-            _footer = _group.find("footer")
-            if _footer is not None:
-                self.section_frames[_footer] = _frame
+            # group title and summary use containing frame, columns are inside
+            _title = _group.find("title")
+            if _title is not None:
+                self.section_frames[_title] = _frame
+            _summary = _group.find("summary")
+            if _summary is not None:
+                self.section_frames[_summary] = _frame
             _frame = self.make_column_frames(_group, _frame)
         # detail section uses innermost frame
         self.section_frames[self.detail] = _frame
@@ -1277,7 +1276,7 @@ class Builder(object):
                 _callback()
             self.fill_detail()
         # fill_summary will close all report groups.
-        # since group footers are always evaluated in old_context
+        # since group summaries are always evaluated in old_context
         # (assuming that current context started a new group)
         # we now need old_context to be current context.
         self.old_context = self.context
@@ -1532,10 +1531,10 @@ class Builder(object):
                 _var.start(self.context)
             if (_var.iter == "group") and (_var.itergrp == _group_name):
                 _var.iterate(self.context)
-        _header = group.find("header")
-        if _header:
-            self.check_eject(_header)
-            self.add_section(self.build_section(_header))
+        _title = group.find("title")
+        if _title:
+            self.check_eject(_title)
+            self.add_section(self.build_section(_title))
         _columns = group.find("columns")
         if _columns:
             self.add_section(self.build_section(_columns.find("header")))
@@ -1553,10 +1552,10 @@ class Builder(object):
             _max_y = self.section_frames[_columns].max_y
             if _max_y > self.cur_y:
                 self.cur_y = _max_y
-        _footer = group.find("footer")
-        if _footer:
-            self.check_eject(_footer)
-            self.add_section(self.build_section(_footer,
+        _summary = group.find("summary")
+        if _summary:
+            self.check_eject(_summary)
+            self.add_section(self.build_section(_summary,
                 context=self.old_context))
         self.resolve_eval(("group", group.get("name")))
 
@@ -1615,7 +1614,7 @@ class Builder(object):
         # without adding the section to the page
         self.page.append(section)
         self.cur_y = section.box.y + section.box.height + 1
-        if section.template.tag == "header":
+        if section.template.tag in ("header", "title"):
             # adjust top margin of all contained frames
             # (new columns will start at this position)
             #

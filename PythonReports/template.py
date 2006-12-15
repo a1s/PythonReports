@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
-"""History:
+"""History (most recent first):
+15-dec-2006 [als]   group header an footer renamed to title and summary
 07-dec-2006 [als]   added Rectangle.opaque
 07-dec-2006 [als]   removed "transparent" attribute of the "box" element
 05-dec-2006 [als]   style: imports come after version, date and exports;
@@ -20,8 +21,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/07 13:08:40 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2006/12/15 08:30:22 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -227,23 +228,23 @@ Detail = Validator(tag="detail", children=_section_children,
 )
 
 Header = Validator(tag="header", children=_section_children,
-    doc="Page, column or group header section"
+    doc="Page or column header section"
 )
 
 Footer = Validator(tag="footer", children=_section_children,
-    doc="Page, column or group footer section"
+    doc="Page or column footer section"
 )
 
 Title = Validator(tag="title", children=_section_children,
     attributes={
         "swapheader": (Boolean, False),
-    }, doc="A summary section printed before report data"
+    }, doc="A summary section printed before data"
 )
 
 Summary = Validator(tag="summary", children=_section_children,
     attributes={
         "swapfooter": (Boolean, False),
-    }, doc="A summary section printed after report data"
+    }, doc="A summary section printed after data"
 )
 
 Columns = Validator(tag="columns",
@@ -283,8 +284,8 @@ Group = Validator(tag="group",
         "expr": (Expression, REQUIRED),
     }, children=[
         (Style, Validator.UNRESTRICTED),
-        (Header, Validator.ZERO_OR_ONE),
-        (Footer, Validator.ZERO_OR_ONE),
+        (Title, Validator.ZERO_OR_ONE),
+        (Summary, Validator.ZERO_OR_ONE),
         (Columns, Validator.ZERO_OR_ONE),
         (Detail, Validator.ZERO_OR_ONE),
     ], doc="Defines a data-based group of report records"

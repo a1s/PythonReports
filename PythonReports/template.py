@@ -1,5 +1,7 @@
 """PythonReports Template (PRT) structures"""
 """History (most recent first):
+15-dec-2006 [als]   allow empty detail section;
+                    fix Layout: require either pagesize or width and height
 15-dec-2006 [als]   group header an footer renamed to title and summary
 07-dec-2006 [als]   added Rectangle.opaque
 07-dec-2006 [als]   removed "transparent" attribute of the "box" element
@@ -21,8 +23,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/12/15 08:30:22 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2006/12/15 11:36:08 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -266,12 +268,12 @@ def _need_subgroup_or_detail(tree, element, path):
     """
     # pylint: disable-msg=W0613
     # W0613: Unused argument 'tree'
-    _group = element.find("group")
-    _detail = element.find("detail")
-    if _group and _detail:
+    _have_group = element.find("group") is not None
+    _have_detail = element.find("detail") is not None
+    if _have_group and _have_detail:
         raise XmlValidationError("Found both 'group' and 'detail'",
             element, path)
-    elif not (_group or _detail):
+    elif not (_have_group or _have_detail):
         raise XmlValidationError(
             "Either 'group' or 'detail' child is required", element, path)
 
@@ -299,10 +301,28 @@ Group = Validator(tag="group",
 Group.children.append((Group, Validator.ZERO_OR_ONE))
 Group.child_validators["group"] = Group
 
+def _need_pagesize(tree, element, path):
+    """Additional validator for "layout" element: check for page dimensions
+
+    Page size may be specified either with the "pagesize" attribute
+    of with a pair of "width" and "height".  If neither is set, it's an error.
+
+    """
+    # pylint: disable-msg=W0613
+    # W0613: Unused argument 'tree'
+    if element.get("pagesize"):
+        return
+    if element.get("width") and element.get("height"):
+        return
+    raise XmlValidationError(
+        "Must have either 'pagesize' or 'width' and 'height'", element, path)
+
 Layout = Validator(tag="layout",
     prevalidate=Data.collect,
-    validate=_need_subgroup_or_detail,
-    attributes={
+    validate=(
+        _need_pagesize,
+        _need_subgroup_or_detail,
+    ), attributes={
         "pagesize": (PageSize, None),
         "width": (Dimension, None),
         "height": (Dimension, None),

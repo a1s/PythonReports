@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
 """History (most recent first):
+19-dec-2006 [als]   fix: Arg value is expression
 15-dec-2006 [als]   added Arg and Subreport
 15-dec-2006 [als]   Eject type defaults to "page"
 15-dec-2006 [als]   allow empty detail section;
@@ -25,8 +26,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.8 $"[11:-2]
-__date__ = "$Date: 2006/12/19 13:32:29 $"[7:-2]
+__version__ = "$Revision: 1.9 $"[11:-2]
+__date__ = "$Date: 2006/12/19 14:44:56 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -125,7 +126,7 @@ Eject = Validator(tag="eject",
 Arg = Validator(tag="arg",
     attributes={
         "name": (String, REQUIRED),
-        "value": (String, REQUIRED),
+        "value": (Expression, REQUIRED),
     },
     doc="Actual argument value passed to subreport to fill a parameter slot"
 )

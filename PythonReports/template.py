@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
 """History (most recent first):
+15-dec-2006 [als]   added Arg and Subreport
 15-dec-2006 [als]   Eject type defaults to "page"
 15-dec-2006 [als]   allow empty detail section;
                     fix Layout: require either pagesize or width and height
@@ -24,8 +25,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2006/12/15 13:24:48 $"[7:-2]
+__version__ = "$Revision: 1.8 $"[11:-2]
+__date__ = "$Date: 2006/12/19 13:32:29 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -119,6 +120,30 @@ Eject = Validator(tag="eject",
     for all other sections - at the beginning of the section.
 
     """
+)
+
+Arg = Validator(tag="arg",
+    attributes={
+        "name": (String, REQUIRED),
+        "value": (String, REQUIRED),
+    },
+    doc="Actual argument value passed to subreport to fill a parameter slot"
+)
+
+# TODO subreport validation:
+#   - cannot be placed in a column
+#   - if inline is True, ownpageno must be False.
+Subreport = Validator(tag="subreport",
+    attributes={
+        "template": (String, REQUIRED),
+        "seq": (Integer, REQUIRED),
+        "data": (Expression, REQUIRED),
+        "when": (Expression, None),
+        "inline": (Boolean, False),
+        "ownpageno": (Boolean, False),
+    }, children=(
+        (Arg, Validator.UNRESTRICTED),
+    ), doc="Sets an embedded report to run on an inner data sequence"
 )
 
 Field = Validator(tag="field",
@@ -216,6 +241,7 @@ BarCode = Validator(tag="barcode",
 
 # common set of child validators for all section elements
 _section_children = (
+    (Subreport, Validator.UNRESTRICTED),
     (Box, Validator.ZERO_OR_ONE),
     (Style, Validator.UNRESTRICTED),
     (Eject, Validator.UNRESTRICTED),
@@ -306,7 +332,7 @@ def _need_pagesize(tree, element, path):
     """Additional validator for "layout" element: check for page dimensions
 
     Page size may be specified either with the "pagesize" attribute
-    of with a pair of "width" and "height".  If neither is set, it's an error.
+    or with a pair of "width" and "height".  If neither is set, it's an error.
 
     """
     # pylint: disable-msg=W0613

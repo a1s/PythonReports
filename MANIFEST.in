@@ -3,4 +3,4 @@ include pylintrc
 include PythonReports/*.py
 include scripts/prd scripts/*.bat
 include doc/*.txt doc/*.html doc/default.css doc/Makefile
-include test/*.py test/sakila.prt
+include test/*.py test/*.prt

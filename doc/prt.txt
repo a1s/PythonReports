@@ -62,6 +62,9 @@ of `eject`_ variants and `style`_ definitions and any `body elements`_.
 The order of `body elements`_ is important: elements appearing later
 in the template sequence are laid out on top of previous elements.
 
+All `section elements`_ may contain arbitrary number of `subreport`_
+elements.
+
 All `body elements`_ must contain one `box`_ element and may contain
 a sequence of `style`_ elements.
 
@@ -451,7 +454,8 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``type``           M    string    ``page`` or ``column``.
+``type``           O    string    ``page`` or ``column``.
+                                  Default: ``page``.
 ``require``        O    dimension Required vertical space on current
                                   page or column.  If there is enough
                                   available space, the section continues
@@ -459,6 +463,80 @@ Attributes:
                                   eject is unconditional.
 ``when``           O    expr      If the expression evaluates to False,
                                   `eject`_ is ignored.
+================= ===== ========= ======================================
+
+``arg``
+-------
+
+Actual argument value passed to `subreport`_ to fill a `parameter`_ slot.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Parameter name.
+``value``          M    expr      Parameter value.
+================= ===== ========= ======================================
+
+``subreport``
+-------------
+
+Sets an embedded report to run on an inner data sequence.
+
+For example, imagine you have a team of successful encyclopaedia
+salesmans each selling a really fine set of modern encyclopaedias.
+Common way to make a report on encyclopedia sales in RDBMS world
+would be to run the report on the list of all sold encyclopedias
+and use report groups to print name and total earnings for each
+salesman.  Subreports allow you to do it the other way round -
+pass a sequence of salesmans to main report template and then run
+an encyclopedia subreport for each detail section of the main report.
+It could be especially useful if some of the team members work in
+a different ways - say, sell something to break the ice at parties -
+and thus require a totally different layout for their parts.
+
+`subreport`_ element may contain a set of `arg`_ elements.
+
+Subreports must not be placed inside columns.
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``template``       M    string    Name of the template file.
+``seq``            M    integer   Subreport sequence indicator.
+                                  Subreports for a section will be run
+                                  in the order of ``seq`` numbers.
+                                  Subreports with negative ``seq``
+                                  values are printed before the section
+                                  contents, ones with positive ``seq``
+                                  values - after section contents.
+                                  Zero value is reserved and should
+                                  not be used.
+
+                                  ``seq`` values for subreports of the
+                                  same section are not required to be
+                                  successive.
+``data``           M    expr      Data sequence for the subreport.
+``when``           O    expr      If this expression evaluates to False,
+                                  the subreport is not run.
+``inline``         O    boolean   If set to True, the subreport is
+                                  formatted as an integral part of the
+                                  main report, without page eject before
+                                  or after it, and with page header and
+                                  footer inherited from the main report.
+
+                                  If False (default), the subreport is
+                                  printed on separate pages.
+
+                                  Subreports with different paper size
+                                  or page orientation cannot be inlined.
+``ownpageno``      O    boolean   If set to True, pages in the subreport
+                                  are numbered as in standalone report.
+                                  If False (default), page numbers in
+                                  the subreport continue the sequence of
+                                  the main report page numbers.  Cannot
+                                  be set to True for inline subreports.
 ================= ===== ========= ======================================
 
 ``title``

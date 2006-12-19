@@ -1,0 +1,31 @@
+<!-- subreport template for test_subreport -->
+<report>
+ <font name="body" size="14" typeface="Arial" />
+ <layout pagesize="A4">
+  <style color="#000000" font="body" />
+  <header>
+   <line pen="1">
+    <box x="5" y="5" height="0" width="-5"/>
+   </line>
+  </header>
+  <footer>
+   <box height="20" />
+   <field expr="PAGE_NUMBER" align="right" format="%i /">
+    <box x="5.5cm" width="3cm" />
+   </field>
+   <field expr="PAGE_NUMBER" evaltime="report" align="left">
+    <box x="8.6cm" width="3cm" />
+   </field>
+  </footer>
+  <detail>
+   <field stretch="true">
+    <data>sub-item</data>
+    <box x="15" />
+   </field>
+   <field expr="item" stretch="true">
+    <box x="80" />
+   </field>
+  </detail>
+ </layout>
+</report>
+<!-- vim: set et ft=xml sw=1 : -->

@@ -1,6 +1,10 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+18-dec-2006 [als]   Builder: added .get_page_dimensions();
+                    update self.context before building the detail section
+15-dec-2006 [als]   build subreports;
+                    added .set_page_position()
 15-dec-2006 [als]   group header an footer renamed to title and summary
 07-dec-2006 [als]   support rectangle opacity
 05-dec-2006 [als]   fix errors and some warnings reported by pylint
@@ -59,14 +63,15 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2006/12/15 08:32:44 $"[7:-2]
+__version__ = "$Revision: 1.7 $"[11:-2]
+__date__ = "$Date: 2006/12/19 14:08:49 $"[7:-2]
 
 __all__ = ["Builder"]
 
 import math
 import os
 import time
+from warnings import warn
 
 from PythonReports import barcode, drivers
 from PythonReports import template as prt
@@ -319,18 +324,6 @@ class Context(object):
         return self.__class__(**dict([(_name, getattr(self, _name))
             for _name in self.__slots__]))
 
-#    def freeze(self):
-#        """Remember current values of all report variables
-#
-#        Evaluate all report variables and put their current
-#        values to the system variables container so that
-#        further access to variable names always returns
-#        frozen values.
-#
-#        """
-#        for (_name, _var) in self.variables:
-#            self.sysvars[_name] = _var.value
-
     def add_variables(self, *variables):
         """Add report variable definitions
 
@@ -438,6 +431,7 @@ class Section(list):
         self.template = template
         self.box = self.tbox = Box.from_element(template.find("box"))
         self.resizeable = False
+        self.subreports_before = self.subreports_after = () # filled by .build
         if context:
             self.build(context)
 
@@ -587,7 +581,13 @@ class Section(list):
                     break
         _default_element_style = [self.compose_style(context,
             ("font", "color", "bgcolor"), self.iter_styles())]
+        _subreports = []
         for _item in _elements:
+            if _item.tag == "subreport":
+                _when = _item.get("when")
+                if (not _when) or context.eval(_when):
+                    _subreports.append((_item.get("seq"), _item))
+                continue
             # ignore children that are not known body elements
             if _item.tag not in (
                 "field", "line", "rectangle", "image", "barcode",
@@ -618,6 +618,11 @@ class Section(list):
                 # FIXME: use_count should be incremented in Builder.image()
                 _element.image.use_count += 1
             self.append(_element)
+        _subreports.sort()
+        self.subreports_before = tuple(_item[1] for _item in _subreports
+            if _item[0] < 0)
+        self.subreports_after = tuple(_item[1] for _item in _subreports
+            if _item[0] > 0)
 
     def build_barcode(self, element):
         """Compute sripe widths and box size/position for barcode element
@@ -988,6 +993,8 @@ class Builder(object):
     section_frames = {}
     # parent elements for report sections
     layout_parents = {}
+    # set to parent builder for inline subreport build
+    inlined = None
 
     def __init__(self, template, data=(), parameters=None,
         item_callback=None, text_backend=None, image_backend=None,
@@ -1030,6 +1037,8 @@ class Builder(object):
                 self.basedir = os.getcwd()
         self.variables = [Variable(_item)
             for _item in self.template.variables.itervalues()]
+        # subreport builders
+        self.subreports = {}
         # text rendering drivers, will be re-evaluated in .run()
         self.text_drivers = {}
         # image collections:
@@ -1149,12 +1158,8 @@ class Builder(object):
         self.section_frames = {}
         # page frame, used for page header/footer and swapped title/summary
         _page_frame = Frame()
-        _pagesize = _layout.get("pagesize")
-        if _pagesize:
-            (_page_frame.width, _page_frame.bottom) = _pagesize.dimensions
-        else:
-            _page_frame.width = _layout.get("width")
-            _page_frame.bottom = _layout.get("height")
+        (_page_frame.width, _page_frame.bottom) = \
+            self.get_page_dimensions(self.template)
         _page_frame.width -= _layout.get("leftmargin") \
             + _layout.get("rightmargin")
         _page_frame.bottom -= _layout.get("bottommargin")
@@ -1258,22 +1263,33 @@ class Builder(object):
             _callback = item_callback
         else:
             _callback = self.callback
-        # initialize fonts - moved from __init__() to allow backend switching
-        self.text_drivers = dict([(_name, self.text_driver_factory(_font))
-            for (_name, _font) in self.template.fonts.iteritems()])
         _data_iter = self.start(data, parameters)
-        if _callback:
-            _callback()
+        self._build(_data_iter, _callback)
+        #print "built in %.2fs" % (time.time() - _start_time)
+        return self.build_printout()
+
+    def _build(self, data, callback=None):
+        """Build output page structures
+
+        Parameters:
+            data: data sequence iterator.  Normally, the first item
+                is already popped from this iterator to current context
+                when this method is called.
+            callback: a callable to be called for each data item.
+
+        """
+        if callback:
+            callback()
         self.fill_title()
         # first item was already popped out of _data_iter
         # (for use in title/headers context).  print it out now.
         if self.context["THIS"] is not None:
             self.fill_detail()
         # process remaining items
-        for _item in _data_iter:
+        for _item in data:
             self.next_item(_item)
-            if _callback:
-                _callback()
+            if callback:
+                callback()
             self.fill_detail()
         # fill_summary will close all report groups.
         # since group summaries are always evaluated in old_context
@@ -1283,8 +1299,6 @@ class Builder(object):
         self.fill_summary()
         # resolve all deferred evaluations
         self.resolve_eval(*self.eval_later.keys())
-        #print "built in %.2fs" % (time.time() - _start_time)
-        return self.build_printout()
 
     def start(self, data=NOTHING, parameters=None):
         """Initialize report building
@@ -1303,6 +1317,9 @@ class Builder(object):
 
         """
         _template = self.template
+        # initialize fonts - moved from __init__() to allow backend switching
+        self.text_drivers = dict([(_name, self.text_driver_factory(_font))
+            for (_name, _font) in _template.fonts.iteritems()])
         # create data iterator and get the first object, if any
         if data is NOTHING:
             _data = self.data
@@ -1401,7 +1418,11 @@ class Builder(object):
         """
         _layout = self.template.find("layout")
         _layout_title = _layout.find("title")
-        _layout_header = _layout.find("header")
+        if self.inlined:
+            # no page header at start
+            _layout_header = None
+        else:
+            _layout_header = _layout.find("header")
         if _layout_title:
             if _layout_title.get("swapheader"):
                 _section = self.build_section(_layout_title)
@@ -1432,7 +1453,7 @@ class Builder(object):
         """
         _template = self.detail
         self.check_eject(_template)
-        # create new temporary context with incremented *_COUNT values
+        # create new context with incremented *_COUNT values
         _new_context = self.context.copy()
         for _name in _new_context.sysvars:
             if _name.endswith("_COUNT") and (_name != "DATA_COUNT"):
@@ -1442,14 +1463,18 @@ class Builder(object):
                 _var.start(_new_context)
             if _var.iter == "detail":
                 _var.iterate(_new_context)
+        # apply new context.
+        # keep current context for a while for possible rollback
+        _current_context = self.context
+        self.context = _new_context
         # build the section
-        _section = self.build_section(_template, _new_context)
+        _section = self.build_section(_template)
         if _section:
-            # commit context changes and place the section
-            self.context = _new_context
+            # place the section
             self.add_section(_section)
         else:
             # the section is not printed - undo context changes
+            self.context = _current_context
             for _var in self.variables:
                 if _var.reset == "detail":
                     # reinitialize with context rolled back
@@ -1474,19 +1499,25 @@ class Builder(object):
             if _max_y > self.cur_y:
                 self.cur_y = _max_y
         _summary = _layout.find("summary")
+        if self.inlined:
+            # no terminating page footer
+            _footer = None
+        else:
+            _footer = _layout.find("footer")
         if _summary:
             self.check_eject(_summary)
-            if _summary.get("swapfooter"):
-                _footer = self.build_section(_layout.find("footer"))
+            if _summary.get("swapfooter") and (_footer is not None):
+                _footer = self.build_section(_footer)
                 # reposition at current y
                 _footer.refill(self.cur_y)
                 self.add_section(_footer)
                 self.add_section(self.build_section(_summary))
             else:
                 self.add_section(self.build_section(_summary))
-                self.add_section(self.build_section(_layout.find("footer")))
-        else:
-            self.add_section(self.build_section(_layout.find("footer")))
+                if _footer is not None:
+                    self.add_section(self.build_section(_footer))
+        elif _footer is not None:
+            self.add_section(self.build_section(_footer))
 
     def start_page(self):
         """Create new output page
@@ -1559,6 +1590,150 @@ class Builder(object):
                 context=self.old_context))
         self.resolve_eval(("group", group.get("name")))
 
+    def set_page_position(self, ypos):
+        """Set current y position on the output page
+
+        Parameters:
+            ypos: new position in points.
+
+        All output frames are adjusted to start output below given position.
+
+        """
+        self.cur_y = ypos
+        _frame = self.section_frames[None].child
+        while _frame:
+            _frame.top = ypos
+            _frame = _frame.child
+
+    def run_subreport(self, element, eject_frame):
+        """Execute a subreport element
+
+        Parameters:
+            element: template element for subreport to run
+            eject_frame: if running of a non-inlined subreport
+                must terminate current page in the master report,
+                this is output frame for current report section.
+                If current page was already ejected, eject_frame is None.
+
+        Return value: if this run did page eject in the main report,
+        return None.  Otherwise return the value of eject_frame argument.
+
+        """
+        _context = self.context
+        # return early if subreport is skipped
+        _when = element.get("when")
+        if _when and not _context.eval(_when):
+            return
+        # return early if there are no data items for the subreport
+        _data = _context.eval(element.get("data"))
+        if len(_data) < 1:
+            return
+        _inline = element.get("inline")
+        # fetch or make a builder
+        if element not in self.subreports:
+            _prt_name = element.get("template")
+            _prt = prt.load(self.filepath(_prt_name))
+            if _inline:
+                # inlined report must have same page dimensions as this report
+                _pgsize = self.get_page_dimensions(self.template)
+                if self.get_page_dimensions(_prt) != _pgsize:
+                    raise XmlValidationError(
+                        "Page size does not match for inlined report \"%s\""
+                        % _prt_name, element=element)
+                # replace page header and footer
+                # actual rendering will be done by this builder,
+                # but subreport builder will need to know sizes
+                # to shrink page contents frame appropriately.
+                _page_frame = self.section_frames[None]
+                _layout = _prt.find("layout")
+                assert _layout is not None # _prt is verified
+                _section = _layout.find("header")
+                if _section:
+                    warn("Replacing non-empty page header"
+                        " for inlined report \"%s\"" % _prt_name)
+                    _layout.remove(_section)
+                if _page_frame.header is not None:
+                    _layout.append(_page_frame.header)
+                _section = _layout.find("footer")
+                if _section:
+                    warn("Replacing non-empty page footer"
+                        " for inlined report \"%s\"" % _prt_name)
+                    _layout.remove(_section)
+                if _page_frame.footer is not None:
+                    _layout.append(_page_frame.footer)
+                # create subreport builder
+                _builder = Builder(_prt)
+                # let it delegate page header/footer formatting to self
+                _builder.inlined = self
+            else:
+                _builder = Builder(_prt)
+                _builder.inlined = None
+            self.subreports[element] = _builder
+        else:
+            _builder = self.subreports[element]
+        # collect subreport arguments
+        # Note: this is done before any new section is built
+        #       to make sure current build context is not changed and
+        #       our local short-cut (_context variable) is still valid.
+        _args = {}
+        for _item in element.findall("arg"):
+            _args[_item.get("name")] = _context.eval(_item.get("value"))
+        # check if we need to eject page
+        if _inline or (eject_frame is None):
+            _rv = eject_frame
+        else:
+            # print all footers, end current page
+            _eject_frames = self._get_eject_frames(eject_frame, True)
+            for _frame in _eject_frames:
+                self.add_section(self.build_section(_frame.footer))
+            self.resolve_eval("page", "column")
+            # reset output value
+            _rv = None
+            # advance page number if it will be
+        # run the subreport
+        _data_iter = _builder.start(_data, _args)
+        if _inline:
+            _builder.context["PAGE_NUMBER"] = self.context["PAGE_NUMBER"]
+            _builder.set_page_position(self.cur_y)
+        elif not element.get("ownpageno"):
+            _builder.context["PAGE_NUMBER"] = self.context["PAGE_NUMBER"] + 1
+        _builder._build(_data_iter)
+        if _inline:
+            self.context["PAGE_NUMBER"] = _builder.context["PAGE_NUMBER"]
+            self.set_page_position(_builder.cur_y)
+            self.page.extend(_builder.pages[0])
+            self.pages.extend(_builder.pages[1:])
+            self.page = self.pages[-1]
+        else:
+            if not element.get("ownpageno"):
+                # will be incremented by .start_page()
+                self.context["PAGE_NUMBER"] = _builder.context["PAGE_NUMBER"]
+            if self.pages[-1] == []:
+                del self.pages[-1]
+            self.pages.extend(_builder.pages)
+        return _rv
+
+    def run_subreport_collection(self, subreports, current_frame):
+        """Run a set of subreports for a report section
+
+        Parameters:
+            subreports: a sequence of subreport elements to run
+            current_frame: layout frame for current output section
+
+        """
+        _frame = current_frame
+        for _item in subreports:
+            _frame = self.run_subreport(_item, _frame)
+        if _frame is None:
+            # current page was ejected by subreport
+            self.start_page()
+            _eject_frames = self._get_eject_frames(current_frame, True)
+            # headers go in reverse order
+            _eject_frames.reverse()
+            # print all headers
+            for _frame in _eject_frames:
+                self.add_section(self.build_section(_frame.header))
+
     def build_section(self, template, context=None):
         """Build, fill and return Section object
 
@@ -1570,6 +1745,10 @@ class Builder(object):
         Return value: Section object or None if the section
         is not printable (suppressed by printwhen expression).
 
+        If the section is printable, subreports set to print
+        before the section contents are run prior to building
+        the section.
+
         """
         if template is None:
             return None
@@ -1577,11 +1756,30 @@ class Builder(object):
             _context = self.context
         else:
             _context = context
+        # if this report is inlined, page header and footer
+        # are built by the main report builder
+        _builder = self.inlined
+        if _builder:
+            _frame = self.section_frames[None] # page frame
+            if template in (_frame.header, _frame.footer):
+                _builder.context["PAGE_NUMBER"] = _context["PAGE_NUMBER"]
+                _builder.set_page_position(self.cur_y)
+                _rv = _builder.build_section(template)
+                self.set_page_position(_builder.cur_y)
+                # page number should not change
+                return _rv
         _frame = self.section_frames[template]
         _context["COLUMN_NUMBER"] = _frame.column + 1
         _section = Section(self, template, _context)
         if not _section.printable:
             return None
+        if _section.subreports_before:
+            self.run_subreport_collection(_section.subreports_before, _frame)
+            # reevaluate the section
+            _section.build(_context)
+            if not _section.printable:
+                # oops!
+                return None
         _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
         # align page footers to the bottom of page
         if (template is self.template_pagefooter):
@@ -1597,7 +1795,7 @@ class Builder(object):
         return _section
 
     def add_section(self, section):
-        """Add a filled section to current page
+        """Add a filled section to current page, run trailing subreports
 
         Parameters:
             section: filled Section object
@@ -1636,6 +1834,9 @@ class Builder(object):
             while _frame:
                 _frame.top = self.cur_y
                 _frame = _frame.child
+        if section.subreports_after:
+            self.run_subreport_collection(section.subreports_after,
+                self.section_frames[section.template])
 
     def check_eject(self, section, ignoresize=False):
         """Eject page/column if requested by report template
@@ -1670,13 +1871,17 @@ class Builder(object):
         if _eject:
             self.eject(_current_frame, _eject=="page")
 
-    def eject(self, current_frame, newpage=False):
-        """Eject page or column
+    def _get_eject_frames(self, current_frame, newpage):
+        """Return a list of frames affected by eject
 
         Parameters:
             current_frame: frame for a section that caused eject
-            newpage: if True, eject page.
-                Otherwise eject column (default).
+            newpage: if True, eject page, otherwise eject column.
+
+        Return value: list containing all frames that should have
+        their headers/footers printed by requested eject type.
+        The list starts with current_frame and contains it's parents
+        ending with a column or page frame.
 
         """
         # build a list of all frames that will have their
@@ -1699,6 +1904,20 @@ class Builder(object):
                     # it is the last frame to eject
                     break
                 _frame = _frame.parent
+        return _eject_frames
+
+    def eject(self, current_frame, newpage=False):
+        """Eject page or column
+
+        Parameters:
+            current_frame: frame for a section that caused eject
+            newpage: if True, eject page.
+                Otherwise eject column (default).
+
+        """
+        # build a list of all frames that will have their
+        # headers/footers printed by this eject
+        _eject_frames = self._get_eject_frames(current_frame, newpage)
         # print all footers
         for _frame in _eject_frames:
             self.add_section(self.build_section(_frame.footer,
@@ -1775,6 +1994,25 @@ class Builder(object):
         for _section in _refill.itervalues():
             _section.refill()
 
+    @staticmethod
+    def get_page_dimensions(template):
+        """Return (width, height) for output page
+
+        Parameters:
+            template: verified report template tree.
+
+        """
+        _layout = template.find("layout")
+        _pagesize = _layout.get("pagesize")
+        if _pagesize:
+            (_width, _height) = _pagesize.dimensions
+        else:
+            _width = _layout.get("width")
+            _height = _layout.get("height")
+        if _layout.get("landscape"):
+            (_width, _height) = (_height, _width)
+        return (_width, _height)
+
     def build_printout(self):
         """Create and return Printout object for built report"""
         _template = self.template.getroot()
@@ -1814,13 +2052,8 @@ class Builder(object):
         _layout = _template.find("layout")
         _page_attrs = dict([(_name, _layout.get(_name)) for _name in
             ("leftmargin", "topmargin", "rightmargin", "bottommargin")])
-        _pagesize = _layout.get("pagesize")
-        if _pagesize:
-            (_page_attrs["width"], _page_attrs["height"]) = \
-                _pagesize.dimensions
-        else:
-            _page_attrs["width"] = _layout.get("width")
-            _page_attrs["height"] = _layout.get("height")
+        (_page_attrs["width"], _page_attrs["height"]) = \
+            self.get_page_dimensions(_template)
         for _page in self.pages:
             _prt_page = SubElement(_root, prp.Page.tag, _page_attrs)
             for _section in _page:

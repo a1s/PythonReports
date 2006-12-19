@@ -1,6 +1,8 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+19-dec-2006 [als]   straighten "if not/else" logic in Builder.run_subreport();
+                    build_section: refetch context after subreports build
 18-dec-2006 [als]   Builder: added .get_page_dimensions();
                     update self.context before building the detail section
 15-dec-2006 [als]   build subreports;
@@ -63,8 +65,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2006/12/19 14:08:49 $"[7:-2]
+__version__ = "$Revision: 1.8 $"[11:-2]
+__date__ = "$Date: 2006/12/19 16:45:30 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -1630,7 +1632,9 @@ class Builder(object):
             return
         _inline = element.get("inline")
         # fetch or make a builder
-        if element not in self.subreports:
+        if element in self.subreports:
+            _builder = self.subreports[element]
+        else:
             _prt_name = element.get("template")
             _prt = prt.load(self.filepath(_prt_name))
             if _inline:
@@ -1669,8 +1673,6 @@ class Builder(object):
                 _builder = Builder(_prt)
                 _builder.inlined = None
             self.subreports[element] = _builder
-        else:
-            _builder = self.subreports[element]
         # collect subreport arguments
         # Note: this is done before any new section is built
         #       to make sure current build context is not changed and
@@ -1776,6 +1778,8 @@ class Builder(object):
         if _section.subreports_before:
             self.run_subreport_collection(_section.subreports_before, _frame)
             # reevaluate the section
+            # NB: this discards the context passed in arguments
+            _context = self.context
             _section.build(_context)
             if not _section.printable:
                 # oops!

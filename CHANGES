@@ -1,6 +1,39 @@
 PythonReports release history
 =============================
 
+version 0.3.0 (19-dec-2006)
+---------------------------
+
+Features:
+
+  - subreports
+  - edit data block contents in template designer
+  - designer can write printout files
+
+API changes:
+
+  - removed "transparent" attribute of template element "box":
+    boxes don't paint background by themselves.  If you need
+    an opaque box, draw a filled rectangle before other elements.
+  - added optional attribute "opaque" for template element "rectangle"
+  - group header an footer sections renamed to "title" and "summary"
+    (they behave quite unlike page/column headers and footers)
+  - "type" attribute for "eject" element is optional; defaults to "page"
+
+Fixes:
+
+  - eliminated some errors and warnings reported by pylint
+  - designer didn't update box attributes
+  - insert menu in designer sometimes failed to open
+  - pdf output: diagonal lines were offset down by the box height
+  - qp-encoded data not decoded on read
+  - qp-encoded data absorbing white space added by XML formatting
+  - errors in designer after element deletion
+  - RL-based text drivers failed when a text was too long for it's box
+  - italic font creation failed in Tk-based text drivers
+  - template validation: require page dimensions (pagesize or width and height)
+  - allow empty detail section
+
 version 0.2.1 (09-nov-2006)
 ---------------------------
 

@@ -1,0 +1,40 @@
+<!-- master template for test_subreport -->
+<report>
+ <font name="body" size="16" typeface="Arial" />
+ <layout pagesize="A4">
+  <style color="#000000" font="body" />
+  <header>
+   <rectangle pen="1">
+    <box height="5" x="5" y="5" width="-5"/>
+   </rectangle>
+  </header>
+  <footer>
+   <box height="20" />
+   <field expr="PAGE_NUMBER" align="right" format="%i /">
+    <box x="5.5cm" width="3cm" />
+   </field>
+   <field expr="PAGE_NUMBER" evaltime="report" align="left">
+    <box x="8.6cm" width="3cm" />
+   </field>
+  </footer>
+  <detail>
+   <subreport seq="-2" template="subsub.prt" data="sub" inline="yes"
+    when="REPORT_COUNT % 2"
+   />
+   <subreport seq="10" template="subsub.prt" data="sub"
+    when="(REPORT_COUNT % 5) == 0"
+   />
+   <subreport seq="10" template="subsub.prt" data="sub"
+    when="(REPORT_COUNT % 5) == 1" ownpageno="true"
+   />
+   <field stretch="true">
+    <data>item</data>
+    <box x="7" />
+   </field>
+   <field expr="item" stretch="true">
+    <box x="50" />
+   </field>
+  </detail>
+ </layout>
+</report>
+<!-- vim: set et ft=xml sw=1 : -->

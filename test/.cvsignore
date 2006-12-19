@@ -5,6 +5,6 @@
 *.bak
 *.pyc
 *.pyo
+*.prp
+*.pdf
 sakila.dat
-sakila.prp
-sakila.pdf

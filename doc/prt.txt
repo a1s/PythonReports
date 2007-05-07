@@ -227,7 +227,6 @@ Name              Req   Type      Description
 ================= ===== ========= ======================================
 ``name``           M    string    Variable name.
 ``default``        M    expr      Default value.
-                                  Empty string if omitted.
 ``prompt``         O    boolean   If set to ``yes``, report builder
                                   will prompt for parameter value.
                                   If value is ``no``, report builder

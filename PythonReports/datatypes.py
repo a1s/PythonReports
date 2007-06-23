@@ -1,5 +1,8 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+23-jun-2007 [als]   fix Validator.writexml: since we encode the attributes,
+                    don't convert output data back to unicode (that would
+                    fail) and don't require unicode-aware writer
 07-dec-2006 [als]   fix: qp-encoded data was accumulating spaces at the end
 07-dec-2006 [als]   fix decoding of qp-encoded data
 05-dec-2006 [als]   sweep pylint warnings
@@ -29,8 +32,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/12/08 12:52:06 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2007/06/23 16:16:46 $"[7:-2]
 
 import binascii
 import bz2
@@ -1006,8 +1009,7 @@ class Validator(object):
         """Write XML to the writer object
 
         Parameters:
-            writer: file-like object with "write" method
-                able to accept unicode strings
+            writer: file-like output object
             element: tree element of type handled by this validator
             encoding: character set name
             indent: indentation of the current element
@@ -1027,13 +1029,13 @@ class Validator(object):
             else:
                 _child_elements.append((_child, _validator))
         if _child_elements:
-            writer.write(u"%s<%s>%s" % (indent, _starttag, newl))
+            writer.write("%s<%s>%s" % (indent, _starttag, newl))
             for (_child, _validator) in _child_elements:
                 _validator.writexml(writer, _child, encoding,
                     indent + addindent, addindent, newl)
-            writer.write(u"%s</%s>%s" % (indent, self.tag, newl))
+            writer.write("%s</%s>%s" % (indent, self.tag, newl))
         else:
-            writer.write(u"%s<%s />%s" % (indent, _starttag, newl))
+            writer.write("%s<%s />%s" % (indent, _starttag, newl))
 
 class _DataBlock(Validator):
 

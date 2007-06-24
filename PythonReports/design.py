@@ -4,6 +4,7 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+24-jun-2007 [als]   update window title after save (filename may change)
 08-dec-2006 [als]   invalidate .current_node when new file is loaded;
                     ditto, when selected node is being deleted;
                     fix node deletion when parent node had a hidden
@@ -51,8 +52,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.17 $"[11:-2]
-__date__ = "$Date: 2006/12/08 15:29:07 $"[7:-2]
+__version__ = "$Revision: 1.18 $"[11:-2]
+__date__ = "$Date: 2007/06/24 13:04:21 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -1666,6 +1667,7 @@ class Designer(Toplevel):
         self.report.filename = self.filename = filename
         self.filedir = os.path.dirname(os.path.abspath(filename))
         self.loaded_text = str(self.report)
+        self.updateTitle()
         return True
 
     def updateTree(self, errors="strict"):

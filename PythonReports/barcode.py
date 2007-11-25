@@ -1,13 +1,14 @@
 """BarCode routines"""
 """History:
+25-nov-2007 [als]   fix default value for errors parameter to __call__
 05-dec-2006 [als]   sweep pylint warnings
 07-nov-2006 [als]   fix doctests (no quet zones encoded)
 22-sep-2006 [als]   encoding calls return sequences w/o quiet zones;
                     added .add_qz(), .min_height()
 12-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 15:49:57 $"[7:-2]
+__version__ = "$Revision: 1.4 $"[11:-2]
+__date__ = "$Date: 2007/11/25 08:48:41 $"[7:-2]
 
 __all__ = ["code2of5i", "code39", "code128"]
 
@@ -44,7 +45,7 @@ class BarCode(object):
     # 2of5I and Code128 require .25inch, Code39 require .10inch
     QZ_MILS = 250
 
-    def __call__(self, text, errors="stict"):
+    def __call__(self, text, errors="strict"):
         """Encode passed text, return sequence of stripe widths
 
         Parameters:
@@ -222,7 +223,7 @@ class Code2of5i(BarCode):
         else:
             return text
 
-    def __call__(self, text, errors="stict"):
+    def __call__(self, text, errors="strict"):
         # ensure that the text contains only digits
         _text = self._clean(text, errors)
         # pad with zero if necessary
@@ -385,7 +386,7 @@ class Code39(BarCode):
                     raise InvalidLiteral(text, self)
         return _rv
 
-    def __call__(self, text, errors="stict"):
+    def __call__(self, text, errors="strict"):
         _codes = self._encode_chars(text, errors)
         _widths = (1, self.w2n)
         _gap = (self.gap,)
@@ -529,6 +530,13 @@ class Code128(BarCode):
     def _encode_ab(text, chars):
         """Encode text with character set A or B"""
         _rv = []
+        # Note: the speed may be improved by moving try/except
+        # outside the loop (suggested by yarcat):
+        #    try:
+        #        for _char in text:
+        #            _rv.append(chars.index(_char))
+        #    except ValueError:
+        #        pass
         for _char in text:
             try:
                 _code = chars.index(_char)
@@ -584,7 +592,7 @@ class Code128(BarCode):
             _seq.extend(self._encode(_tail))
         return _seq
 
-    def __call__(self, text, errors="stict"):
+    def __call__(self, text, errors="strict"):
         _seq = self._encode(self._clean(text, errors))
         # replace code selection character with start character
         _code = _seq.pop(0)

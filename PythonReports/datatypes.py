@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+08-dec-2007 [als]   _DataBlock.make_element: escape cdata
 23-jun-2007 [als]   fix Validator.writexml: since we encode the attributes,
                     don't convert output data back to unicode (that would
                     fail) and don't require unicode-aware writer
@@ -32,8 +33,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2007/06/23 16:16:46 $"[7:-2]
+__version__ = "$Revision: 1.7 $"[11:-2]
+__date__ = "$Date: 2007/12/08 07:11:21 $"[7:-2]
 
 import binascii
 import bz2
@@ -1132,7 +1133,7 @@ class _DataBlock(Validator):
         else:
             # encoded data is ASCII.  non-encoded must be unicode.
             _data = unicode(_data)
-        _elem.text = _data
+        _elem.text = saxutils.escape(_data)
         return _elem
 
     @staticmethod

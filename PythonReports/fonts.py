@@ -1,11 +1,12 @@
 """Fonts registry"""
 """History (most recent first):
+22-dec-2007 [als]   add Ubuntu fonts location to SYSFONTPATHS (sf bug 1856408)
 27-sep-2006 [als]   support different system font path variants
 26-sep-2006 [als]   add font paths on windows (required by reportlab)
 26-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:46:22 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2007/12/22 17:54:15 $"[7:-2]
 
 __all__ = ["fontfile", "register"]
 
@@ -20,6 +21,7 @@ elif os.name == "posix":
     SYSFONTPATHS = [
         "/usr/X11R6/lib/X11/fonts/TrueType",
         "/usr/share/fonts/corefonts", # Gentoo Linux (TM)
+        "/usr/share/fonts/truetype/msttcorefonts", # Ubuntu (Feisty)
     ]
 
 # well-known font files

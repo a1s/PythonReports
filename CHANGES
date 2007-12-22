@@ -1,6 +1,12 @@
 PythonReports release history
 =============================
 
+version 0.3.3 (22-dec-2007)
+---------------------------
+
+Add Ubuntu (Feisty) default TTF location to the font search path
+(sf bug 1856408).
+
 version 0.3.2 (16-dec-2007)
 ---------------------------
 

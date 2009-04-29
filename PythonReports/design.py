@@ -4,6 +4,7 @@
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
 """History (most recent first):
+29-apr-2009 [als]   compatibility fix for python 2.5/2.6
 24-jun-2007 [als]   update window title after save (filename may change)
 08-dec-2006 [als]   invalidate .current_node when new file is loaded;
                     ditto, when selected node is being deleted;
@@ -52,8 +53,8 @@
 26-oct-2006 [als]   added shell frame
 13-oct-2006 [als]   created
 """
-__version__ = "$Revision: 1.18 $"[11:-2]
-__date__ = "$Date: 2007/06/24 13:04:21 $"[7:-2]
+__version__ = "$Revision: 1.19 $"[11:-2]
+__date__ = "$Date: 2009/04/29 07:25:07 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -1251,7 +1252,8 @@ class Designer(Toplevel):
         # this handler gets destroy events for all child widgets,
         # including Message dialogs.  Check update when the first
         # child of the tree widget gets destroyed, ignore all others.
-        if not self.terminated and event.widget.startswith(str(self.tree)):
+        if not self.terminated \
+        and str(event.widget).startswith(str(self.tree)):
             # some of the window widgets have been destroyed yet
             # and the window looks weird.  hide it away.
             # (we cannot return to the editor anyway.)

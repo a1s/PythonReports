@@ -2,6 +2,7 @@
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
 """History:
+22-jul-2010 [als]   development status set to Beta
 07-nov-2006 [als]   data_files include source (*.txt) documents
 07-nov-2006 [als]   fix: rst2html failed when there is no target file
 04-nov-2006 [als]   added maintainer_email and download_url;
@@ -12,8 +13,8 @@
 03-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2006/11/07 06:02:24 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2010/07/22 06:31:40 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -103,7 +104,7 @@ def run():
         #   have both filled.)
         maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
-            "Development Status :: 3 - Alpha",
+            "Development Status :: 4 - Beta",
             "Environment :: Win32 (MS Windows)",
             "Environment :: X11 Applications",
             "Intended Audience :: Developers",

@@ -1,6 +1,12 @@
 PythonReports release history
 =============================
 
+version 0.4.0 (22-jul-2010)
+---------------------------
+
+All API exports moved from the package __init__ to separate module
+(avoid loading all support libraries at the time of the package import).
+
 version 0.3.3 (22-dec-2007)
 ---------------------------
 

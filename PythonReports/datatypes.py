@@ -1,5 +1,6 @@
 """Data types and element primitives, common for templates and printouts"""
 """History:
+20-dec-2010 [luch]  fix XML entity escaping
 08-dec-2007 [als]   _DataBlock.make_element: escape cdata
 23-jun-2007 [als]   fix Validator.writexml: since we encode the attributes,
                     don't convert output data back to unicode (that would
@@ -33,8 +34,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2007/12/08 07:11:21 $"[7:-2]
+__version__ = "$Revision: 1.8 $"[11:-2]
+__date__ = "$Date: 2011/01/07 10:33:32 $"[7:-2]
 
 import binascii
 import bz2
@@ -1133,7 +1134,7 @@ class _DataBlock(Validator):
         else:
             # encoded data is ASCII.  non-encoded must be unicode.
             _data = unicode(_data)
-        _elem.text = saxutils.escape(_data)
+        _elem.text = _data
         return _elem
 
     @staticmethod
@@ -1198,7 +1199,7 @@ class _DataBlock(Validator):
         # there are no children for this element, just text
         # (the text, if any, must be already encoded by .make_element)
         _text = u"%s<%s>%s%s</%s>%s" % (indent, self.starttag(element),
-            _text, _indent2, self.tag, newl)
+            saxutils.escape(_text), _indent2, self.tag, newl)
         writer.write(_text.encode(encoding, "xmlcharrefreplace"))
 
 class ElementTree(ET.ElementTree):

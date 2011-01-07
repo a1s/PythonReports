@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+07-jan-2011 [als]   fix py2.7 FutureWarnings for "if section"
 19-dec-2006 [als]   straighten "if not/else" logic in Builder.run_subreport();
                     build_section: refetch context after subreports build
 18-dec-2006 [als]   Builder: added .get_page_dimensions();
@@ -65,8 +66,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.8 $"[11:-2]
-__date__ = "$Date: 2006/12/19 16:45:30 $"[7:-2]
+__version__ = "$Revision: 1.9 $"[11:-2]
+__date__ = "$Date: 2011/01/07 10:35:30 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -449,7 +450,7 @@ class Section(list):
             _skip_columns = 1
         else:
             _skip_columns = 2 # self and parent
-        while _element:
+        while _element is not None:
             if _skip_columns:
                 _skip_columns -= 1
             else:
@@ -1183,13 +1184,13 @@ class Builder(object):
         # add title and summary
         # if swapped, they use page frame, otherwise inner frame
         _section = _layout.find("title")
-        if _section:
+        if _section is not None:
             if _section.get("swapheader") and _section.find("eject"):
                 self.section_frames[_section] = _page_frame
             else:
                 self.section_frames[_section] = _frame
         _section = _layout.find("summary")
-        if _section:
+        if _section is not None:
             if _section.get("swapfooter"):
                 self.section_frames[_section] = _page_frame
             else:
@@ -1230,11 +1231,11 @@ class Builder(object):
         self.section_frames[_columns] = _frame
         _header = _columns.find("header")
         _footer = _columns.find("footer")
-        if _header or _footer:
-            if _header:
+        if (_header or _footer) is not None:
+            if _header is not None:
                 self.section_frames[_header] = _frame
                 _frame.header = _header
-            if _footer:
+            if _footer is not None:
                 self.section_frames[_footer] = _frame
                 _frame.footer = _footer
             _inner_frame = _frame.make_child()
@@ -1471,7 +1472,7 @@ class Builder(object):
         self.context = _new_context
         # build the section
         _section = self.build_section(_template)
-        if _section:
+        if _section is not None:
             # place the section
             self.add_section(_section)
         else:
@@ -1506,7 +1507,7 @@ class Builder(object):
             _footer = None
         else:
             _footer = _layout.find("footer")
-        if _summary:
+        if _summary is not None:
             self.check_eject(_summary)
             if _summary.get("swapfooter") and (_footer is not None):
                 _footer = self.build_section(_footer)
@@ -1565,7 +1566,7 @@ class Builder(object):
             if (_var.iter == "group") and (_var.itergrp == _group_name):
                 _var.iterate(self.context)
         _title = group.find("title")
-        if _title:
+        if _title is not None:
             self.check_eject(_title)
             self.add_section(self.build_section(_title))
         _columns = group.find("columns")
@@ -1586,7 +1587,7 @@ class Builder(object):
             if _max_y > self.cur_y:
                 self.cur_y = _max_y
         _summary = group.find("summary")
-        if _summary:
+        if _summary is not None:
             self.check_eject(_summary)
             self.add_section(self.build_section(_summary,
                 context=self.old_context))
@@ -1652,14 +1653,14 @@ class Builder(object):
                 _layout = _prt.find("layout")
                 assert _layout is not None # _prt is verified
                 _section = _layout.find("header")
-                if _section:
+                if _section is not None:
                     warn("Replacing non-empty page header"
                         " for inlined report \"%s\"" % _prt_name)
                     _layout.remove(_section)
                 if _page_frame.header is not None:
                     _layout.append(_page_frame.header)
                 _section = _layout.find("footer")
-                if _section:
+                if _section is not None:
                     warn("Replacing non-empty page footer"
                         " for inlined report \"%s\"" % _prt_name)
                     _layout.remove(_section)

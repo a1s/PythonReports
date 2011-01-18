@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+18-jan-2011 [luch]  removed extra empty horizontal pixel line between sections
 07-jan-2011 [als]   fix py2.7 FutureWarnings for "if section"
 19-dec-2006 [als]   straighten "if not/else" logic in Builder.run_subreport();
                     build_section: refetch context after subreports build
@@ -66,8 +67,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.9 $"[11:-2]
-__date__ = "$Date: 2011/01/07 10:35:30 $"[7:-2]
+__version__ = "$Revision: 1.10 $"[11:-2]
+__date__ = "$Date: 2011/01/18 16:00:25 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -568,7 +569,7 @@ class Section(list):
             return
         _elements = self.template.getchildren()
         # section is resizeable if it's height is not fixed
-        # for resizeable secions, final size must be recalculated after filling
+        # then final size must be recalculated after filling
         self.resizeable = self.tbox.height <= 0
         if not self.resizeable:
             # look for stretchable texts
@@ -1816,7 +1817,7 @@ class Builder(object):
         # TODO? if the section is empty (no content), simply advance cur_y
         # without adding the section to the page
         self.page.append(section)
-        self.cur_y = section.box.y + section.box.height + 1
+        self.cur_y = section.box.y + section.box.height
         if section.template.tag in ("header", "title"):
             # adjust top margin of all contained frames
             # (new columns will start at this position)

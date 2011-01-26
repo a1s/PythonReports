@@ -34,8 +34,8 @@
                     Color.encode: support Color objects
 30-jun-2006 [als]   created
 """
-__version__ = "$Revision: 1.8 $"[11:-2]
-__date__ = "$Date: 2011/01/07 10:33:32 $"[7:-2]
+__version__ = "$Revision: 1.9 $"[11:-2]
+__date__ = "$Date: 2011/01/26 13:36:24 $"[7:-2]
 
 import binascii
 import bz2
@@ -1197,7 +1197,6 @@ class _DataBlock(Validator):
             # must not add blank spaces to non-encoded values
             _indent2 = ""
         # there are no children for this element, just text
-        # (the text, if any, must be already encoded by .make_element)
         _text = u"%s<%s>%s%s</%s>%s" % (indent, self.starttag(element),
             saxutils.escape(_text), _indent2, self.tag, newl)
         writer.write(_text.encode(encoding, "xmlcharrefreplace"))

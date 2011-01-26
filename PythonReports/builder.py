@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+26-jan-2011 [luch]  added floating boxes processing
 18-jan-2011 [luch]  removed extra empty horizontal pixel line between sections
 07-jan-2011 [als]   fix py2.7 FutureWarnings for "if section"
 19-dec-2006 [als]   straighten "if not/else" logic in Builder.run_subreport();
@@ -67,11 +68,12 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.10 $"[11:-2]
-__date__ = "$Date: 2011/01/18 16:00:25 $"[7:-2]
+__version__ = "$Revision: 1.11 $"[11:-2]
+__date__ = "$Date: 2011/01/26 13:49:06 $"[7:-2]
 
 __all__ = ["Builder"]
 
+import itertools
 import math
 import os
 import time
@@ -80,6 +82,7 @@ from warnings import warn
 from PythonReports import barcode, drivers
 from PythonReports import template as prt
 from PythonReports import printout as prp
+from PythonReports import segment_layout
 from PythonReports.datatypes import *
 
 class Variable(object):
@@ -395,17 +398,15 @@ class Section(list):
     """
 
     # Printout classes and attributes to copy from templates
-    PRINTOUTS = {}
-    for (_prt, _prp) in (
-        (prt.Field, prp.Text),
-        (prt.Line, prp.Line),
-        (prt.Rectangle, prp.Rectangle),
-        (prt.Image, prp.Image),
-        (prt.BarCode, prp.BarCode),
-    ):
-        PRINTOUTS[_prt.tag] = (_prp,
-            set(_prt.attributes) & set(_prp.attributes))
-    del _prt, _prp
+    PRINTOUTS = dict(
+        (_prt.tag, (_prp, set(_prt.attributes) & set(_prp.attributes)))
+        for (_prt, _prp) in (
+            (prt.Field, prp.Text),
+            (prt.Line, prp.Line),
+            (prt.Rectangle, prp.Rectangle),
+            (prt.Image, prp.Image),
+            (prt.BarCode, prp.BarCode),
+        ))
 
     # Bar Code drivers
     BARCODES = {
@@ -416,6 +417,24 @@ class Section(list):
 
     # printability is set by .build
     printable = None
+
+    # map template items to self's elements
+    # for floating segment layout calculation
+    template2element = None
+
+    # TODO create specific class for template's section elements
+
+    # mark whether the section has floating boxes or not
+    has_floating_boxes = False
+
+    # the vertical layout of floating boxes is 1D problem, so
+    # boxes become segments.  Each segment has
+    # C{(template y, template height, floating mark,
+    #   segment number for debug,
+    #   template item that produced the segment)}
+    # The last segment's item is used as index in C{template2element}
+    # for calculating actual segment height.
+    vertical_segment_layout = None
 
     def __init__(self, builder, template, context=None):
         """Create Section instance
@@ -436,8 +455,107 @@ class Section(list):
         self.box = self.tbox = Box.from_element(template.find("box"))
         self.resizeable = False
         self.subreports_before = self.subreports_after = () # filled by .build
+        self.template2element = {}
+        self.vertical_segment_layout = self.has_floating_boxes = None
+        self.create_vertical_segment_layout(template)
         if context:
             self.build(context)
+
+    def create_vertical_segment_layout(self, template):
+        """Set C{template}'s C{vertical_segment_layout} if missing.
+
+        Also sets C{has_floating_boxes}.
+
+        """
+        _elements = [(_item, Box.from_element(_item.find("box")))
+            for _item in template if self.is_body_element(_item)]
+
+        self.has_floating_boxes = any(_it[1].float and
+            (_it[1].y >= 0) and (_it[1].height >= 0) for _it in _elements)
+        if not self.has_floating_boxes:
+            template.vertical_segment_layout = (lambda *args: None)
+            return
+
+        # non-floating segments should precede floating ones
+        _segments = [(_box.y, _box.height, _box.float, _nn, _item)
+            for (_nn, (_item, _box)) in enumerate(_elements)
+            if (_box.y >= 0) and (_box.height >= 0)]
+
+        _graph = self.arrange_segments(_segments)
+
+        #template.vertical_segment_layout
+        self.vertical_segment_layout = \
+            segment_layout.SegmentLayout(dict(_graph))
+
+    @staticmethod
+    def arrange_segments(segments):
+        """@return: minimal DAG of floating segment dependencies.
+
+        @param segments: tuple, where first 3 items are C{(y, height,
+            floating)}, where C{floating} is boolean flag that the segment
+            should float depending on segments wholly above the segment.
+
+        Segments precede other when it is wholly above it concerning
+        - a static segment precede a floating segment, because third
+          segment's item is boolean;
+        - a floating segment precede other floating segment only when
+          it starts earlier for the case when the second floating segment
+          has zero height.
+
+        Dependency is transitive.  Minimal dependency is one that does not
+        contain items that are implied by other dependency items.  Examle:
+        when B depends on A and C depends on A and B, minimal dependency for C
+        will contain B only.
+
+        About segments minimal dependency should be much smaller than full one.
+
+        >>> arrange = Section.arrange_segments
+        >>> arrange([])
+        []
+
+        >>> arrange([(0, 1, False)])
+        [((0, 1, False), [])]
+
+        >>> arrange([(0, 1, True), (2, 1, False)])
+        [((0, 1, True), []), ((2, 1, False), [])]
+
+        >>> arrange([(0, 1, True), (2, 1, True)])
+        [((0, 1, True), []), ((2, 1, True), [(0, 1, True)])]
+
+        >>> val = arrange([(0, 1, False), (2, 1, True), (4, 1, True)])
+        >>> print "\\n".join(repr(it) for it in val)
+        ((0, 1, False), [])
+        ((2, 1, True), [(0, 1, False)])
+        ((4, 1, True), [(2, 1, True)])
+
+        >>> val = arrange([(0, 0, False, 1), (0, 0, False, 2),
+        ...   (0, 0, True, 3), (0, 0, True, 4), (10, 0, True, 5),
+        ...   (5, 20, True, 6)])
+        >>> print "\\n".join(repr((s, sorted(p))) for (s, p) in sorted(val))
+        ((0, 0, False, 1), [])
+        ((0, 0, False, 2), [])
+        ((0, 0, True, 3), [(0, 0, False, 1), (0, 0, False, 2)])
+        ((0, 0, True, 4), [(0, 0, False, 1), (0, 0, False, 2)])
+        ((5, 20, True, 6), [(0, 0, True, 3), (0, 0, True, 4)])
+        ((10, 0, True, 5), [(0, 0, True, 3), (0, 0, True, 4)])
+
+        """
+        _rv = dict((_seg, []) for _seg in segments)
+        for (_seg, _pre) in segment_layout.preceding_segments(segments):
+            if _seg[2]:
+                # floating segments with the same starting point
+                # has *no* influence to the current segment
+                _pre = [_sp for _sp in _pre
+                    if not _sp[2] or (_sp[0] < _seg[0])]
+                # remove extra dependencies,
+                # i.e. dependencies of preceding floating segments
+                _remove = itertools.chain(*(
+                    _rv[_sp] for _sp in _pre if _sp[2]))
+                _pre = list(set(_pre) - set(_remove))
+            else:
+                _pre = []
+            _rv[_seg] = _pre
+        return _rv.items()
 
     def iter_styles(self):
         """Iterate over all styles for the section (both direct and inherited)
@@ -469,15 +587,13 @@ class Section(list):
         evaluation when .build() is called.)
 
         """
-        _rv = True
-        for _style in self.iter_styles():
-            if context.eval(_style.get("when")):
-                _printwhen = _style.get("printwhen")
-                if _printwhen:
-                    _rv = bool(context.eval(_printwhen))
-                    break
-        self.printable = _rv
-        return _rv
+        def _ifirst(seq, N=1):
+            return list(itertools.islice(seq, N))
+        _printwhen = _ifirst(_style.get("printwhen")
+            for _style in self.iter_styles()
+            if context.eval(_style.get("when")) and _style.get("printwhen"))
+        self.printable = not _printwhen or context.eval(_printwhen[0])
+        return self.printable
 
     @staticmethod
     def compose_style(context, need_attrs, styles):
@@ -592,20 +708,15 @@ class Section(list):
                 if (not _when) or context.eval(_when):
                     _subreports.append((_item.get("seq"), _item))
                 continue
-            # ignore children that are not known body elements
-            if _item.tag not in (
-                "field", "line", "rectangle", "image", "barcode",
-            ):
+            if not self.is_body_element(_item):
                 continue
             _element = ReportElement(section=self, template=_item)
+            self.template2element[_item] = _element
             _element.style = self.compose_style(context,
                 ("printwhen", "font", "color", "bgcolor"),
                 _item.findall("style") + _default_element_style)
             _printwhen = _element.style.get("printwhen")
-            if _printwhen:
-                _element.printable = context.eval(_printwhen)
-            else:
-                _element.printable = True
+            _element.printable = not _printwhen or context.eval(_printwhen)
             # must not evaluate expressions for suspended elements.
             # skip elements that are not printable.
             if not _element.printable:
@@ -627,6 +738,15 @@ class Section(list):
             if _item[0] < 0)
         self.subreports_after = tuple(_item[1] for _item in _subreports
             if _item[0] > 0)
+
+    @staticmethod
+    def is_body_element(item):
+        """@return: whether item represents body element or not.
+
+        @param item: template section element.
+
+        """
+        return item.tag in ("field", "line", "rectangle", "image", "barcode")
 
     def build_barcode(self, element):
         """Compute sripe widths and box size/position for barcode element
@@ -722,9 +842,9 @@ class Section(list):
                 # is relative to the section margin).
                 _bbox.y = _element.tbox.y
             _element.bbox = _bbox
-        ###
-        ### TODO: Move floating boxes
-        ###
+
+        self.move_floating_elements()
+
         # fix section height (may not be computed from total available height)
         if self.resizeable:
             _height = self.tbox.height
@@ -779,6 +899,18 @@ class Section(list):
             _bbox.align_y(_obox)
         # compute output boxes
         self.refill()
+
+    def move_floating_elements(self):
+        """Move floating boxes using C{vertical_segment_layout}"""
+        if not self.has_floating_boxes:
+            return
+        def _height(segment):
+            _element = self.template2element[segment[-1]]
+            return _element.bbox.height if _element.printable else 0
+        for (_seg, _y) in self.vertical_segment_layout(_height).iteritems():
+            _element = self.template2element[_seg[-1]]
+            if _element.printable:
+                _element.bbox.y = _y
 
     def refill(self, new_y=None):
         """Update section element placements.
@@ -1427,7 +1559,7 @@ class Builder(object):
             _layout_header = None
         else:
             _layout_header = _layout.find("header")
-        if _layout_title:
+        if _layout_title is not None:
             if _layout_title.get("swapheader"):
                 _section = self.build_section(_layout_title)
                 if _section is not None:

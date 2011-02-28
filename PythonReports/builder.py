@@ -1,6 +1,7 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
 """History (most recent first):
+28-feb-2011 [luch]  negative-height items do not affect section height
 26-jan-2011 [luch]  added floating boxes processing
 18-jan-2011 [luch]  removed extra empty horizontal pixel line between sections
 07-jan-2011 [als]   fix py2.7 FutureWarnings for "if section"
@@ -68,8 +69,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.11 $"[11:-2]
-__date__ = "$Date: 2011/01/26 13:49:06 $"[7:-2]
+__version__ = "$Revision: 1.12 $"[11:-2]
+__date__ = "$Date: 2011/02/28 14:11:32 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -746,6 +747,7 @@ class Section(list):
         @param item: template section element.
 
         """
+        # TODO convert it to element's or template's property or method
         return item.tag in ("field", "line", "rectangle", "image", "barcode")
 
     def build_barcode(self, element):
@@ -866,11 +868,12 @@ class Section(list):
                 elif _bbox.height >= 0:
                     _elem_height = _bbox.y + _bbox.height
                 else:
+                    # FIXME is it for _bbox.height < 0?
                     # fixed space from top and bottom, unknown size
                     _elem_height = _bbox.y + 1 - _bbox.height
                 if _elem_height > _height:
                     _height = _elem_height
-            _sbox.height = round(_height)
+            _sbox.height = round(_height) if _height > 0 else 0
         # fix vertical dimensions for elements
         for _element in self:
             _template = _element.template
@@ -1074,7 +1077,12 @@ class Frame(Structure):
             _col = ""
         return "<%s@%X%s: %.1f, %.1f, %.1f, %.1f>" % (
             self.__class__.__name__, id(self), _col,
-            self.x, self.top, self.width, self.bottom - self.top)
+            self.x, self.top, self.width, self.height)
+
+    @property
+    def height(self):
+        """Read-only height of frame"""
+        return self.bottom - self.top
 
     def make_child(self, **kwargs):
         """Create new Frame inside this one
@@ -1204,6 +1212,10 @@ class Builder(object):
         self.topmargin = _layout.get("topmargin")
         self.create_frames()
         self.find_layout_parents()
+
+    def __repr__(self):
+        return "<%s@%x:%r>" % (self.__class__.__name__, id(self),
+            os.path.basename(self.template.filename))
 
     def filepath(self, *path):
         """Return normalized absolute pathname
@@ -1628,7 +1640,7 @@ class Builder(object):
         for _group in reversed(self.groups):
             self.end_group(_group)
         _columns = _layout.find("columns")
-        if _columns:
+        if _columns is not None:
             self.add_section(self.build_section(_columns.find("footer")))
             self.resolve_eval("column")
             _max_y = self.section_frames[_columns].max_y

@@ -69,8 +69,8 @@
                     fields and images are unsupported yet
 11-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.12 $"[11:-2]
-__date__ = "$Date: 2011/02/28 14:11:32 $"[7:-2]
+__version__ = "$Revision: 1.13 $"[11:-2]
+__date__ = "$Date: 2011/09/26 16:43:19 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -593,8 +593,8 @@ class Section(list):
         _printwhen = _ifirst(_style.get("printwhen")
             for _style in self.iter_styles()
             if context.eval(_style.get("when")) and _style.get("printwhen"))
-        self.printable = not _printwhen or context.eval(_printwhen[0])
-        return self.printable
+        self.printable = (not _printwhen) or context.eval(_printwhen[0])
+        return bool(self.printable)
 
     @staticmethod
     def compose_style(context, need_attrs, styles):

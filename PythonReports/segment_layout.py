@@ -2,8 +2,8 @@
 """History (most recent first):
 21-jan-2011 [luch]  created
 """
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2011/01/26 13:47:27 $"[7:-2]
+__version__ = "$Revision: 1.2 $"[11:-2]
+__date__ = "$Date: 2011/09/26 16:01:59 $"[7:-2]
 
 
 from operator import itemgetter
@@ -15,14 +15,14 @@ class SegmentLayout(object):
     C{SegmentLayout} calculates actual segment position depending on
     actual width of segments after stretching.
 
-    Layout is based on segment dependency DAG -- directed acyclic graph.
-    All segments, that a segment depends on, should be wholly at its left.
+    Layout is based on segment dependency DAG (Directed Acyclic Graph).
+    All segments that a segment depends on should be wholly at its left.
 
     Each segment has a non-negative gap to the nearest segment of those
     it depends on.  The gap is taken into account when the segment's actual
     width is positive.  Zero width segments are considered meaningless.
 
-    Example: 1 depend on A and B, 2 depends on 1, Z depends 1,
+    Example: 1 depend on A and B, 2 depends on 1, Z depends on 1,
         3 depends on 2 and Z.
 
     Initial layout::
@@ -43,11 +43,11 @@ class SegmentLayout(object):
       :aaaa   222222 333
       :bbbbbb   zzz
 
-    - A and B collapses::
+    - A and B collapse::
       :   1111 222222 333
       :          zzz
 
-    At present there is no other way avoid leading gap when A and B collapes,
+    At present there is no way to avoid leading gap when A and B collapse
     other than make zero gap.
 
     >>> SegmentLayout({})()
@@ -220,7 +220,7 @@ def preceding_segments(segments):
     return _rv
 
 
-def toposort(direcred_graph):
+def toposort(directed_graph):
     """@return: vertexes of directed acyclic graph in C{toposort} order
 
     Directions should go from a dependent vertext to a vertex it depends on.
@@ -241,11 +241,11 @@ def toposort(direcred_graph):
     def _walk(vertex):
         if vertex not in _visited:
             _visited.add(vertex)
-            for child in direcred_graph[vertex]:
+            for child in directed_graph[vertex]:
                 _walk(child)
             _vertex_order.append(vertex)
 
-    for _vertex in direcred_graph:
+    for _vertex in directed_graph:
         _walk(_vertex)
     return _vertex_order
 

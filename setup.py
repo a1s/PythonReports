@@ -2,6 +2,7 @@
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
 """History:
+26-sep-2011 [als]   update URL for the downloads page
 22-jul-2010 [als]   development status set to Beta
 07-nov-2006 [als]   data_files include source (*.txt) documents
 07-nov-2006 [als]   fix: rst2html failed when there is no target file
@@ -13,8 +14,8 @@
 03-oct-2006 [als]   created
 """
 
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2010/07/22 06:31:40 $"[7:-2]
+__version__ = "$Revision: 1.7 $"[11:-2]
+__date__ = "$Date: 2011/09/26 17:48:52 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -94,11 +95,11 @@ def run():
         version=get_version(),
         url="http://pythonreports.sourceforge.net/",
         download_url=
-            "http://sourceforge.net/project/showfiles.php?group_id=181233",
+            "http://sourceforge.net/projects/pythonreports/files/",
         description="Database report generator",
         long_description=DESCRIPTION,
         author="alexander smishlajev",
-        author_email="alex@Tycobka.lv",
+        author_email="alex@gorka.lv",
         # XXX maintainer_email always overwrites author_email.
         #   (good thing too, but PyPI has two slots, and i'd like to
         #   have both filled.)

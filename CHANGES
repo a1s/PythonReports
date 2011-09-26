@@ -1,6 +1,16 @@
 PythonReports release history
 =============================
 
+version 0.5.0 (26-sep-2011)
+---------------------------
+
+Features (thanks Alexey Luchko):
+
+  - implemented floating elements
+  - on Windows, search unknown font names in the Windows fonts registry
+
+Fix XML escaping for data blocks.
+
 version 0.4.0 (22-jul-2010)
 ---------------------------
 

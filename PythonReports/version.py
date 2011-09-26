@@ -6,8 +6,8 @@
 # Note: __date__ is a string because all modules have __date__ as a string.
 # wouldn't datetime.date object be better?
 
-__version__ = "0.4.0"
-__date__ = "2010-07-22"
+__version__ = "0.5.0"
+__date__ = "2011-09-26"
 __all__ = ["__version__", "__date__"]
 
 # vim: set et sts=4 sw=4 :

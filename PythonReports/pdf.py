@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 """PDF output for PythonReports"""
 """History (most recent first):
+11-oct-2011 [luch]  adapted to PIL 1.1.7
 07-dec-2006 [als]   fix: diagonal lines were offset down by the box height
 05-dec-2006 [als]   sweep pylint warnings;
                     remove pdf autostart (can be easily done in command line)
@@ -13,8 +14,8 @@
                     center texts vertically within their bounding boxes
 25-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/07 12:21:50 $"[7:-2]
+__version__ = "$Revision: 1.5 $"[11:-2]
+__date__ = "$Date: 2011/10/11 14:50:19 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 
@@ -325,8 +326,8 @@ class PdfWriter(object):
             self.canvas.drawImage(ImageReader(_img), _x, _y, _width, _height)
         else:
             (_img_width, _img_height) = _img.size
-            _img = _img.crop(
-                (0, 0, min(_width, _img_width), min(_height, _img_height)))
+            _img = _img.crop((0, 0, int(min(_width, _img_width)),
+                int(min(_height, _img_height))))
             self.canvas.drawImage(ImageReader(_img), _x, _y)
 
     def drawText(self, text):

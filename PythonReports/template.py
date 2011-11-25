@@ -1,5 +1,6 @@
 """PythonReports Template (PRT) structures"""
 """History (most recent first):
+25-nov-2011 [luch]  explicitly set Report.filename
 19-dec-2006 [als]   fix: Arg value is expression
 15-dec-2006 [als]   added Arg and Subreport
 15-dec-2006 [als]   Eject type defaults to "page"
@@ -26,8 +27,8 @@
 06-jul-2006 [als]   added export declaration
 04-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.9 $"[11:-2]
-__date__ = "$Date: 2006/12/19 14:44:56 $"[7:-2]
+__version__ = "$Revision: 1.10 $"[11:-2]
+__date__ = "$Date: 2011/11/25 10:06:46 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -36,6 +37,8 @@ __all__ = [
     "Detail", "Header", "Footer", "Title", "Summary",
     "Columns", "Group", "Layout", "Report", "load",
 ]
+
+import os
 
 from PythonReports.datatypes import *
 
@@ -383,6 +386,7 @@ def Report(tree, element, path):
     tree.variables = {}
     tree.groups = {}
     tree.fonts = {}
+    tree.filename = None
     # don't create datablocks here - will be done in Layout prevalidator
 
 Report = Validator(tag="report", prevalidate=Report,
@@ -403,9 +407,12 @@ Report = Validator(tag="report", prevalidate=Report,
 )
 
 def load(source):
-    """Load printout file, return ElementTree"""
+    """Load template file, return ElementTree"""
     _et = ElementTree(Report)
     _et.parse(source)
+    if os.path.exists(source):
+        # XXX bad heuristics
+        _et.filename = source
     return _et
 
 # vim: set et sts=4 sw=4 :

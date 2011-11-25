@@ -11,8 +11,8 @@
 17-jul-2006 [als]   fix Page: missing tag
 10-jul-2006 [als]   created
 """
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:54:39 $"[7:-2]
+__version__ = "$Revision: 1.3 $"[11:-2]
+__date__ = "$Date: 2011/11/25 10:01:56 $"[7:-2]
 
 __all__ = [
     "Text", "Line", "Rectangle", "Image", "BarCode",
@@ -117,7 +117,7 @@ Printout = Validator(tag="printout",
         "description": (String, None),
         "version": (String, None),
         "author": (String, None),
-        "basedir": (String, None),
+        "basedir": (String, None),  # WARNING useless, always None actually
         # TODO: "built": (Timestamp, None),
     }, children=(
         (Font, Validator.ONE_OR_MORE),

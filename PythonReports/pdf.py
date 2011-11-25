@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 """PDF output for PythonReports"""
 """History (most recent first):
+25-oct-2011 [luch]  priority to embedded images instead of external files
 11-oct-2011 [luch]  adapted to PIL 1.1.7
 07-dec-2006 [als]   fix: diagonal lines were offset down by the box height
 05-dec-2006 [als]   sweep pylint warnings;
@@ -14,8 +15,8 @@
                     center texts vertically within their bounding boxes
 25-sep-2006 [als]   created
 """
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2011/10/11 14:50:19 $"[7:-2]
+__version__ = "$Revision: 1.6 $"[11:-2]
+__date__ = "$Date: 2011/11/25 10:14:10 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 
@@ -307,20 +308,18 @@ class PdfWriter(object):
     def drawImage(self, image):
         """Draw an image"""
         _scale = image.get("scale", True)
-        _img = image.get("file")
-        if _img:
+        # actually, builder embeds all images into the printout
+        if image.find("data") is not None:
+            _data = StringIO(Data.get_data(image.find("data")))
+            _img = Image.open(_data)
+        elif image.get("data"):
+            _img = self.named_images[image.get("data")]
+        else:
+            _img = image.get("file")
             # it is better to use filename unless we have to cut the image
             # (scale will be done by reportlab)
             if not _scale:
                 _img = Image.open(_img)
-        else:
-            _data = image.get("data")
-            if _data:
-                _img = self.named_images[_data]
-            else:
-                # image data must be child element
-                _data = StringIO(Data.get_data(image.find("data")))
-                _img = Image.open(_data)
         (_x, _y, _width, _height) = self.getDimensions(image)
         if _scale:
             self.canvas.drawImage(ImageReader(_img), _x, _y, _width, _height)

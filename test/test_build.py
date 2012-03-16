@@ -41,9 +41,9 @@ class Progress(object):
 
     def indicate(self):
         """Show progress indicator at self.percent"""
-        _pos = int(_percent / 100 * self.BAR_WIDTH)
+        _pos = int(self.percent / 100 * self.BAR_WIDTH)
         sys.stdout.write("\r[%s>%s] %5.1f%%"
-            % ("=" * _pos, " " * (self.BAR_WIDTH - _pos), _percent))
+            % ("=" * _pos, " " * (self.BAR_WIDTH - _pos), self.percent))
 
     def __call__(self):
         _context = self.builder.context

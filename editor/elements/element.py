@@ -3,10 +3,9 @@
 20-mar-2012 [kacah]   created
 
 """
-from pythonreports_binding import PythonReportsBinder
 from propertiesgrid import PropertiesListener
 
-class Element(PythonReportsBinder, PropertiesListener):
+class Element(PropertiesListener):
     """Base class for all elements"""
 
     def __init__(self, prop_grid, main_val, single_val=[], multiple_val=[]):
@@ -15,15 +14,18 @@ class Element(PythonReportsBinder, PropertiesListener):
         
         """
 
-        PythonReportsBinder.__init__(self, main_val, single_val, multiple_val)
         PropertiesListener.__init__(self, prop_grid)
 
-        self.update_validators_to_properties()
+        self.main_val = main_val
+        self.single_val = single_val
+        self.multiple_val = multiple_val
 
-    def update_validators_to_properties(self):
+        self.add_properties_from_validators()
+
+    def add_properties_from_validators(self):
         """Add all properties from validators to "properties" dictionary"""
 
-        self.update_attributes(self.main_val.tag, self.main_val.attributes)
+        self.add_attributes(self.main_val.tag, self.main_val.attributes)
 
         for _validator in self.single_val:
-            self.update_attributes(_validator.tag, _validator.attributes)
+            self.add_attributes(_validator.tag, _validator.attributes)

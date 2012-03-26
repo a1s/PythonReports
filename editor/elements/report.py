@@ -14,14 +14,18 @@ DEFAULT_WIDTH = 600
 #sequence is important
 SECTION_NAMES = ["Title", "Header", "Detail", "Footer", "Summary"]
 MAIN_VALIDATOR = templelem.Report
-SINGLE_VALIDATORS = [templelem.Layout]
+ZERO_OR_ONE_VALIDATORS = [templelem.Columns]
+ONE_VALIDATORS = [templelem.Layout]
+UNRESTRICTED_VALIDATORS = [templelem.Group, templelem.Style]
 
 class Report(Container, Element):
     """Main, Report element, Root of template"""
 
     def __init__(self, parent, prop_grid):
         Container.__init__(self, parent, "Report", DEFAULT_WIDTH)
-        Element.__init__(self, prop_grid, MAIN_VALIDATOR, SINGLE_VALIDATORS)
+        Element.__init__(self, prop_grid,
+            MAIN_VALIDATOR, ZERO_OR_ONE_VALIDATORS,
+            ONE_VALIDATORS, UNRESTRICTED_VALIDATORS)
 
         self.sections = self.create_sections(SECTION_NAMES)
         self.columns = None

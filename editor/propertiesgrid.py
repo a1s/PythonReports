@@ -11,20 +11,40 @@ import wx.propgrid as wxpg
 import datatypes_binding
 
 class PropertiesListener(object):
-    """Listen while control get or lost focus and update property grid
-    
-    @note: Inherit from this class your Element and BIND methods OnSetFocus
-        and OnKillFocus to wx Events or something else
-    
-    """
-    def __init__(self, prop_grid):
+    """Listen while control get or lost focus and update property grid"""
+
+    def __init__(self, prop_grid=None):
         self.prop_grid = prop_grid
 
         #attributes and child validated elements
         self.properties = {}
 
-    def OnSetFocus(self, evt=None):
-        self.prop_grid.setup_by_element(self)
+    def OnSelected(self, evt=None, prop_grid=None):
+        """Use this when your element is selected to force prop grid update
+        
+        @note: BIND this to one of the wx events (for example ON_FOCUS) or
+            use this function directly. 
+            
+            If prop_grid is passed uses it, otherwise uses self.prop_grid.
+            Throws Exception if both prop grids are None
+        
+        """
+        if prop_grid:
+            prop_grid.setup_by_element(self)
+        elif self.prop_grid:
+            self.prop_grid.setup_by_element(self)
+        else:
+            raise Exception("No property grid found")
+
+    def OnUnselected(self, evt=None, prop_grid=None):
+        """Clear prop grid after deselection. Same use as OnSelected"""
+
+        if prop_grid:
+            prop_grid.unsetup(self)
+        elif self.prop_grid:
+            self.prop_grid.unsetup(self)
+        else:
+            raise Exception("No property grid found")
 
     def update_property(self, changed_property):
         """Update property in dictionary by property grid's Property
@@ -82,7 +102,8 @@ class PropertiesListener(object):
 
     def add_attr_UNRESTRICTED(self, tag, attributes):
         """Add attributes that can be many"""
-        #create category for all unrestricted properties
+
+        #create ONE category for ALL unrestricted properties
         if not self.properties.get(self.LIST_CATEGORY):
             self.properties[self.LIST_CATEGORY] = {}
 
@@ -131,7 +152,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
                 self.property.SetValueToUnspecified()
                 self.prop_grid.fire_property_update(self.property)
             else:
-                print "Error, Property on Element in menu not set"
+                raise Exception("Property doesn't attached")
 
 
     def __init__(self, parent):
@@ -182,7 +203,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
 
         _property = _attr_settings.creation_func(self, _field_class, name,
             _value, _param)
-        #client data = if this property can be empty
+        #client data = if this property can be unspecified
         _property.SetClientData(_default_value is None)
 
     def append_atributes(self, tag, attributes):
@@ -211,7 +232,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
 class ListPropertyDialog(wx.Dialog):
     """Dialog for editing ListProperties"""
 
-    DIALOG_SIZE = (400, 300)
+    DIALOG_SIZE = (600, 500)
 
     def __init__(self, parent, value):
         wx.Dialog.__init__(self, parent=parent,
@@ -219,22 +240,105 @@ class ListPropertyDialog(wx.Dialog):
 
         self.value = value
 
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        stline = wx.StaticText(self, 11, "TEST DIALOG")
-        vbox.Add(stline, 1, wx.ALIGN_CENTER | wx.TOP, 45)
-        sizer = self.CreateButtonSizer(wx.OK | wx.CANCEL)
-        vbox.Add(sizer, 0, wx.ALIGN_CENTER)
-        self.SetSizer(vbox)
+        _hbox = wx.BoxSizer(wx.HORIZONTAL)
+        _hbox.Add(self.create_list_box(), 2, wx.EXPAND | wx.ALL, 5)
+        _hbox.Add(self.create_control_bar(), 1, wx.EXPAND | wx.ALL, 5)
+        _hbox.Add(self.create_property_bar(), 2, wx.EXPAND | wx.ALL, 5)
 
-        self.Bind(wx.EVT_CLOSE, self.OnCancel)
-        self.Bind(wx.EVT_BUTTON, self.OnOk, id=wx.ID_OK)
-        self.Bind(wx.EVT_BUTTON, self.OnCancel, id=wx.ID_CANCEL)
+        _buttons_line = self.CreateButtonSizer(wx.OK)
 
-    def OnOk(self, event):
-        self.EndModal(wx.OK)
+        _vbox = wx.BoxSizer(wx.VERTICAL)
+        _vbox.Add(_hbox, 1, wx.EXPAND | wx.TOP, 5)
+        _vbox.Add(_buttons_line, 0, wx.ALIGN_CENTER | wx.ALL, 15)
+        self.SetSizer(_vbox)
 
-    def OnCancel(self, event):
-        self.EndModal(wx.CANCEL)
+        self.update_list()
+
+    def create_list_box(self):
+        """Create list bar and return something to add to sizer"""
+
+        _sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.prop_list = wx.ListBox(self, wx.ID_ANY)
+        self.Bind(wx.EVT_LISTBOX, self.OnListItemSelect, self.prop_list)
+        _sizer.Add(self.prop_list, 1, wx.EXPAND | wx.ALL, 5)
+        return _sizer
+
+    def create_control_bar(self):
+        """Create buttons for adding, deleting and moving elements"""
+
+        #buttons - (name, on_click_function, top_margin)
+        BUTTONS = [
+            ("Add", self.OnAddButton, 45),
+            ("Remove", self.OnRemoveButton, 15),
+            ("Up", self.OnUpButton, 15),
+            ("Down", self.OnDownButton, 15),
+        ]
+
+        _button_box = wx.BoxSizer(wx.VERTICAL)
+        for _params in BUTTONS:
+            _button = wx.Button(self, wx.ID_ANY, _params[0])
+            self.Bind(wx.EVT_BUTTON, _params[1], _button)
+            _button_box.Add(_button, 0, wx.ALIGN_CENTER | wx.TOP, _params[2])
+
+        return _button_box
+
+    def create_property_bar(self):
+        """Create property bar and return something to add to sizer"""
+
+        _border = wx.StaticBox(self, label="Properties")
+        _boxsizer = wx.StaticBoxSizer(_border, wx.HORIZONTAL)
+        self.prop_grid = PropertiesGrid(self)
+        _boxsizer.AddStretchSpacer(1)
+        _boxsizer.Add(self.prop_grid, 20, wx.EXPAND | wx.ALL, 5)
+        _boxsizer.AddStretchSpacer(1)
+        return _boxsizer
+
+    def update_list(self, selected_item=None):
+        """Populate listbox with elements from value list"""
+
+        _values = self.value.get_all()
+        self.prop_list.Clear()
+        self.prop_grid.unsetup()
+        for _value in _values:
+            self.prop_list.Append(_value.name)
+
+        #try to get and restore selected value
+        if selected_item:
+            _index = self.value.find(selected_item)
+            if _index > -1:
+                self.prop_list.SetSelection(_index)
+                selected_item.OnSelected(prop_grid=self.prop_grid)
+
+    def OnListItemSelect(self, event):
+        _index = event.GetSelection()
+        self.value.get(_index).OnSelected(prop_grid=self.prop_grid)
+
+    def OnAddButton(self, event):
+        """Add new element into value and update list"""
+        self.value.add()
+        _list_elmt = None
+        _index = self.prop_list.GetSelection()
+        if _index >= 0:
+            _list_elmt = self.value.get(_index)
+        self.update_list(_list_elmt)
+
+    def __run_if_selected(self, _run_func):
+        """Run given function if item is selected and update list"""
+
+        _index = self.prop_list.GetSelection()
+        if _index >= 0:
+            _elem = self.value.get(_index)
+            _run_func(_index)
+            self.update_list(_elem)
+
+    def OnRemoveButton(self, event):
+        self.__run_if_selected(self.value.remove)
+
+    def OnUpButton(self, event):
+        self.__run_if_selected(self.value.move_up)
+
+    def OnDownButton(self, event):
+        self.__run_if_selected(self.value.move_down)
 
     def GetValue(self):
         return self.value
@@ -242,31 +346,93 @@ class ListPropertyDialog(wx.Dialog):
 
 class ListPropertyValue(object):
     """Contain list of properties such as styles, groups..."""
-    def __init__(self, value, tag=None, attributes=None):
-        """Try to copy value is value is object of this class
-        
-        @param value: list or ListPropertyValue
+
+    class ListElement(PropertiesListener):
+        """Element in property list"""
+
+        elem_id = 0
+
+        def __init__(self, tag, attributes):
+            """Use only one category - element self"""
+            PropertiesListener.__init__(self)
+
+            if attributes:
+                self.add_attr_ONE(tag, attributes)
+
+            self.name = self.generate_unique_name(tag)
+
+        @classmethod
+        def generate_unique_name(self, tag):
+            """Generate unique name for this element. Good for recognizing it"""
+
+            self.elem_id += 1
+            return "%s %d" % (tag, self.elem_id)
+
+    def __init__(self, value, tag, attributes):
+        """New list property
+            
+        @param value: list of ListElements or ListPropertyValue
         @param tag: string, name of listed elements
         @param attributes: dictionary of attributes of listed elements
         
-        @note: 2 ways to use
-            1) ListPropertyValue(value), if value is ListPropertyValue instance
-            2) ListPropertyValue([], tag, attr)
-            
-            if you will try ListPropertyValue([]) it will raise Exception, 
-            because of tag and attr must be filled
-            
         """
-        if value.__class__ is self.__class__:
-            self.properties = value.properties
-            self.tag = value.tag
-            self.attributes = value.attributes
+        self.properties = value
+        self.tag = tag
+        self.attributes = attributes
+
+    def has_element(self, index):
+        """Check if there is a property with given index"""
+        return index < len(self.properties) and index >= 0
+
+    def add(self):
+        """Add new element to list"""
+        _elmt = self.ListElement(self.tag, self.attributes)
+        self.properties.append(_elmt)
+        return _elmt
+
+    def get(self, index):
+        """Get element by given index"""
+        if self.has_element(index):
+            return self.properties[index]
         else:
-            if not tag or not attributes:
-                raise Exception("tag and attributes must be specified")
-            self.properties = value
-            self.tag = tag
-            self.attributes = attributes
+            return None
+
+    def get_all(self):
+        return self.properties
+
+    def find(self, elem):
+        """Get index of given element, return -1 if doesn't exist"""
+        try:
+            return self.properties.index(elem)
+        except:
+            return -1
+
+    def remove(self, index):
+        """Remove element form list by given index"""
+        if self.has_element(index):
+            del self.properties[index]
+        else:
+            raise Exception("Out of index")
+
+    def __move(self, from_index, to_index):
+        """Move element form index to index."""
+        self.properties.insert(to_index, self.properties.pop(from_index))
+
+    def move_up(self, index):
+        """Move element closer to list start"""
+        if self.has_element(index):
+            if index > 0:
+                self.__move(index, index - 1)
+        else:
+            raise Exception("Out of index")
+
+    def move_down(self, index):
+        """Move element closer to list end"""
+        if self.has_element(index):
+            if index < len(self.properties) - 1:
+                self.__move(index, index + 1)
+        else:
+            raise Exception("Out of index")
 
 
 class ListProperty(wxpg.PyLongStringProperty):
@@ -290,9 +456,8 @@ class ListProperty(wxpg.PyLongStringProperty):
 
     def OnButtonClick(self, prop_grid, value):
         #copy value and pass it to dialog
-        _dlg = ListPropertyDialog(None, ListPropertyValue(self.GetValue()))
-        if _dlg.ShowModal() == wx.OK:
-            self.SetValue(_dlg.GetValue())
-            self.prop_grid.fire_property_update(self)
+        _dlg = ListPropertyDialog(None, self.GetValue())
+        _dlg.ShowModal()
+        self.prop_grid.fire_property_update(self)
         _dlg.Destroy()
         return True

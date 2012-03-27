@@ -15,7 +15,7 @@ class SimpleContainer(Container, PropertiesListener):
 
         self.MakePaneContent(self.GetPane())
 
-        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSetFocus)
+        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
     def MakePaneContent(self, pane):
         """Just make a few controls to put on the collapsible pane"""

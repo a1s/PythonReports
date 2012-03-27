@@ -35,9 +35,23 @@ def c_colour(prop_grid, field_type, name, value, param={}):
     @param params: dict of known colour constants binded with Hex colour value
     
     """
-    if param.get(value):
-        value = param[value]
-    return prop_grid.Append(field_type(name, value=value.__str__()))
+    def hex_to_color(hex_string):
+        """Convert '#AABBCC' to wx.Color"""
+        import wx
+        _no_sharp = hex_string.__str__()[1:]
+        import struct
+        (_r, _g, _b) = struct.unpack('BBB', _no_sharp.decode('hex'))
+        return wx.Color(_r, _g, _b)
+
+    _prop = prop_grid.Append(field_type(name))
+    if value is None:
+        _prop.SetValueToUnspecified()
+    elif param.get(value):
+        _prop.SetValue(param[value])
+    else:
+        #direct "#AABBCC" or tuple doesn't work in this place Oo
+        _prop.SetValue(hex_to_color(value))
+    return _prop
 
 def c_list(prop_grid, field_type, name, value, param={}):
     """List of properties"""
@@ -58,7 +72,13 @@ def by_str(prop, res_type):
 
 def by_color(prop, res_type):
     """Use value converted into RGB tuple"""
+    if prop.GetValue() is None:
+        return None
     return res_type(prop.GetValue().Get())
+
+def by_dir(prop, res_type):
+    """Directly return value form property"""
+    return prop.GetValue()
 
 #Settings of all PythonReports Datatypes
 #1 - Default value if REQUIRED in Validator
@@ -87,7 +107,8 @@ DATATYPES_SETTINGS = {
     "PenType": ("dot", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "TextAlignment": ("left", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "VariableIteration": ("detail", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
-    "ListPropertyValue": (None, "propertiesgrid.ListProperty", c_list, None, by_val),
+    "ListPropertyValue": (None, "propertiesgrid.ListProperty", c_list, None, by_dir),
+    "XmlBody" : ("", "wx.propgrid.LongStringProperty", c_simple, None, by_val)
 }
 
 class SettingsRow(object):

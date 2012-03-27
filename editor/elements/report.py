@@ -3,7 +3,7 @@
 20-mar-2012 [kacah]   created
 
 """
-import PythonReports.template as templelem
+import PythonReports.template as te
 import wx
 
 from container import Container
@@ -13,10 +13,11 @@ from simplecontainer import SimpleContainer
 DEFAULT_WIDTH = 600
 #sequence is important
 SECTION_NAMES = ["Title", "Header", "Detail", "Footer", "Summary"]
-MAIN_VALIDATOR = templelem.Report
-ZERO_OR_ONE_VALIDATORS = [templelem.Columns]
-ONE_VALIDATORS = [templelem.Layout]
-UNRESTRICTED_VALIDATORS = [templelem.Group, templelem.Style]
+MAIN_VALIDATOR = te.Report
+ZERO_OR_ONE_VALIDATORS = [te.Columns]
+ONE_VALIDATORS = [te.Layout]
+UNRESTRICTED_VALIDATORS = [te.Parameter, te.Import, te.Variable, te.Font,
+    te.Data, te.Style, te.Group]
 
 class Report(Container, Element):
     """Main, Report element, Root of template"""
@@ -31,7 +32,7 @@ class Report(Container, Element):
         self.columns = None
         self.groups = []
 
-        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSetFocus)
+        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
     def create_sections(self, sections_list):
         """Create many sections to report by given list

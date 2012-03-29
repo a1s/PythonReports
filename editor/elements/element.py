@@ -1,6 +1,6 @@
 """Base element type, can Listen properties and parse them from validators"""
 """
-20-mar-2012 [kacah]   created
+20-mar-2012 [kacah]    created
 
 """
 from propertiesgrid import PropertiesListener
@@ -36,10 +36,12 @@ class Element(PropertiesListener):
 
         self.add_properties_from_validators()
 
+    BODY_PROPERTY = "__body"
+
     def check_validator_body(self, validator):
         """Check if given validator has xml body if true add __body attribute"""
         if validator.tag in ELEMENTS_WITH_BODY:
-            validator.attributes["__body"] = (XmlBody, "")
+            validator.attributes[self.BODY_PROPERTY] = (XmlBody, "")
 
     def __add_prop_one(self, val, val_type):
         """Add properties form one validator"""

@@ -1,5 +1,8 @@
 """Elements for working with Property Grid"""
 """
+29-mar-2012 [kacah]    Added Colors for None, REQUIRED properties
+27-mar-2012 [kacah]    Added list properties dialog
+26-mar-2012 [kacah]    Added list properties
 23-mar-2012 [kacah]    Added empty properties
 20-mar-2012 [kacah]    created
 
@@ -46,6 +49,17 @@ class PropertiesListener(object):
         else:
             raise Exception("No property grid found")
 
+    def after_update(self, category, prop_name):
+        """Do something after property was changed. 
+        
+        @param category: name of property's category
+        @param prop_name: name of property  
+        
+        @note: Override this in child classes if necessary 
+        
+        """
+        pass
+
     def update_property(self, changed_property):
         """Update property in dictionary by property grid's Property
         
@@ -62,6 +76,8 @@ class PropertiesListener(object):
             datatypes_binding.DATATYPES_SETTINGS[_type.__name__].conversion_func
         _value = _conversion_function(changed_property, _type)
         self.properties[_cat][_attr] = (_value, _type, _default_value)
+
+        self.after_update(_cat, _attr)
 
     def OnPropGridChange(self, event):
         """Change element state in parent"""
@@ -188,6 +204,19 @@ class PropertiesGrid(wxpg.PropertyGrid):
         self.element = None
         self.Unbind(wxpg.EVT_PG_CHANGED)
 
+    NONE_COLOR = wx.Color(253, 159, 173)
+    REQUIRED_COLOR = wx.Color(69, 186, 111)
+
+    def set_property_color(self, prop, prop_type):
+        """Set color of property, by given type (None, REQUIRED, else)"""
+
+        _cell = prop.GetOrCreateCell(0)
+
+        if prop_type is None:
+            _cell.SetBgCol(self.NONE_COLOR)
+        elif prop_type is datatypes.REQUIRED:
+            _cell.SetBgCol(self.REQUIRED_COLOR)
+
     def append_attribute(self, tag, name, _property_params):
         """Append PythonReports attribute to property bar"""
 
@@ -205,6 +234,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
             _value, _param)
         #client data = if this property can be unspecified
         _property.SetClientData(_default_value is None)
+        self.set_property_color(_property, _default_value)
 
     def append_atributes(self, tag, attributes):
         """Append list of PythonReports attributes to property bar"""

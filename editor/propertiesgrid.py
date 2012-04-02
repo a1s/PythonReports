@@ -1,5 +1,6 @@
 """Elements for working with Property Grid"""
 """
+02-mar-2012 [kacah]    Added property synchronization
 29-mar-2012 [kacah]    Added Colors for None, REQUIRED properties
 27-mar-2012 [kacah]    Added list properties dialog
 26-mar-2012 [kacah]    Added list properties
@@ -86,7 +87,12 @@ class PropertiesListener(object):
             self.update_property(_property)
 
     def add_attr_ONE(self, tag, attributes):
-        """Add attributes that always exist"""
+        """Add attributes that always exist
+        
+        @param tag: category name
+        @param attributes: tuple (ValueType, default_value/None/REQUIRED)
+        
+        """
 
         self.properties[tag] = {}
 
@@ -174,7 +180,7 @@ class PropertiesListener(object):
                 continue
             (_value, _type, _default_value) = _prop_tuple
             (_value_old, _type_old, _default_old) = self.properties[tag][_attr]
-            #check if types are similar
+            #check if types are similar and values not
             if _type is _type_old and _value != _value_old:
                 self.properties[tag][_attr] = \
                     (_value, _type, _default_value)
@@ -392,7 +398,7 @@ class ListPropertyDialog(wx.Dialog):
             _list_elmt = self.value.get(_index)
         self.update_list(_list_elmt)
 
-    def __run_if_selected(self, _run_func):
+    def _run_if_selected(self, _run_func):
         """Run given function if item is selected and update list"""
 
         _index = self.prop_list.GetSelection()
@@ -402,13 +408,13 @@ class ListPropertyDialog(wx.Dialog):
             self.update_list(_elem)
 
     def OnRemoveButton(self, event):
-        self.__run_if_selected(self.value.remove)
+        self._run_if_selected(self.value.remove)
 
     def OnUpButton(self, event):
-        self.__run_if_selected(self.value.move_up)
+        self._run_if_selected(self.value.move_up)
 
     def OnDownButton(self, event):
-        self.__run_if_selected(self.value.move_down)
+        self._run_if_selected(self.value.move_down)
 
     def GetValue(self):
         return self.value
@@ -494,7 +500,7 @@ class ListPropertyValue(object):
         else:
             raise Exception("Out of index")
 
-    def __move(self, from_index, to_index):
+    def move(self, from_index, to_index):
         """Move element form index to index."""
         self.values.insert(to_index, self.values.pop(from_index))
 
@@ -502,7 +508,7 @@ class ListPropertyValue(object):
         """Move element closer to list start"""
         if self.has_element(index):
             if index > 0:
-                self.__move(index, index - 1)
+                self.move(index, index - 1)
         else:
             raise Exception("Out of index")
 

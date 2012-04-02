@@ -4,7 +4,7 @@
 
 """
 from propertiesgrid import PropertiesListener
-import PythonReports.datatypes as datatypes
+from PythonReports import datatypes
 
 """...This is the only element in PythonReports templates 
 that has significant body text; (PythonReports Doc - Data)

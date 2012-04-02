@@ -54,12 +54,14 @@ class SectionPair(object):
 UNRESTRICTED_STYLE = [te.Style]
 MAIN_COLUMNS = te.Columns
 
+COLUMN_PREFIX = "Column "
+
 class Columns(SectionPair, Element):
     """PythonReports Columns element"""
 
     def __init__(self, parent, prop_grid, width, report):
         SectionPair.__init__(self, parent, prop_grid, width, PAIR_HEADER_FOOTER,
-            "Columns ")
+            COLUMN_PREFIX)
         Element.__init__(self, prop_grid, main_val=MAIN_COLUMNS,
             unrestricted_val=UNRESTRICTED_STYLE)
 
@@ -79,14 +81,16 @@ class Columns(SectionPair, Element):
         if category == "columns":
             self.report.synchronize_columns()
 
+
 MAIN_GROUP = te.Group
+GROUP_PREFIX = "Group "
 
 class Group(SectionPair, Element):
     """PythonReports Group element"""
 
     def __init__(self, parent, prop_grid, width, group_id, report):
         SectionPair.__init__(self, parent, prop_grid, width, PAIR_TITLE_SUMMARY,
-            "Group ")
+            GROUP_PREFIX)
         Element.__init__(self, prop_grid, main_val=MAIN_GROUP,
             unrestricted_val=UNRESTRICTED_STYLE)
 

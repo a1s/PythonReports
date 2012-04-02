@@ -1,10 +1,11 @@
 """Main element, Root of template"""
 """
-20-mar-2012 [kacah]   created
+02-mar-2012 [kacah]    Added reaction on property change
+20-mar-2012 [kacah]    created
 
 """
 import PythonReports.template as te
-import PythonReports.datatypes as datatypes
+from PythonReports import datatypes
 import wx
 
 from container import Container
@@ -14,6 +15,11 @@ import sectioncontainer as seccon
 import utils
 
 DEFAULT_WIDTH = 500
+
+REPORT_PREFIX = "Report "
+PAGE_PREFIX = "Page "
+DETAIL_NAME = "Detail"
+REPORT_NAME = "Report"
 
 MAIN_VALIDATOR = te.Report
 ZERO_OR_ONE_VALIDATORS = [te.Columns]
@@ -25,7 +31,7 @@ class Report(Container, Element):
     """Main, Report element, Root of template"""
 
     def __init__(self, parent, prop_grid):
-        Container.__init__(self, parent, "Report", DEFAULT_WIDTH)
+        Container.__init__(self, parent, REPORT_NAME, DEFAULT_WIDTH)
         Element.__init__(self, prop_grid,
             MAIN_VALIDATOR, ZERO_OR_ONE_VALIDATORS,
             ONE_VALIDATORS, UNRESTRICTED_VALIDATORS)
@@ -46,13 +52,13 @@ class Report(Container, Element):
         
         """
         self.title_summary = seccon.SectionPair(self.GetPane(), self.prop_grid,
-            DEFAULT_WIDTH, seccon.PAIR_TITLE_SUMMARY, "Report ")
+            DEFAULT_WIDTH, seccon.PAIR_TITLE_SUMMARY, REPORT_PREFIX)
         self.columns = seccon.Columns(self.GetPane(), self.prop_grid, \
             DEFAULT_WIDTH, self)
         self.groups = []
         self.header_footer = seccon.SectionPair(self.GetPane(), self.prop_grid,
-            DEFAULT_WIDTH, seccon.PAIR_HEADER_FOOTER, "Report ")
-        self.detail = Section(self.GetPane(), self.prop_grid, "Detail",
+            DEFAULT_WIDTH, seccon.PAIR_HEADER_FOOTER, PAGE_PREFIX)
+        self.detail = Section(self.GetPane(), self.prop_grid, DETAIL_NAME,
             DEFAULT_WIDTH)
 
     def get_page_size(self):
@@ -99,35 +105,35 @@ class Report(Container, Element):
         self.set_width(self.cur_width)
 
         self.cur_pos = 0
-        self.__update_title_summary()
-        self.__update_columns()
-        self.__update_groups()
-        self.__update_header_footer()
-        self.__update_detail()
+        self._update_title_summary()
+        self._update_columns()
+        self._update_groups()
+        self._update_header_footer()
+        self._update_detail()
 
-    def __insert_pair(self, pair, pos):
+    def _insert_pair(self, pair, pos):
         """Insert sections pair into given position"""
 
         self.insert_element(pair.get_first(), pos)
         self.insert_element(pair.get_second(), pos + 1)
 
-    def __update_pair(self, pair):
+    def _update_pair(self, pair):
         """Update width and insert one pair"""
 
         pair.set_width(self.cur_width)
-        self.__insert_pair(pair, self.cur_pos)
+        self._insert_pair(pair, self.cur_pos)
         self.cur_pos += 1
 
-    def __update_title_summary(self):
+    def _update_title_summary(self):
         """Update title and summary of the report"""
 
         (_top_m, _right_m, _bot_m, _left_m) = self.get_margins()
         self.cur_width -= \
             utils.dim_to_screen(_right_m) + utils.dim_to_screen(_left_m)
 
-        self.__update_pair(self.title_summary)
+        self._update_pair(self.title_summary)
 
-    def __update_columns(self):
+    def _update_columns(self):
         """Update columns if they are set in report"""
 
         if self.has_columns():
@@ -139,11 +145,11 @@ class Report(Container, Element):
             self.columns.set_visible(True)
             self.columns.synchronize_attributes("columns", \
                 self.get_category("columns"))
-            self.__update_pair(self.columns)
+            self._update_pair(self.columns)
         else:
             self.columns.set_visible(False)
 
-    def __get_group(self, id):
+    def _get_group(self, id):
         """Get group with given id, or create new if doesn't exist"""
 
         res = None
@@ -156,7 +162,7 @@ class Report(Container, Element):
                 DEFAULT_WIDTH, id, self)
         return res
 
-    def __clear_groups(self, old_list, new_list):
+    def _clear_groups(self, old_list, new_list):
         """Clear groups deleted by user from old list"""
 
         from sets import Set
@@ -167,7 +173,7 @@ class Report(Container, Element):
         for _group in _diff:
             _group.destroy()
 
-    def __update_groups(self):
+    def _update_groups(self):
         """Update all groups of report"""
 
         _groups = self.get_value("lists", "group").get_all()
@@ -177,17 +183,17 @@ class Report(Container, Element):
             _group_elem.synchronize_attributes("group", \
                 _group.get_category("group"))
             _new_group_list.append(_group_elem)
-            self.__update_pair(_group_elem)
+            self._update_pair(_group_elem)
 
-        self.__clear_groups(self.groups, _new_group_list)
+        self._clear_groups(self.groups, _new_group_list)
         self.groups = _new_group_list
 
-    def __update_header_footer(self):
+    def _update_header_footer(self):
         """Update header and footer of the report"""
 
-        self.__update_pair(self.header_footer)
+        self._update_pair(self.header_footer)
 
-    def __update_detail(self):
+    def _update_detail(self):
         """Update detail of the report"""
 
         self.detail.set_width(self.cur_width)

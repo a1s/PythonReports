@@ -8,7 +8,7 @@ import wx
 from container import Container
 from propertiesgrid import PropertiesListener
 
-class SimpleContainer(Container, PropertiesListener):
+class Section(Container, PropertiesListener):
     def __init__(self, parent, prop_grid, title, width):
         Container.__init__(self, parent, title, width, wx.SIMPLE_BORDER)
         PropertiesListener.__init__(self, prop_grid)

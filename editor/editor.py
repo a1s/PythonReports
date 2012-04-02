@@ -6,9 +6,11 @@
 import wx
 
 from mainform import EditorForm
+import utils
 
 def main():
     _app = wx.PySimpleApp()
+    utils.setup()
     _main_form = EditorForm(None)
     _main_form.Show()
     _app.MainLoop()

@@ -1,6 +1,7 @@
 """Expandable element-container"""
 """
-20-mar-2012 [kacah]   created
+30-mar-2012 [kacah]    Added detach and remove methods
+20-mar-2012 [kacah]    created
 
 """
 import wx
@@ -10,11 +11,11 @@ import wx.lib.buttons as wxbtns
 class HeaderButton(wxbtns.GenButton):
     """Used for creating containers' header button"""
 
-    HEADER_WIDTH = 25
+    HEADER_HEIGHT = 25
 
     def __init__(self, parent, title, width):
         wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, title,
-            size=(width, self.HEADER_WIDTH))
+            size=(width, self.HEADER_HEIGHT))
         self.SetForegroundColour("white")
         self.SetBackgroundColour("grey")
 
@@ -37,8 +38,8 @@ class Container(wxpcp.PyCollapsiblePane):
 
         self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self)
 
-        _sizer = wx.BoxSizer(wx.VERTICAL)
-        self.GetPane().SetSizer(_sizer)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.GetPane().SetSizer(self.sizer)
 
     def OnPaneChanged(self, evt=None):
         """Update layout and try to update parents"""
@@ -57,16 +58,60 @@ class Container(wxpcp.PyCollapsiblePane):
         except:
             pass
 
+    def set_width(self, width):
+        """Set width of container element"""
+
+        self.GetButton().SetSize((width, HeaderButton.HEADER_HEIGHT))
+        self.OnPaneChanged()
+
+    def get_width(self):
+        """Get width of container element"""
+
+        return self.GetButton().GetSize().GetWidth()
+
+    def set_visible(self, visible):
+        """Set element visible or not"""
+
+        self.Show(visible)
+
+    def set_title(self, title):
+        """Set title of this container"""
+
+        self.GetButton().SetLabel(title)
+
     def insert_element(self, element, position):
         """Insert new element at position"""
 
-        _sizer = self.GetPane().GetSizer()
-        _sizer.Insert(position, element, 0, wx.VERTICAL, 0)
+        self.sizer.Insert(position, element, 0,
+            wx.VERTICAL | wx.ALIGN_CENTER, 0)
         self.OnPaneChanged()
 
     def add_element(self, element):
         """Add new element at the end"""
 
-        _sizer = self.GetPane().GetSizer()
-        _sizer.Add(element, 0, wx.VERTICAL, 0)
+        self.sizer.Add(element, 0, wx.VERTICAL | wx.ALIGN_CENTER, 0)
+        self.OnPaneChanged()
+
+    def detach_element(self, element):
+        """Detach element from container. Doesn't destroy it."""
+
+        self.sizer.Detach(element)
+        self.OnPaneChanged()
+
+    def remove_element(self, element):
+        """Detach element from container and destroy it."""
+
+        self.sizer.Remove(element)
+        self.OnPaneChanged()
+
+    def detach_all(self):
+        """Detach all elements from container (not destroying them)"""
+
+        self.sizer.Clear(False)
+        self.OnPaneChanged()
+
+    def remove_all(self):
+        """Destroy all elements in container"""
+
+        self.sizer.Clear(True)
         self.OnPaneChanged()

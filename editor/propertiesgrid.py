@@ -49,7 +49,7 @@ class PropertiesListener(object):
         else:
             raise Exception("No property grid found")
 
-    def after_update(self, category, prop_name):
+    def after_property_changed(self, category, prop_name):
         """Do something after property was changed. 
         
         @param category: name of property's category
@@ -77,7 +77,7 @@ class PropertiesListener(object):
         _value = _conversion_function(changed_property, _type)
         self.properties[_cat][_attr] = (_value, _type, _default_value)
 
-        self.after_update(_cat, _attr)
+        self.after_property_changed(_cat, _attr)
 
     def OnPropGridChange(self, event):
         """Change element state in parent"""
@@ -127,7 +127,6 @@ class PropertiesListener(object):
         self.properties[self.LIST_CATEGORY][tag] = \
             (_prop, ListPropertyValue, [])
 
-
     def add_attributes(self, tag, attributes, attr_type):
         """Add all attributes with values to properties dictionary
         
@@ -141,6 +140,19 @@ class PropertiesListener(object):
         elif attr_type == datatypes.Validator.UNRESTRICTED:
             self.add_attr_UNRESTRICTED(tag, attributes)
 
+    def get_category(self, tag):
+        """Return category by name"""
+        try:
+            return self.properties[tag]
+        except:
+            raise Exception("No category found - %s" % tag)
+
+    def get_value(self, tag, attribute):
+        """Return value of given category and attribute"""
+        try:
+            return self.properties[tag][attribute][0]
+        except:
+            raise Exception("No property found - %s: %s" % (tag, attribute))
 
 class PropertiesGrid(wxpg.PropertyGrid):
     """Display and allow to modify object settings"""
@@ -345,6 +357,7 @@ class ListPropertyDialog(wx.Dialog):
 
     def OnAddButton(self, event):
         """Add new element into value and update list"""
+
         self.value.add()
         _list_elmt = None
         _index = self.prop_list.GetSelection()
@@ -389,64 +402,65 @@ class ListPropertyValue(object):
             if attributes:
                 self.add_attr_ONE(tag, attributes)
 
-            self.name = self.generate_unique_name(tag)
+            self.id = self.generate_id()
+            self.name = "%s %s" % (tag, self.id)
 
         @classmethod
-        def generate_unique_name(self, tag):
+        def generate_id(cls):
             """Generate unique name for this element. Good for recognizing it"""
 
-            self.elem_id += 1
-            return "%s %d" % (tag, self.elem_id)
+            cls.elem_id += 1
+            return cls.elem_id
 
-    def __init__(self, value, tag, attributes):
+    def __init__(self, values, tag, attributes):
         """New list property
             
-        @param value: list of ListElements or ListPropertyValue
+        @param values: list of ListElements
         @param tag: string, name of listed elements
         @param attributes: dictionary of attributes of listed elements
         
         """
-        self.properties = value
+        self.values = values
         self.tag = tag
         self.attributes = attributes
 
     def has_element(self, index):
         """Check if there is a property with given index"""
-        return index < len(self.properties) and index >= 0
+        return index < len(self.values) and index >= 0
 
     def add(self):
         """Add new element to list"""
         _elmt = self.ListElement(self.tag, self.attributes)
-        self.properties.append(_elmt)
+        self.values.append(_elmt)
         return _elmt
 
     def get(self, index):
         """Get element by given index"""
         if self.has_element(index):
-            return self.properties[index]
+            return self.values[index]
         else:
             return None
 
     def get_all(self):
-        return self.properties
+        return self.values
 
     def find(self, elem):
         """Get index of given element, return -1 if doesn't exist"""
         try:
-            return self.properties.index(elem)
+            return self.values.index(elem)
         except:
             return -1
 
     def remove(self, index):
         """Remove element form list by given index"""
         if self.has_element(index):
-            del self.properties[index]
+            del self.values[index]
         else:
             raise Exception("Out of index")
 
     def __move(self, from_index, to_index):
         """Move element form index to index."""
-        self.properties.insert(to_index, self.properties.pop(from_index))
+        self.values.insert(to_index, self.values.pop(from_index))
 
     def move_up(self, index):
         """Move element closer to list start"""
@@ -459,7 +473,7 @@ class ListPropertyValue(object):
     def move_down(self, index):
         """Move element closer to list end"""
         if self.has_element(index):
-            if index < len(self.properties) - 1:
+            if index < len(self.values) - 1:
                 self.__move(index, index + 1)
         else:
             raise Exception("Out of index")
@@ -488,6 +502,6 @@ class ListProperty(wxpg.PyLongStringProperty):
         #copy value and pass it to dialog
         _dlg = ListPropertyDialog(None, self.GetValue())
         _dlg.ShowModal()
-        self.prop_grid.fire_property_update(self)
         _dlg.Destroy()
+        self.prop_grid.fire_property_update(self)
         return True

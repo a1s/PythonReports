@@ -52,14 +52,18 @@ class SectionPair(object):
         return self.second
 
 UNRESTRICTED_STYLE = [te.Style]
+MAIN_COLUMNS = te.Columns
 
 class Columns(SectionPair, Element):
     """PythonReports Columns element"""
 
-    def __init__(self, parent, prop_grid, width):
+    def __init__(self, parent, prop_grid, width, report):
         SectionPair.__init__(self, parent, prop_grid, width, PAIR_HEADER_FOOTER,
             "Columns ")
-        Element.__init__(self, prop_grid, unrestricted_val=UNRESTRICTED_STYLE)
+        Element.__init__(self, prop_grid, main_val=MAIN_COLUMNS,
+            unrestricted_val=UNRESTRICTED_STYLE)
+
+        self.report = report
 
         self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
         self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
@@ -69,19 +73,29 @@ class Columns(SectionPair, Element):
 
         return width / number - (number - 1) * gap
 
+    def after_property_changed(self, category, attribute):
+        """Overrided from PropertiesListener"""
+
+        if category == "columns":
+            self.report.synchronize_columns()
+
+MAIN_GROUP = te.Group
+
 class Group(SectionPair, Element):
     """PythonReports Group element"""
 
-    def __init__(self, parent, prop_grid, width, group_id):
+    def __init__(self, parent, prop_grid, width, group_id, report):
         SectionPair.__init__(self, parent, prop_grid, width, PAIR_TITLE_SUMMARY,
             "Group ")
-        Element.__init__(self, prop_grid, unrestricted_val=UNRESTRICTED_STYLE)
+        Element.__init__(self, prop_grid, main_val=MAIN_GROUP,
+            unrestricted_val=UNRESTRICTED_STYLE)
+
+        self.report = report
 
         self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
         self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
         self.group_id = group_id
-        self.group_name = ""
 
     def destroy(self):
         """Destroy Header and footer containers"""
@@ -89,11 +103,17 @@ class Group(SectionPair, Element):
         self.first.Destroy()
         self.second.Destroy()
 
-    def set_group_name(self, name):
-        """Set name of group and rename sections"""
+    def update_name(self):
+        """Update group name from properties"""
 
-        self.group_name = name
-        _titles = self.build_titles("Group '%s' " % name, PAIR_TITLE_SUMMARY)
+        _name = self.get_value("group", "name")
+        _titles = self.build_titles("Group '%s' " % _name, PAIR_TITLE_SUMMARY)
         self.first.set_title(_titles[0])
         self.second.set_title(_titles[1])
 
+    def after_property_changed(self, category, attribute):
+        """Overrided from PropertiesListener"""
+
+        if category == "group":
+            self.update_name()
+            self.report.synchronize_group(self)

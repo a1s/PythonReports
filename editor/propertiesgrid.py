@@ -69,8 +69,7 @@ class PropertiesListener(object):
         _cat = changed_property.GetParent().GetName()
         _attr = changed_property.GetName()
 
-        _property_params = self.properties[_cat][_attr]
-        (_value, _type, _default_value) = _property_params
+        (_value, _type, _default_value) = self.properties[_cat][_attr]
 
         _conversion_function = \
             datatypes_binding.DATATYPES_SETTINGS[_type.__name__].conversion_func
@@ -153,6 +152,34 @@ class PropertiesListener(object):
             return self.properties[tag][attribute][0]
         except:
             raise Exception("No property found - %s: %s" % (tag, attribute))
+
+    def synchronize_attributes(self, tag, attributes):
+        """Add values from another dictionary, do not create new attributes
+        
+        @param tag: category name
+        @param attributes: dictionary of attributes, value is property tuple
+        
+        """
+        #check if category exists
+        try:
+            self.get_category(tag)
+        except:
+            return
+
+        for (_attr, _prop_tuple) in attributes.items():
+            #check if value exists
+            try:
+                self.get_value(tag, _attr)
+            except:
+                continue
+            (_value, _type, _default_value) = _prop_tuple
+            (_value_old, _type_old, _default_old) = self.properties[tag][_attr]
+            #check if types are similar
+            if _type is _type_old and _value != _value_old:
+                self.properties[tag][_attr] = \
+                    (_value, _type, _default_value)
+                self.after_property_changed(tag, _attr)
+
 
 class PropertiesGrid(wxpg.PropertyGrid):
     """Display and allow to modify object settings"""
@@ -435,7 +462,7 @@ class ListPropertyValue(object):
         return _elmt
 
     def get(self, index):
-        """Get element by given index"""
+        """Get element by given index, None is not found"""
         if self.has_element(index):
             return self.values[index]
         else:
@@ -443,6 +470,15 @@ class ListPropertyValue(object):
 
     def get_all(self):
         return self.values
+
+    def get_by_id(self, id):
+        """Get element by given id, None if not found"""
+
+        for _elem in self.values:
+            if _elem.id == id:
+                return _elem
+
+        return None
 
     def find(self, elem):
         """Get index of given element, return -1 if doesn't exist"""

@@ -48,7 +48,7 @@ class Report(Container, Element):
         self.title_summary = seccon.SectionPair(self.GetPane(), self.prop_grid,
             DEFAULT_WIDTH, seccon.PAIR_TITLE_SUMMARY, "Report ")
         self.columns = seccon.Columns(self.GetPane(), self.prop_grid, \
-            DEFAULT_WIDTH)
+            DEFAULT_WIDTH, self)
         self.groups = []
         self.header_footer = seccon.SectionPair(self.GetPane(), self.prop_grid,
             DEFAULT_WIDTH, seccon.PAIR_HEADER_FOOTER, "Report ")
@@ -137,6 +137,8 @@ class Report(Container, Element):
                 _col_count, _col_gap)
 
             self.columns.set_visible(True)
+            self.columns.synchronize_attributes("columns", \
+                self.get_category("columns"))
             self.__update_pair(self.columns)
         else:
             self.columns.set_visible(False)
@@ -151,7 +153,7 @@ class Report(Container, Element):
                 break
         else:
             res = seccon.Group(self.GetPane(), self.prop_grid,
-                DEFAULT_WIDTH, id)
+                DEFAULT_WIDTH, id, self)
         return res
 
     def __clear_groups(self, old_list, new_list):
@@ -172,7 +174,8 @@ class Report(Container, Element):
         _new_group_list = []
         for _group in _groups:
             _group_elem = self.__get_group(_group.id)
-            _group_elem.set_group_name(_group.get_value("group", "name"))
+            _group_elem.synchronize_attributes("group", \
+                _group.get_category("group"))
             _new_group_list.append(_group_elem)
             self.__update_pair(_group_elem)
 
@@ -191,12 +194,21 @@ class Report(Container, Element):
         self.insert_element(self.detail, self.cur_pos)
         self.cur_pos += 1
 
+    def synchronize_columns(self):
+        """Get data from columns to self"""
+
+        self.synchronize_attributes("columns",
+            self.columns.get_category("columns"))
+
+    def synchronize_group(self, group):
+        """Get data from group to self"""
+
+        _gr_value = self.get_value("lists", "group").get_by_id(group.group_id)
+        _gr_value.synchronize_attributes("group", group.get_category("group"))
+
     def after_property_changed(self, category, attribute):
-        """Change view after properties updated
-        
-        Overrided from PropertiesListener, do not need direct call.
-        
-        """
+        """Overrided from PropertiesListener"""
+
         if (category == "layout") or (category == "columns") \
         or (category == "lists" and attribute == "group"):
             self.update_layout()

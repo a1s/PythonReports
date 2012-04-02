@@ -4,6 +4,10 @@
 
 """
 
+import PythonReports.template as te
+import wx
+
+from elements.element import Element
 from section import Section
 
 PAIR_TITLE_SUMMARY = 0
@@ -47,24 +51,34 @@ class SectionPair(object):
         """Get second element of pair"""
         return self.second
 
-class Columns(SectionPair):
+UNRESTRICTED_STYLE = [te.Style]
+
+class Columns(SectionPair, Element):
     """PythonReports Columns element"""
 
     def __init__(self, parent, prop_grid, width):
-        SectionPair.__init__(self, parent, prop_grid, width, PAIR_TITLE_SUMMARY,
+        SectionPair.__init__(self, parent, prop_grid, width, PAIR_HEADER_FOOTER,
             "Columns ")
+        Element.__init__(self, prop_grid, unrestricted_val=UNRESTRICTED_STYLE)
+
+        self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+        self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
     def count_width(self, width, number, gap):
         """Count columns width by columns number and gap"""
 
         return width / number - (number - 1) * gap
 
-class Group(SectionPair):
+class Group(SectionPair, Element):
     """PythonReports Group element"""
 
     def __init__(self, parent, prop_grid, width, group_id):
-        SectionPair.__init__(self, parent, prop_grid, width, PAIR_HEADER_FOOTER,
+        SectionPair.__init__(self, parent, prop_grid, width, PAIR_TITLE_SUMMARY,
             "Group ")
+        Element.__init__(self, prop_grid, unrestricted_val=UNRESTRICTED_STYLE)
+
+        self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+        self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
         self.group_id = group_id
         self.group_name = ""
@@ -79,7 +93,7 @@ class Group(SectionPair):
         """Set name of group and rename sections"""
 
         self.group_name = name
-        _titles = self.build_titles("Group '%s' " % name, PAIR_HEADER_FOOTER)
+        _titles = self.build_titles("Group '%s' " % name, PAIR_TITLE_SUMMARY)
         self.first.set_title(_titles[0])
         self.second.set_title(_titles[1])
 

@@ -20,7 +20,7 @@ class XmlBody(object):
 class Element(PropertiesListener):
     """Base class for all elements"""
 
-    def __init__(self, prop_grid, main_val,
+    def __init__(self, prop_grid, main_val=None,
         zero_or_one_val=[], one_val=[], unrestricted_val=[]):
         """Parameter prop_grid explanation read in PropertiesListener classes
         
@@ -56,7 +56,8 @@ class Element(PropertiesListener):
     def add_properties_from_validators(self):
         """Add all properties from validators to "properties" dictionary"""
 
-        self.__add_prop_one(self.main_val, datatypes.Validator.ONE)
+        if self.main_val:
+            self.__add_prop_one(self.main_val, datatypes.Validator.ONE)
         self.__add_prop_list(self.zero_or_one_val,
             datatypes.Validator.ZERO_OR_ONE)
         self.__add_prop_list(self.one_val, datatypes.Validator.ONE)

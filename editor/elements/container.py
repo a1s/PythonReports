@@ -77,7 +77,7 @@ class Container(wxpcp.PyCollapsiblePane):
     def set_title(self, title):
         """Set title of this container"""
 
-        self.GetButton().SetLabel(title)
+        self.SetLabel(title)
 
     def insert_element(self, element, position):
         """Insert new element at position"""

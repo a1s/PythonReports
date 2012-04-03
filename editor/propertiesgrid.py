@@ -1,6 +1,6 @@
 """Elements for working with Property Grid"""
 """
-02-mar-2012 [kacah]    Added property synchronization
+02-apr-2012 [kacah]    Added property synchronization
 29-mar-2012 [kacah]    Added Colors for None, REQUIRED properties
 27-mar-2012 [kacah]    Added list properties dialog
 26-mar-2012 [kacah]    Added list properties

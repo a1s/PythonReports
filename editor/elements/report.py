@@ -1,6 +1,6 @@
 """Main element, Root of template"""
 """
-02-mar-2012 [kacah]    Added reaction on property change
+02-apr-2012 [kacah]    Added reaction on property change
 20-mar-2012 [kacah]    created
 
 """
@@ -102,13 +102,17 @@ class Report(Container, Element):
         self.detach_all()
 
         self.cur_width = utils.dim_to_screen(self.get_page_size()[0])
+        (_top_m, _right_m, _bot_m, _left_m) = self.get_margins()
+        self.cur_width -= \
+            utils.dim_to_screen(_right_m) + utils.dim_to_screen(_left_m)
+
         self.set_width(self.cur_width)
 
         self.cur_pos = 0
+        self._update_header_footer()
         self._update_title_summary()
         self._update_columns()
         self._update_groups()
-        self._update_header_footer()
         self._update_detail()
 
     def _insert_pair(self, pair, pos):
@@ -126,10 +130,6 @@ class Report(Container, Element):
 
     def _update_title_summary(self):
         """Update title and summary of the report"""
-
-        (_top_m, _right_m, _bot_m, _left_m) = self.get_margins()
-        self.cur_width -= \
-            utils.dim_to_screen(_right_m) + utils.dim_to_screen(_left_m)
 
         self._update_pair(self.title_summary)
 

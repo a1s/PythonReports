@@ -1,56 +1,61 @@
 """Simple container of elements (Header, Footer, Title, Summary, Detail)"""
 """
-20-mar-2012 [kacah]   created
+03-apr-2012 [kacah]    Added DesignPlace
+20-mar-2012 [kacah]    created
 
 """
+import PythonReports.template as te
 import wx
+import wx.lib.ogl as wxogl
+import wx.lib.resizewidget as wxrw
 
 from container import Container
-from propertiesgrid import PropertiesListener
+from elements.element import Element
 
-class Section(Container, PropertiesListener):
+MIN_SIZE = 10
+
+class DesignPlace(wxogl.ShapeCanvas):
+    """Place for painting visual elements"""
+
+    def __init__(self, parent, width):
+        wxogl.ShapeCanvas.__init__(self, parent, size=(width, MIN_SIZE))
+
+        self.SetMinSize((width, MIN_SIZE))
+        self.SetMaxSize((width, -1))
+
+        self.diagram = wxogl.Diagram()
+        self.SetDiagram(self.diagram)
+
+    def set_width(self, width):
+        """Set min, max and actual width of design place"""
+
+        self.SetSize((width, self.GetSize().GetHeight()))
+        self.SetMinSize((width, MIN_SIZE))
+        self.SetMaxSize((width, -1))
+
+
+UNRESTRICTED_VALIDATORS = [te.Eject, te.Style, te.Subreport]
+
+class Section(Container, Element):
+    """Container for visual elements like fields, images, barcodes..."""
+
     def __init__(self, parent, prop_grid, title, width):
-        Container.__init__(self, parent, title, width, wx.SIMPLE_BORDER)
-        PropertiesListener.__init__(self, prop_grid)
-
-        self.MakePaneContent(self.GetPane())
+        Container.__init__(self, parent, title, width)
+        Element.__init__(self, prop_grid,
+            unrestricted_val=UNRESTRICTED_VALIDATORS)
 
         self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
-    def MakePaneContent(self, pane):
-        """Just make a few controls to put on the collapsible pane"""
+        self.resizer = wxrw.ResizeWidget(self.GetPane())
+        self.design_place = DesignPlace(self.resizer, width)
+        self.add_element(self.resizer)
 
-        nameLbl = wx.StaticText(pane, -1, "Name:")
-        name = wx.TextCtrl(pane, -1, "");
+        self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnPaneChanged)
 
-        addrLbl = wx.StaticText(pane, -1, "Address:")
-        addr1 = wx.TextCtrl(pane, -1, "");
-        addr2 = wx.TextCtrl(pane, -1, "");
+    def set_width(self, width):
+        """Set width of container element"""
 
-        cstLbl = wx.StaticText(pane, -1, "City, State, Zip:")
-        city = wx.TextCtrl(pane, -1, "", size=(150, -1));
-        state = wx.TextCtrl(pane, -1, "", size=(50, -1));
-        zip = wx.TextCtrl(pane, -1, "", size=(70, -1));
-
-        addrSizer = wx.FlexGridSizer(cols=2, hgap=5, vgap=5)
-        addrSizer.AddGrowableCol(1)
-        addrSizer.Add(nameLbl, 0,
-                wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
-        addrSizer.Add(name, 0, wx.EXPAND)
-        addrSizer.Add(addrLbl, 0,
-                wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
-        addrSizer.Add(addr1, 0, wx.EXPAND)
-        addrSizer.Add((5, 5))
-        addrSizer.Add(addr2, 0, wx.EXPAND)
-
-        addrSizer.Add(cstLbl, 0,
-                wx.ALIGN_RIGHT | wx.ALIGN_CENTER_VERTICAL)
-
-        cstSizer = wx.BoxSizer(wx.HORIZONTAL)
-        cstSizer.Add(city, 1)
-        cstSizer.Add(state, 0, wx.LEFT | wx.RIGHT, 5)
-        cstSizer.Add(zip)
-        addrSizer.Add(cstSizer, 0, wx.EXPAND)
-
-        border = pane.GetSizer()
-        border.Add(addrSizer, 1, wx.EXPAND | wx.ALL, 5)
+        self.design_place.set_width(width)
+        #AdjustToChild doesn't work cause of an error in wx.lib.resizewidget.py
+        self.resizer.AdjustToSize(self.design_place.GetSize())
+        Container.set_width(self, width)

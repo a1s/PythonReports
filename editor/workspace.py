@@ -9,6 +9,8 @@ import wx.lib.scrolledpanel as wxscrolled
 from elements import report
 
 class Workspace(wxscrolled.ScrolledPanel):
+    """Container for report."""
+
     def __init__(self, parent, prop_grid):
         wxscrolled.ScrolledPanel.__init__(self, parent, wx.ID_ANY)
 

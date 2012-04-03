@@ -16,6 +16,7 @@ class HeaderButton(wxbtns.GenButton):
     def __init__(self, parent, title, width):
         wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, title,
             size=(width, self.HEADER_HEIGHT))
+
         self.SetForegroundColour("white")
         self.SetBackgroundColour("grey")
 
@@ -49,7 +50,7 @@ class Container(wxpcp.PyCollapsiblePane):
 
         #do this if container is inside Scrollpanel
         try:
-            self.GetParent().SetupScrolling()
+            self.GetParent().SetupScrolling(scrollToTop=False)
         except:
             pass
         #do this if container is inside another container
@@ -57,6 +58,9 @@ class Container(wxpcp.PyCollapsiblePane):
             self.GetParent().GetParent().OnPaneChanged()
         except:
             pass
+
+        #refresh parent
+        self.GetParent().Refresh()
 
     def set_width(self, width):
         """Set width of container element"""
@@ -82,14 +86,13 @@ class Container(wxpcp.PyCollapsiblePane):
     def insert_element(self, element, position):
         """Insert new element at position"""
 
-        self.sizer.Insert(position, element, 0,
-            wx.VERTICAL | wx.ALIGN_CENTER, 0)
+        self.sizer.Insert(position, element, 0, wx.VERTICAL)
         self.OnPaneChanged()
 
     def add_element(self, element):
         """Add new element at the end"""
 
-        self.sizer.Add(element, 0, wx.VERTICAL | wx.ALIGN_CENTER, 0)
+        self.sizer.Add(element, 0, wx.VERTICAL)
         self.OnPaneChanged()
 
     def detach_element(self, element):

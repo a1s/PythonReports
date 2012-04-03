@@ -94,12 +94,11 @@ class Group(SectionPair, Element):
         Element.__init__(self, prop_grid, main_val=MAIN_GROUP,
             unrestricted_val=UNRESTRICTED_STYLE)
 
+        self.id = group_id
         self.report = report
 
         self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
         self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
-
-        self.group_id = group_id
 
     def destroy(self):
         """Destroy Header and footer containers"""

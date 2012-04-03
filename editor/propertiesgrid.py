@@ -13,6 +13,7 @@ import wx
 import wx.propgrid as wxpg
 
 import datatypes_binding
+import utils
 
 class PropertiesListener(object):
     """Listen while control get or lost focus and update property grid"""
@@ -180,11 +181,36 @@ class PropertiesListener(object):
                 continue
             (_value, _type, _default_value) = _prop_tuple
             (_value_old, _type_old, _default_old) = self.properties[tag][_attr]
-            #check if types are similar and values not
+            #check if types are similar and values don't equal 
             if _type is _type_old and _value != _value_old:
                 self.properties[tag][_attr] = \
                     (_value, _type, _default_value)
                 self.after_property_changed(tag, _attr)
+
+    def synchronize_list_category(self, attr, obj_list, create_func,
+        for_each_func):
+        """Synchronize list category by list of objects
+        
+        @param attr: name of list category
+        @param obj_list: objects' list for synchronization.
+            Each must have 'id' attribute and must be PropertiesListener
+        @param create_func: function, create one object and return it
+        @param for_each_func: function, what to do with each object in list
+        
+        @return synchronized objects list
+        
+        """
+        _elements = self.get_value(self.LIST_CATEGORY, attr).get_all()
+        _new_list = []
+        for _elem in _elements:
+            _obj_elem = \
+                utils.get_or_create_by_id(obj_list, _elem.id, create_func)
+            _obj_elem.synchronize_attributes(attr, _elem.get_category(attr))
+            _new_list.append(_obj_elem)
+
+            for_each_func(_obj_elem)
+
+        return _new_list
 
 
 class PropertiesGrid(wxpg.PropertyGrid):

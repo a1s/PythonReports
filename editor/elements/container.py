@@ -17,12 +17,19 @@ class HeaderButton(wxbtns.GenButton):
         wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, title,
             size=(width, self.HEADER_HEIGHT))
 
-        self.SetForegroundColour("white")
-        self.SetBackgroundColour("grey")
+        self.width = width
+
+        self.SetForegroundColour("black")
+        self.SetBackgroundColour(wx.Colour(195, 195, 195))
+
+    def set_width(self, width):
+        """Set width of element"""
+        self.width = width
+        self.SetSize(self.DoGetBestSize())
 
     def DoGetBestSize(self):
         """Header must not be auto resizable"""
-        return self.GetSize()
+        return (self.width, self.HEADER_HEIGHT)
 
 
 class Container(wxpcp.PyCollapsiblePane):
@@ -30,7 +37,7 @@ class Container(wxpcp.PyCollapsiblePane):
 
     def __init__(self, parent, title, width, border=wx.NO_BORDER):
         wxpcp.PyCollapsiblePane.__init__(self, parent, style=border,
-            agwStyle=wx.CP_NO_TLW_RESIZE | wx.CP_LINE_ABOVE)
+            agwStyle=wx.CP_NO_TLW_RESIZE)
 
         _head_btn = HeaderButton(self, title, width)
         self.SetButton(_head_btn)
@@ -65,7 +72,7 @@ class Container(wxpcp.PyCollapsiblePane):
     def set_width(self, width):
         """Set width of container element"""
 
-        self.GetButton().SetSize((width, HeaderButton.HEADER_HEIGHT))
+        self.GetButton().set_width(width)
         self.OnPaneChanged()
 
     def get_width(self):

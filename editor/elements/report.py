@@ -149,44 +149,25 @@ class Report(Container, Element):
         else:
             self.columns.set_visible(False)
 
-    def _get_group(self, id):
-        """Get group with given id, or create new if doesn't exist"""
+    def _create_group(self, id):
+        """Create group with given id"""
 
-        res = None
-        for _group in self.groups:
-            if _group.group_id == id:
-                res = _group
-                break
-        else:
-            res = seccon.Group(self.GetPane(), self.prop_grid,
+        return seccon.Group(self.GetPane(), self.prop_grid,
                 DEFAULT_WIDTH, id, self)
-        return res
 
-    def _clear_groups(self, old_list, new_list):
-        """Clear groups deleted by user from old list"""
+    def _update_group(self, group):
+        """Update one group element"""
 
-        from sets import Set
-        _old = Set(old_list)
-        _new = Set(new_list)
-        _diff = _old - _new
-
-        for _group in _diff:
-            _group.destroy()
+        group.update_name()
+        self._update_pair(group)
 
     def _update_groups(self):
         """Update all groups of report"""
 
-        _groups = self.get_value("lists", "group").get_all()
-        _new_group_list = []
-        for _group in _groups:
-            _group_elem = self.__get_group(_group.id)
-            _group_elem.synchronize_attributes("group", \
-                _group.get_category("group"))
-            _new_group_list.append(_group_elem)
-            self._update_pair(_group_elem)
-
-        self._clear_groups(self.groups, _new_group_list)
-        self.groups = _new_group_list
+        _new_groups = self.synchronize_list_category("group", self.groups,
+            self._create_group, self._update_group)
+        utils.destroy_difference(self.groups, _new_groups)
+        self.groups = _new_groups
 
     def _update_header_footer(self):
         """Update header and footer of the report"""
@@ -209,7 +190,7 @@ class Report(Container, Element):
     def synchronize_group(self, group):
         """Get data from group to self"""
 
-        _gr_value = self.get_value("lists", "group").get_by_id(group.group_id)
+        _gr_value = self.get_value("lists", "group").get_by_id(group.id)
         _gr_value.synchronize_attributes("group", group.get_category("group"))
 
     def after_property_changed(self, category, attribute):

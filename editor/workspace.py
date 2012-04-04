@@ -13,6 +13,7 @@ class Workspace(wxscrolled.ScrolledPanel):
 
     def __init__(self, parent, prop_grid):
         wxscrolled.ScrolledPanel.__init__(self, parent, wx.ID_ANY)
+        self.SetDoubleBuffered(True)
 
         self.prop_grid = prop_grid
 

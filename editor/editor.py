@@ -13,6 +13,7 @@ def main():
     utils.setup()
     _main_form = EditorForm(None)
     _main_form.Show()
+    _main_form.Maximize(True)
     _app.MainLoop()
 
 

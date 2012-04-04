@@ -1,6 +1,6 @@
 """Visual design elements, that can be placed in section"""
 """
-03-apr-2012 [kacah]    created
+03-apr-2012 [kacah]    created, added Subreport
 
 """
 import PythonReports.template as te
@@ -31,6 +31,10 @@ class Subreport(wxbtns.GenButton, Element):
         self.SetBackgroundColour("grey")
 
         self.Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+
+    def destroy(self):
+        """Destroy self"""
+        self.Destroy()
 
     def set_title(self, title):
         """Set title of element"""

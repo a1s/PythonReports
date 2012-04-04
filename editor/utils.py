@@ -3,6 +3,8 @@
 30-mar-2012 [kacah]   created
 
 """
+import os
+
 import PythonReports.datatypes as datatypes
 import wx
 
@@ -40,3 +42,14 @@ def destroy_difference(old_list, new_list):
 
     for _obj in _diff:
         _obj.destroy()
+
+ICONS_DIR = "res"
+
+def get_icon(icon_name):
+    """Get icon as bitmap by given filename
+    
+    @raise Exception: if not found or unknown file format
+    
+    """
+    _file = os.path.join(ICONS_DIR, icon_name)
+    return wx.Image(_file, wx.BITMAP_TYPE_PNG).ConvertToBitmap()

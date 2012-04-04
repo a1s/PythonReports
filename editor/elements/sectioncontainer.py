@@ -17,7 +17,7 @@ PAIR_TITLES = [("title", "summary"), ("header", "footer")]
 class SectionPair(object):
     """Pair of header/footer of title/summary elements"""
 
-    def __init__(self, parent, prop_grid, width, p_id, prefix=""):
+    def __init__(self, parent, width, p_id, prefix=""):
         """Create two section elements
         
         @param p_id: 0 - title, summary | 1 - header, footer
@@ -25,8 +25,8 @@ class SectionPair(object):
         
         """
         _titles = self.build_titles(prefix, p_id)
-        self.first = Section(parent, prop_grid, _titles[0], width)
-        self.second = Section(parent, prop_grid, _titles[1], width)
+        self.first = Section(parent, _titles[0], width)
+        self.second = Section(parent, _titles[1], width)
 
     def build_titles(self, prefix, p_id):
         """Build titles of pair by prefix and pair name id"""
@@ -59,16 +59,13 @@ COLUMN_PREFIX = "Column "
 class Columns(SectionPair, Element):
     """PythonReports Columns element"""
 
-    def __init__(self, parent, prop_grid, width, report):
-        SectionPair.__init__(self, parent, prop_grid, width, PAIR_HEADER_FOOTER,
+    def __init__(self, parent, width, report):
+        SectionPair.__init__(self, parent, width, PAIR_HEADER_FOOTER,
             COLUMN_PREFIX)
-        Element.__init__(self, prop_grid, main_val=MAIN_COLUMNS,
+        Element.__init__(self, main_val=MAIN_COLUMNS,
             unrestricted_val=UNRESTRICTED_STYLE)
 
         self.report = report
-
-        self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
-        self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
     def count_width(self, width, number, gap):
         """Count columns width by columns number and gap"""
@@ -88,17 +85,14 @@ GROUP_PREFIX = "Group "
 class Group(SectionPair, Element):
     """PythonReports Group element"""
 
-    def __init__(self, parent, prop_grid, width, group_id, report):
-        SectionPair.__init__(self, parent, prop_grid, width, PAIR_TITLE_SUMMARY,
+    def __init__(self, parent, width, group_id, report):
+        SectionPair.__init__(self, parent, width, PAIR_TITLE_SUMMARY,
             GROUP_PREFIX)
-        Element.__init__(self, prop_grid, main_val=MAIN_GROUP,
+        Element.__init__(self, main_val=MAIN_GROUP,
             unrestricted_val=UNRESTRICTED_STYLE)
 
         self.id = group_id
         self.report = report
-
-        self.first.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
-        self.second.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
 
     def destroy(self):
         """Destroy Header and footer containers"""

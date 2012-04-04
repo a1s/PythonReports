@@ -12,6 +12,8 @@ class HeaderButton(wxbtns.GenButton):
     """Used for creating containers' header button"""
 
     HEADER_HEIGHT = 25
+    NORMAL_FG_COLOR = "black"
+    NORMAL_BG_COLOR = wx.Colour(195, 195, 195)
 
     def __init__(self, parent, title, width):
         wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, title,
@@ -19,13 +21,23 @@ class HeaderButton(wxbtns.GenButton):
 
         self.width = width
 
-        self.SetForegroundColour("black")
-        self.SetBackgroundColour(wx.Colour(195, 195, 195))
+        self.SetForegroundColour(self.NORMAL_FG_COLOR)
+        self.SetBackgroundColour(self.NORMAL_BG_COLOR)
 
     def set_width(self, width):
         """Set width of element"""
         self.width = width
         self.SetSize(self.DoGetBestSize())
+
+    def highlight(self, need_hl):
+        """Highlight this button"""
+        if need_hl:
+            self.SetForegroundColour("white")
+            self.SetBackgroundColour(wx.Colour(0, 0, 0))
+        else:
+            self.SetForegroundColour(self.NORMAL_FG_COLOR)
+            self.SetBackgroundColour(self.NORMAL_BG_COLOR)
+        self.Refresh()
 
     def DoGetBestSize(self):
         """Header must not be auto resizable"""
@@ -68,6 +80,10 @@ class Container(wxpcp.PyCollapsiblePane):
 
         #refresh parent
         self.GetParent().Refresh()
+
+    def highlight(self, need_hl):
+        """Highlight this container"""
+        self.GetButton().highlight(need_hl)
 
     def set_width(self, width):
         """Set width of container element"""

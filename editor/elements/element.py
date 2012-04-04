@@ -20,14 +20,11 @@ class XmlBody(object):
 class Element(PropertiesListener):
     """Base class for all elements"""
 
-    def __init__(self, prop_grid, main_val=None,
+    def __init__(self, main_val=None,
         zero_or_one_val=[], one_val=[], unrestricted_val=[]):
-        """Parameter prop_grid explanation read in PropertiesListener classes
-        
-        @param *_val: validators from PythonReports
-        
-        """
-        PropertiesListener.__init__(self, prop_grid)
+        """@param *_val: validators from PythonReports"""
+
+        PropertiesListener.__init__(self)
 
         self.main_val = main_val
         self.zero_or_one_val = zero_or_one_val

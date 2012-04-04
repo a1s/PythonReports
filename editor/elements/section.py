@@ -12,6 +12,7 @@ import wx.lib.resizewidget as wxrw
 from container import Container
 from elements import design
 from elements.element import Element
+import environment as env
 import utils
 
 MIN_SIZE = 10
@@ -41,12 +42,11 @@ UNRESTRICTED_VALIDATORS = [te.Eject, te.Style, te.Subreport]
 class Section(Container, Element):
     """Container for visual elements like fields, images, barcodes..."""
 
-    def __init__(self, parent, prop_grid, title, width):
+    def __init__(self, parent, title, width):
         Container.__init__(self, parent, title, width)
-        Element.__init__(self, prop_grid,
-            unrestricted_val=UNRESTRICTED_VALIDATORS)
+        Element.__init__(self, unrestricted_val=UNRESTRICTED_VALIDATORS)
 
-        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnFocus)
 
         self.design_resizer = wxrw.ResizeWidget(self.GetPane())
         self.design_place = DesignPlace(self.design_resizer, width)
@@ -55,6 +55,9 @@ class Section(Container, Element):
         self.subreports = []
 
         self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnPaneChanged)
+
+    def OnFocus(self, evt=None):
+        env.OnPropertyListener(self)
 
     def set_width(self, width):
         """Set width of container element"""
@@ -74,8 +77,7 @@ class Section(Container, Element):
     def _create_subreport(self, id):
         """Create subreport with given id"""
 
-        return design.Subreport(self.GetPane(), self.prop_grid,
-            self.get_width(), id, self)
+        return design.Subreport(self.GetPane(), self.get_width(), id, self)
 
     def _update_subreport(self, subreport):
         """Update one group element"""

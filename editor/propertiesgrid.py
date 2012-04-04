@@ -18,38 +18,9 @@ import utils
 class PropertiesListener(object):
     """Listen while control get or lost focus and update property grid"""
 
-    def __init__(self, prop_grid=None):
-        self.prop_grid = prop_grid
-
+    def __init__(self):
         #attributes and child validated elements
         self.properties = {}
-
-    def OnSelected(self, evt=None, prop_grid=None):
-        """Use this when your element is selected to force prop grid update
-        
-        @note: BIND this to one of the wx events (for example ON_FOCUS) or
-            use this function directly. 
-            
-            If prop_grid is passed uses it, otherwise uses self.prop_grid.
-            Throws Exception if both prop grids are None
-        
-        """
-        if prop_grid:
-            prop_grid.setup_by_element(self)
-        elif self.prop_grid:
-            self.prop_grid.setup_by_element(self)
-        else:
-            raise Exception("No property grid found")
-
-    def OnUnselected(self, evt=None, prop_grid=None):
-        """Clear prop grid after deselection. Same use as OnSelected"""
-
-        if prop_grid:
-            prop_grid.unsetup(self)
-        elif self.prop_grid:
-            self.prop_grid.unsetup(self)
-        else:
-            raise Exception("No property grid found")
 
     def after_property_changed(self, category, prop_name):
         """Do something after property was changed. 
@@ -408,11 +379,11 @@ class ListPropertyDialog(wx.Dialog):
             _index = self.value.find(selected_item)
             if _index > -1:
                 self.prop_list.SetSelection(_index)
-                selected_item.OnSelected(prop_grid=self.prop_grid)
+                self.prop_grid.setup_by_element(selected_item)
 
     def OnListItemSelect(self, event):
         _index = event.GetSelection()
-        self.value.get(_index).OnSelected(prop_grid=self.prop_grid)
+        self.prop_grid.setup_by_element(self.value.get(_index))
 
     def OnAddButton(self, event):
         """Add new element into value and update list"""

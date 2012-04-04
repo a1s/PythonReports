@@ -9,6 +9,7 @@ import wx.lib.buttons as wxbtns
 
 from container import HeaderButton
 from elements.element import Element
+import environment as env
 
 SUBREPORT_MAIN = te.Subreport
 SUBREPORT_UNRESTRICTED = [te.Arg]
@@ -17,20 +18,35 @@ class Subreport(wxbtns.GenButton, Element):
     """PythonReports subreport element"""
 
     SUBREPORT_HEIGHT = 20
+    NORMAL_FG_COLOR = "white"
+    NORMAL_BG_COLOR = "grey"
 
-    def __init__(self, parent, prop_grid, width, subreport_id, section):
+    def __init__(self, parent, width, subreport_id, section):
         wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, "Subreport",
             size=(1, self.SUBREPORT_HEIGHT))
-        Element.__init__(self, prop_grid, SUBREPORT_MAIN,
+        Element.__init__(self, SUBREPORT_MAIN,
             unrestricted_val=SUBREPORT_UNRESTRICTED)
 
         self.id = subreport_id
         self.section = section
 
-        self.SetForegroundColour("white")
-        self.SetBackgroundColour("grey")
+        self.SetForegroundColour(self.NORMAL_FG_COLOR)
+        self.SetBackgroundColour(self.NORMAL_BG_COLOR)
 
-        self.Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+        self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
+
+    def highlight(self, need_hl):
+        """Highlight this element"""
+        if need_hl:
+            self.setSetForegroundColour("white")
+            self.SetBackgroundColour(wx.Colour(0, 0, 0))
+        else:
+            self.SetForegroundColour(self.NORMAL_FG_COLOR)
+            self.SetBackgroundColour(self.NORMAL_BG_COLOR)
+        self.Refresh()
+
+    def OnFocus(self, evt=None):
+        env.OnPropertyListener(self)
 
     def destroy(self):
         """Destroy self"""

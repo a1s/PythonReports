@@ -10,6 +10,7 @@ import wx
 
 from container import Container
 from elements.element import Element
+import environment as env
 from section import Section
 import sectioncontainer as seccon
 import utils
@@ -30,16 +31,18 @@ UNRESTRICTED_VALIDATORS = [te.Parameter, te.Import, te.Variable, te.Font,
 class Report(Container, Element):
     """Main, Report element, Root of template"""
 
-    def __init__(self, parent, prop_grid):
+    def __init__(self, parent):
         Container.__init__(self, parent, REPORT_NAME, DEFAULT_WIDTH)
-        Element.__init__(self, prop_grid,
-            MAIN_VALIDATOR, ZERO_OR_ONE_VALIDATORS,
+        Element.__init__(self, MAIN_VALIDATOR, ZERO_OR_ONE_VALIDATORS,
             ONE_VALIDATORS, UNRESTRICTED_VALIDATORS)
 
-        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnSelected)
+        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnFocus)
 
         self.create_sections()
         self.update_layout()
+
+    def OnFocus(self, evt=None):
+        env.OnPropertyListener(self)
 
     def create_sections(self):
         """Create general sections of the report
@@ -51,15 +54,13 @@ class Report(Container, Element):
         * Create detail section
         
         """
-        self.title_summary = seccon.SectionPair(self.GetPane(), self.prop_grid,
+        self.title_summary = seccon.SectionPair(self.GetPane(),
             DEFAULT_WIDTH, seccon.PAIR_TITLE_SUMMARY, REPORT_PREFIX)
-        self.columns = seccon.Columns(self.GetPane(), self.prop_grid, \
-            DEFAULT_WIDTH, self)
+        self.columns = seccon.Columns(self.GetPane(), DEFAULT_WIDTH, self)
         self.groups = []
-        self.header_footer = seccon.SectionPair(self.GetPane(), self.prop_grid,
-            DEFAULT_WIDTH, seccon.PAIR_HEADER_FOOTER, PAGE_PREFIX)
-        self.detail = Section(self.GetPane(), self.prop_grid, DETAIL_NAME,
-            DEFAULT_WIDTH)
+        self.header_footer = seccon.SectionPair(self.GetPane(), DEFAULT_WIDTH,
+           seccon.PAIR_HEADER_FOOTER, PAGE_PREFIX)
+        self.detail = Section(self.GetPane(), DETAIL_NAME, DEFAULT_WIDTH)
 
     def get_page_size(self):
         """Get page size (tuple - width, height) from properties"""
@@ -152,8 +153,7 @@ class Report(Container, Element):
     def _create_group(self, id):
         """Create group with given id"""
 
-        return seccon.Group(self.GetPane(), self.prop_grid,
-                DEFAULT_WIDTH, id, self)
+        return seccon.Group(self.GetPane(), DEFAULT_WIDTH, id, self)
 
     def _update_group(self, group):
         """Update one group element"""

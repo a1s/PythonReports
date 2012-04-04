@@ -26,11 +26,13 @@ class HeaderButton(wxbtns.GenButton):
 
     def set_width(self, width):
         """Set width of element"""
+
         self.width = width
         self.SetSize(self.DoGetBestSize())
 
     def highlight(self, need_hl):
         """Highlight this button"""
+
         if need_hl:
             self.SetForegroundColour("white")
             self.SetBackgroundColour(wx.Colour(0, 0, 0))
@@ -67,12 +69,8 @@ class Container(wxpcp.PyCollapsiblePane):
         #update self size to fit all changed children
         self.OnStateChange(self.GetBestSize())
 
-        #do this if container is inside Scrollpanel
-        try:
-            self.GetParent().SetupScrolling(scrollToTop=False)
-        except:
-            pass
         #do this if container is inside another container
+        #first parent is Containers.Pane, second is Container
         try:
             self.GetParent().GetParent().OnPaneChanged()
         except:

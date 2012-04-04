@@ -31,10 +31,12 @@ UNRESTRICTED_VALIDATORS = [te.Parameter, te.Import, te.Variable, te.Font,
 class Report(Container, Element):
     """Main, Report element, Root of template"""
 
-    def __init__(self, parent):
+    def __init__(self, parent, page):
         Container.__init__(self, parent, REPORT_NAME, DEFAULT_WIDTH)
         Element.__init__(self, MAIN_VALIDATOR, ZERO_OR_ONE_VALIDATORS,
             ONE_VALIDATORS, UNRESTRICTED_VALIDATORS)
+
+        self.page = page
 
         self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnFocus)
 
@@ -199,3 +201,6 @@ class Report(Container, Element):
         if (category == "layout") or (category == "columns") \
         or (category == "lists" and attribute == "group"):
             self.update_layout()
+
+        if (category == "layout"):
+            self.page.update_margins()

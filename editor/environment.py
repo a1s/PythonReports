@@ -32,7 +32,7 @@ def OnPropertyListener(listener):
 
     global last_focus
     #try to unhighlight last element
-    #try couse of last_focus may be None or may not have highlight method
+    #try cause of last_focus may be None or may not have highlight method
     try:
         last_focus.highlight(False)
     except:

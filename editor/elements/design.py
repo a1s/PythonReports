@@ -37,8 +37,9 @@ class Subreport(wxbtns.GenButton, Element):
 
     def highlight(self, need_hl):
         """Highlight this element"""
+
         if need_hl:
-            self.setSetForegroundColour("white")
+            self.SetForegroundColour("white")
             self.SetBackgroundColour(wx.Colour(0, 0, 0))
         else:
             self.SetForegroundColour(self.NORMAL_FG_COLOR)

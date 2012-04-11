@@ -6,7 +6,7 @@
 import wx
 import wx.lib.scrolledpanel as wxscrolled
 
-from elements import report
+from elements.report import Report
 import environment as env
 import utils
 
@@ -26,7 +26,7 @@ class Page(wx.Panel):
         self.SetBackgroundColour("white")
 
         self.rep_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.report = report.Report(self, self)
+        self.report = Report(self, self)
         self.report.Expand()
         self.rep_sizer.Add(self.report, 0, wx.VERTICAL)
 
@@ -122,4 +122,5 @@ class Workspace(wxscrolled.ScrolledPanel):
 
         (_width, _height) = self.GetVirtualSize()
         for _x in range(0, _width / _draw_step + self.SCROLLBARS_COMPENSATION):
-            dc.DrawLine(_x * _draw_step, 0, _x * _draw_step, _height)
+            dc.DrawLine(_x * _draw_step, 0,
+                _x * _draw_step, _height + self.SCROLLBARS_COMPENSATION)

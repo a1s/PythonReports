@@ -3,7 +3,6 @@
 04-apr-2012 [kacah]    created
 
 """
-
 workspace = None
 properties_grid = None
 file_toolbar = None
@@ -11,6 +10,16 @@ visual_toolbar = None
 shell = None
 
 last_focus = None
+
+class EditingTools(object):
+    """Enumeration for supported tools in elements editing"""
+
+    select = 1
+    field = 2
+    line = 3
+    rect = 4
+    image = 5
+    barcode = 6
 
 def setup_environment(worksp, prop_grid, sh, file_tool, visual_tool):
     """Set global windows and objects"""
@@ -28,20 +37,45 @@ def setup_environment(worksp, prop_grid, sh, file_tool, visual_tool):
     visual_toolbar = visual_tool
 
 def OnPropertyListener(listener):
-    """Unfocus last element, update properties in properties grid"""
+    """Unfocus last element, focus new, update properties in properties grid"""
+
+    remove_focus()
+    #try to highlight new element
+    #try:
+    listener.highlight(True)
+    #except:
+    #    pass
+
+    properties_grid.setup_by_element(listener)
 
     global last_focus
+    last_focus = listener
+
+def remove_focus():
+    """Set focus to None, and clear property grid"""
+
+    global last_focus
+
     #try to unhighlight last element
     #try cause of last_focus may be None or may not have highlight method
     try:
         last_focus.highlight(False)
     except:
         pass
-    #try to highlight new element
-    try:
-        listener.highlight(True)
-    except:
-        pass
 
-    properties_grid.setup_by_element(listener)
-    last_focus = listener
+    properties_grid.unsetup()
+
+    last_focus = None
+
+def get_active_editing_tool():
+    """Return active edit tool - selected from toolbar"""
+
+    return visual_toolbar.get_selected_tool()
+
+def toggle_double_buffering(enabled):
+    """Enable or disable double buffering for workspace. 
+    
+    Needed to fix ogl bug in double buffered containers
+    
+    """
+    workspace.SetDoubleBuffered(enabled)

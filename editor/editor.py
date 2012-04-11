@@ -12,6 +12,7 @@ def main():
     _app = wx.PySimpleApp()
     utils.setup()
     _main_form = EditorForm(None)
+    _app.SetTopWindow(_main_form)
     _main_form.Show()
     _main_form.Maximize(True)
     _app.MainLoop()

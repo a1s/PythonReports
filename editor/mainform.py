@@ -5,6 +5,7 @@
 """
 import wx
 import wx.lib.agw.aui as wxaui
+import wx.lib.ogl as wxogl
 import wx.py as wxpy
 
 import environment as env
@@ -23,6 +24,8 @@ class EditorForm(wx.Frame):
         wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=FORM_TITLE,
             pos=wx.DefaultPosition, size=wx.Size(800, 600),
             style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
+
+        wxogl.OGLInitialize()
 
         self.aui_mgr = wxaui.AuiManager(self)
         self.setup_aui()
@@ -84,4 +87,5 @@ class EditorForm(wx.Frame):
 
     def OnClose(self, event):
         self.aui_mgr.UnInit()
+        wxogl.OGLCleanUp()
         self.Destroy()

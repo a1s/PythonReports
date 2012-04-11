@@ -8,11 +8,11 @@ import PythonReports.template as te
 from PythonReports import datatypes
 import wx
 
-from container import Container
+from elements import sectioncontainer as seccon
+from elements.container import Container
 from elements.element import Element
+from elements.section import Section
 import environment as env
-from section import Section
-import sectioncontainer as seccon
 import utils
 
 DEFAULT_WIDTH = 500

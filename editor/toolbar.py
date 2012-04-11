@@ -6,6 +6,7 @@
 import wx
 import wx.lib.agw.aui as wxaui
 
+import environment as env
 import utils
 
 class FileToolbar(wxaui.AuiToolBar):
@@ -27,23 +28,31 @@ class FileToolbar(wxaui.AuiToolBar):
 class VisualToolbar(wxaui.AuiToolBar):
     """ToolBar for new visual elements creation"""
 
+    TOOLS = [
+        [env.EditingTools.select, "arrow", "arrow.png", "Select elements"],
+        [env.EditingTools.field, "field", "field.png", "Create field"],
+        [env.EditingTools.line, "Line", "line.png", "Create line"],
+        [env.EditingTools.rect, "Rectangle", "rect.png", "Create rectangle"],
+        [env.EditingTools.image, "Image", "image.png", "Create image"],
+        [env.EditingTools.barcode, "Barcode", "barcode.png", "Create barcode"],
+    ]
+
     def __init__(self, parent):
         wxaui.AuiToolBar.__init__(self, parent, wx.ID_ANY,
             agwStyle=wxaui.AUI_TB_DEFAULT_STYLE)
         self.SetToolBitmapSize(wx.Size(24, 24))
 
-        self.AddSimpleTool(1, "Arrow", utils.get_icon("arrow.png"),
-            "Select elements")
-        self.AddSeparator()
-        self.AddSimpleTool(2, "Field", utils.get_icon("field.png"),
-            "Create field")
-        self.AddSimpleTool(3, "Line", utils.get_icon("line.png"),
-            "Create line")
-        self.AddSimpleTool(4, "Rectangle", utils.get_icon("rect.png"),
-            "Create rectangle")
-        self.AddSimpleTool(5, "Image", utils.get_icon("image.png"),
-            "Create image")
-        self.AddSimpleTool(6, "Barcode", utils.get_icon("barcode.png"),
-            "Create barcode")
+        for _tool in self.TOOLS:
+            _icon = utils.get_icon(_tool[2])
+            self.AddRadioTool(_tool[0], _tool[1], _icon, _icon, _tool[3])
 
         self.Realize()
+
+        self.ToggleTool(env.EditingTools.select, True)
+
+    def get_selected_tool(self):
+        """Return selected tool id"""
+
+        for _tool in self.TOOLS:
+            if self.GetToolToggled(_tool[0]):
+                return _tool[0]

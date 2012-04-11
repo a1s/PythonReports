@@ -20,6 +20,7 @@ class HeaderButton(wxbtns.GenButton):
             size=(width, self.HEADER_HEIGHT))
 
         self.width = width
+        self.SetUseFocusIndicator(False)
 
         self.SetForegroundColour(self.NORMAL_FG_COLOR)
         self.SetBackgroundColour(self.NORMAL_BG_COLOR)

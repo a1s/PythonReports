@@ -12,10 +12,13 @@ that has significant body text; (PythonReports Doc - Data)
 """
 ELEMENTS_WITH_BODY = ["data"]
 
-class XmlBody(object):
-    """Just contains body of xml tag - one string"""
-    def __init__(self, data):
-        self.data = data
+class XmlBody(datatypes.String):
+    """Body of xml tag is also string. 
+    
+    @note: is needed to identify class in datatypes_binding.py
+    
+    """
+
 
 class Element(PropertiesListener):
     """Base class for all elements"""

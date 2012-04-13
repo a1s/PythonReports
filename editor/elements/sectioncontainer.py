@@ -51,6 +51,11 @@ class SectionPair(object):
         """Get second element of pair"""
         return self.second
 
+    def force_data_update(self):
+        """Update all elements that are linked to report data"""
+        self.first.force_data_update()
+        self.second.force_data_update()
+
 UNRESTRICTED_STYLE = [te.Style]
 MAIN_COLUMNS = te.Columns
 

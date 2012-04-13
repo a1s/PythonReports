@@ -102,6 +102,10 @@ class Workspace(wxscrolled.ScrolledPanel):
         self.page = Page(self)
         self.page_sizer.Add(self.page, 0, wx.ALL, 25)
 
+    def get_report(self):
+        """Get current active report"""
+        return self.page.report
+
     def OnChildFocus(self, evt):
         """Do nothing on child focus to prevent autoscrolling"""
         pass

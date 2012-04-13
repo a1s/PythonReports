@@ -166,6 +166,10 @@ class Section(Container, Element):
         _sub_value.synchronize_attributes(
             "subreport", sub.get_category("subreport"))
 
+    def force_data_update(self):
+        """Update all elements that are linked to report data"""
+        self.design_place.force_data_update()
+
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
 

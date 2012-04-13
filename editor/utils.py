@@ -23,6 +23,10 @@ def dim_to_screen(dimension):
     """Convert PythonReports dimension into screen pixels"""
     return round(dimension * PT_TO_PIX)
 
+def screen_to_dim(pix):
+    """Convert screen pixels into PythonReports dimenson"""
+    return datatypes.Dimension(pix / PT_TO_PIX)
+
 def get_or_create_by_id(elements_list, id, creation_function):
     """Get element with given id, or return result of creation function"""
 
@@ -42,6 +46,13 @@ def destroy_difference(old_list, new_list):
 
     for _obj in _diff:
         _obj.destroy()
+
+def scale_bitmap(bitmap, width, height):
+    """Scale given bitmap to a new dimensions"""
+
+    _image = wx.ImageFromBitmap(bitmap)
+    _image = _image.Scale(width, height, wx.IMAGE_QUALITY_HIGH)
+    return wx.BitmapFromImage(_image)
 
 ICONS_DIR = "res"
 

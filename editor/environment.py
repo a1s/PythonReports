@@ -41,10 +41,10 @@ def OnPropertyListener(listener):
 
     remove_focus()
     #try to highlight new element
-    #try:
-    listener.highlight(True)
-    #except:
-    #    pass
+    try:
+        listener.highlight(True)
+    except:
+        pass
 
     properties_grid.setup_by_element(listener)
 
@@ -79,3 +79,20 @@ def toggle_double_buffering(enabled):
     
     """
     workspace.SetDoubleBuffered(enabled)
+
+def get_predefined_data(data_name):
+    """Get data element from current report element. 
+    
+    @return Data element or None if report or data not found
+    
+    """
+    _report = workspace.get_report()
+    if not _report:
+        return None
+
+    _data_list = _report.get_value("lists", "data").get_all()
+    for _data in _data_list:
+        if _data.get_value("data", "name") == data_name:
+            return _data
+
+    return None

@@ -131,6 +131,25 @@ class PropertiesListener(object):
         except:
             raise Exception("No property found - %s: %s" % (tag, attribute))
 
+    def set_value(self, tag, attribute, value):
+        """Set value of property by given tag and attribute"""
+
+        try:
+            (_value_old, _type, _default) = self.properties[tag][attribute]
+        except:
+            raise Exception("No property found - %s: %s" % (tag, attribute))
+
+        if value is None and _default is not None:
+            raise Exception("Property %s: %s can't be None" % (tag, attribute))
+
+        if value.__class__ is not _type:
+            raise Exception("Property %s: %s isn't of type %s" %
+                (tag, attribute, value.__class__.__name__))
+
+        if (value != _value_old):
+            self.properties[tag][attribute] = (value, _type, _default)
+            self.after_property_changed(tag, attribute)
+
     def synchronize_attributes(self, tag, attributes):
         """Add values from another dictionary, do not create new attributes
         
@@ -145,18 +164,11 @@ class PropertiesListener(object):
             return
 
         for (_attr, _prop_tuple) in attributes.items():
-            #check if value exists
-            try:
-                self.get_value(tag, _attr)
-            except:
-                continue
             (_value, _type, _default_value) = _prop_tuple
-            (_value_old, _type_old, _default_old) = self.properties[tag][_attr]
-            #check if types are similar and values don't equal 
-            if _type is _type_old and _value != _value_old:
-                self.properties[tag][_attr] = \
-                    (_value, _type, _default_value)
-                self.after_property_changed(tag, _attr)
+            try:
+                self.set_value(tag, _attr, _value)
+            except:
+                pass
 
     def synchronize_list_category(self, attr, obj_list, create_func,
         for_each_func):

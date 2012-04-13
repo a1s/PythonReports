@@ -90,6 +90,7 @@ DATATYPES_SETTINGS = {
     "Boolean": (True, "wx.propgrid.BoolProperty", c_bool, None, by_val),
     "Integer": (0, "wx.propgrid.IntProperty", c_simple, None, by_val),
     "Number": (0, "wx.propgrid.FloatProperty", c_simple, None, by_val),
+    "_Number": (0, "wx.propgrid.FloatProperty", c_simple, None, by_val),
     "Dimension": (100, "wx.propgrid.FloatProperty", c_simple, None, by_val),
     "Color": ("BLACK", "wx.propgrid.ColourProperty", c_colour, "names", by_color),
     "String": ("default", "wx.propgrid.StringProperty", c_simple, None, by_val),

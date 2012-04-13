@@ -195,6 +195,16 @@ class Report(Container, Element):
         _gr_value = self.get_value("lists", "group").get_by_id(group.id)
         _gr_value.synchronize_attributes("group", group.get_category("group"))
 
+    def update_data(self):
+        """Update all elements that use data"""
+
+        self.title_summary.force_data_update()
+        self.columns.force_data_update()
+        for _group in self.groups:
+            _group.force_data_update()
+        self.header_footer.force_data_update()
+        self.detail.force_data_update()
+
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
 
@@ -204,3 +214,6 @@ class Report(Container, Element):
 
         if (category == "layout"):
             self.page.update_margins()
+
+        if category == "lists" and attribute == "data":
+            self.update_data()

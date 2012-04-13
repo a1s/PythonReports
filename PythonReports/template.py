@@ -155,7 +155,7 @@ Field = Validator(tag="field",
         "expr": (Expression, None),
         "evaltime": (String, None), # may be "report", "page", "column"
                                     # or group name
-        "data": (String, None),     # name of external 'data' element
+        "data": (String, None), # name of external 'data' element
         "align": (TextAlignment, "left"),
         "format": (String, "%s"),
         "stretch": (Boolean, False),

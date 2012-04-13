@@ -110,21 +110,17 @@ class Workspace(wxscrolled.ScrolledPanel):
         """Do nothing on child focus to prevent autoscrolling"""
         pass
 
-    TEXTURE_LINE_WIDTH = 2
     SCROLLBARS_COMPENSATION = 30
 
     def OnPaint(self, event):
         """Paint stripes on this panel"""
 
-        dc = wx.PaintDC(self)
-        self.DoPrepareDC(dc)
+        _dc = wx.PaintDC(self)
+        self.DoPrepareDC(_dc)
 
-        pen = wx.Pen(wx.BLACK, self.TEXTURE_LINE_WIDTH)
-        dc.SetPen(pen)
-
-        _draw_step = self.TEXTURE_LINE_WIDTH * 2
+        _dc.SetPen(wx.TRANSPARENT_PEN)
+        _dc.SetBrush(wx.Brush(wx.BLACK, wx.CROSSDIAG_HATCH))
 
         (_width, _height) = self.GetVirtualSize()
-        for _x in range(0, _width / _draw_step + self.SCROLLBARS_COMPENSATION):
-            dc.DrawLine(_x * _draw_step, 0,
-                _x * _draw_step, _height + self.SCROLLBARS_COMPENSATION)
+        _dc.DrawRectangle(0, 0, _width + self.SCROLLBARS_COMPENSATION,
+            _height + self.SCROLLBARS_COMPENSATION)

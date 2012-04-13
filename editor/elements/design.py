@@ -30,6 +30,7 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.SetDiagram(self.diagram)
         self.diagram.SetCanvas(self)
 
+        self.active = None
         self.init_lists()
 
     def init_lists(self):
@@ -77,6 +78,16 @@ class DesignPlace(wxogl.ShapeCanvas):
         env.OnPropertyListener(_element)
         self.Refresh(False)
 
+    def delete_active(self):
+        """Delete active element from DesignPlace"""
+
+        if self.active:
+            _elem_to_delete = self.active
+            env.remove_focus()
+            self.elements[_elem_to_delete.__class__].remove(_elem_to_delete)
+            self.RemoveShape(_elem_to_delete)
+            self.Refresh(False)
+
     def force_data_update(self):
         """Update all elements that are linked to report data"""
 
@@ -92,11 +103,7 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
 
     def OnLeftClick(self, x, y, keys=0, attach=0):
         shape = self.GetShape()
-
-        if shape.Selected():
-            env.remove_focus()
-        else:
-            env.OnPropertyListener(shape)
+        env.OnPropertyListener(shape)
 
     def OnBeginDragLeft(self, x, y, keys, attach):
         env.toggle_double_buffering(False)
@@ -173,6 +180,10 @@ class ShapeBase(Element):
         _dc = wx.ClientDC(_canvas)
         _canvas.PrepareDC(_dc)
 
+        if need_hl:
+            _canvas.active = self
+        else:
+            _canvas.active = None
         self.Select(need_hl, _dc)
 
     def get_shape_center(self):
@@ -330,9 +341,9 @@ class Line(wxogl.RectangleShape, ShapeBase):
         (_right_x, _right_y) = (_left_x + _width, _left_y + _height)
 
         if self.get_value("line", "backslant"):
-            dc.DrawLine(_left_x, _right_y, _right_x, _left_y)
-        else:
             dc.DrawLine(_left_x, _left_y, _right_x, _right_y)
+        else:
+            dc.DrawLine(_left_x, _right_y, _right_x, _left_y)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
@@ -353,6 +364,29 @@ class Rectangle(wxogl.RectangleShape, ShapeBase):
         ShapeBase.__init__(self, RECTANGLE_MAIN, [])
 
         self.init_shape(parent_canvas, x, y)
+        self.update_transparence()
+
+    def update_transparence(self):
+        """Update transparence of rectangle from properties"""
+
+        if self.get_value("rectangle", "opaque"):
+            self.SetBrush(wx.TRANSPARENT_BRUSH)
+        else:
+            self.SetBrush(wx.LIGHT_GREY_BRUSH)
+        self.GetCanvas().Refresh(False)
+
+    def after_property_changed(self, category, attribute):
+        """Overrided from PropertiesListener"""
+
+        ShapeBase.after_property_changed(self, category, attribute)
+
+        if attribute == "radius":
+            self.SetCornerRadius(self.get_value("rectangle", "radius"))
+            self.GetCanvas().Refresh(False)
+
+        if attribute == "opaque":
+            self.update_transparence()
+
 
 class ResizableBitmapShape(wxogl.BitmapShape):
     """Resizable image element (original ogl bitmaps aren't resizable)"""

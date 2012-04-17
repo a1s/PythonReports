@@ -85,7 +85,7 @@ WINDOWS_FONTS_ADDED = False
 SYSFONTPATHS = []
 if os.name == "nt":
     # MS Windows
-    SYSFONTPATHS.append(os.path.join(os.getenv("windir"), "Fonts"))
+    SYSFONTPATHS.append(os.path.join(os.getenv("WINDIR"), "Fonts"))
 elif os.name == "posix":
     # X windows
     SYSFONTPATHS.extend([

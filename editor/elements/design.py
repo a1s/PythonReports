@@ -6,6 +6,8 @@
 03-apr-2012 [kacah]    created, added Subreport
 
 """
+import os
+
 import PythonReports.template as te
 import wx
 import wx.lib.ogl as wxogl
@@ -93,6 +95,8 @@ class DesignPlace(wxogl.ShapeCanvas):
 
         for _field in self.elements[Field]:
             _field.update_text()
+        for _image in self.elements[Image]:
+            _image.update_picture()
 
 
 class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
@@ -395,20 +399,55 @@ class ResizableBitmapShape(wxogl.BitmapShape):
         wxogl.BitmapShape.__init__(self)
 
         self.original_bitmap = None
+        self.rotated_bitmap = None
+
+        self.vertical = False
         self.size = (DEFAULT_WIDTH, DEFAULT_HEIGHT)
 
     def SetBitmap(self, bitmap):
         self.original_bitmap = bitmap
+        self.rotate_bitmap()
         self.resize_bitmap()
 
-    def resize_bitmap(self):
-        """Resize and apply bitmap"""
+    def SetFilename(self, file_name, file_type=wx.BITMAP_TYPE_BMP):
+        self.file_name = file_name
+        _bitmap = wx.Image(file_name, file_type).ConvertToBitmap()
+        self.SetBitmap(_bitmap)
+
+    def GetFilename(self):
+        return self.file_name
+
+    def rotate_bitmap(self):
+        """Rotate original bitmap and save it"""
 
         if not self.original_bitmap:
             return
 
+        if self.is_vertical():
+            self.rotated_bitmap = \
+                utils.rotate90_bitmap(self.original_bitmap, True)
+        else:
+            self.rotated_bitmap = self.original_bitmap
+
+    def set_vertical(self, vertical):
+        """Rotate this image by 90 degrees or not"""
+
+        self.vertical = vertical
+        self.rotate_bitmap()
+        self.resize_bitmap()
+
+    def is_vertical(self):
+        """Get is this image is rotated by 90 degrees"""
+        return self.vertical
+
+    def resize_bitmap(self):
+        """Resize rotated bitmap and apply it"""
+
+        if not self.rotated_bitmap:
+            return
+
         (_width, _height) = self.GetSize()
-        _scaled = utils.scale_bitmap(self.original_bitmap, _width, _height)
+        _scaled = utils.scale_bitmap(self.rotated_bitmap, _width, _height)
         wxogl.BitmapShape.SetBitmap(self, _scaled)
 
     def GetSize(self):
@@ -427,18 +466,52 @@ class ResizableBitmapShape(wxogl.BitmapShape):
 
 
 DEFAULT_IMAGE = "res/image_default.bmp"
+ERROR_IMAGE = "res/image_error.bmp"
 IMAGE_MAIN = te.Image
 
 class Image(ResizableBitmapShape, ShapeBase):
     """Visual image element"""
 
+    TYPES_LINK = {
+        "png" : wx.BITMAP_TYPE_PNG,
+        "jpeg" : wx.BITMAP_TYPE_JPEG,
+        "gif" : wx.BITMAP_TYPE_GIF,
+    }
+
     def __init__(self, parent_canvas, x, y):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, IMAGE_MAIN, DATA_ZERO_OR_ONE)
 
-        _bitmap = wx.Image(DEFAULT_IMAGE, wx.BITMAP_TYPE_BMP).ConvertToBitmap()
-        self.SetBitmap(_bitmap)
+        self.SetFilename(DEFAULT_IMAGE)
         self.init_shape(parent_canvas, x, y)
+
+    def update_picture(self):
+        """Update picture from properties"""
+
+        _file_name = self.get_value("image", "file")
+
+        if _file_name is None or _file_name == "":
+            self.SetFilename(DEFAULT_IMAGE)
+        else:
+            _type = self.get_value("image", "type")
+
+            if not os.path.isabs(_file_name):
+                _file_name = os.path.join(env.get_work_dir(), _file_name)
+
+            try:
+                self.SetFilename(_file_name, self.TYPES_LINK[_type])
+            except:
+                self.SetFilename(ERROR_IMAGE)
+
+        self.GetCanvas().Refresh(False)
+
+    def after_property_changed(self, category, attribute):
+        """Overrided from PropertiesListener"""
+
+        ShapeBase.after_property_changed(self, category, attribute)
+
+        if attribute == "file" or attribute == "type":
+            self.update_picture()
 
 
 BARCODE_IMAGE = "res/barcode_default.bmp"
@@ -451,6 +524,22 @@ class Barcode(ResizableBitmapShape, ShapeBase):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, BARCODE_MAIN, DATA_ZERO_OR_ONE)
 
-        _bitmap = wx.Image(BARCODE_IMAGE, wx.BITMAP_TYPE_BMP).ConvertToBitmap()
-        self.SetBitmap(_bitmap)
+        self.SetFilename(BARCODE_IMAGE)
         self.init_shape(parent_canvas, x, y)
+
+    def update_orientation(self):
+        """Update orientation from properties"""
+
+        if self.get_value("barcode", "vertical"):
+            self.set_vertical(True)
+        else:
+            self.set_vertical(False)
+        self.GetCanvas().Refresh(False)
+
+    def after_property_changed(self, category, attribute):
+        """Overrided from PropertiesListener"""
+
+        ShapeBase.after_property_changed(self, category, attribute)
+
+        if attribute == "vertical":
+            self.update_orientation()

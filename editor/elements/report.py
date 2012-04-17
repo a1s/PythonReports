@@ -205,7 +205,7 @@ class Report(Container, Element):
         _gr_value.synchronize_attributes("group", group.get_category("group"))
 
     def update_data(self):
-        """Update all elements that use data"""
+        """Update all elements that use data and basedir"""
 
         self.title_summary.force_data_update()
         self.columns.force_data_update()
@@ -224,5 +224,6 @@ class Report(Container, Element):
         if (category == "layout"):
             self.page.update_margins()
 
-        if category == "lists" and attribute == "data":
+        if (category == "lists" and attribute == "data") \
+        or (attribute == "basedir"):
             self.update_data()

@@ -10,6 +10,8 @@ import utils
 
 def main():
     _app = wx.PySimpleApp()
+    #disable logs to prevent automatic error windows
+    wx.Log.EnableLogging(False)
     utils.setup()
     _main_form = EditorForm(None)
     _app.SetTopWindow(_main_form)

@@ -96,3 +96,18 @@ def get_predefined_data(data_name):
             return _data
 
     return None
+
+def get_work_dir():
+    """Return report['basedir'] if set or '.' by default"""
+
+    DEFAULT_DIR = "."
+
+    _report = workspace.get_report()
+    if not _report:
+        return DEFAULT_DIR
+
+    _basedir = _report.get_value("report", "basedir")
+    if _basedir is None or _basedir == "":
+        return DEFAULT_DIR
+    else:
+        return _basedir

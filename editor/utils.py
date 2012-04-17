@@ -54,6 +54,14 @@ def scale_bitmap(bitmap, width, height):
     _image = _image.Scale(width, height, wx.IMAGE_QUALITY_HIGH)
     return wx.BitmapFromImage(_image)
 
+
+def rotate90_bitmap(bitmap, clockwise):
+    """Rotate bitmap by 90 degrees on the given direction"""
+
+    _image = wx.ImageFromBitmap(bitmap)
+    _image = _image.Rotate90(clockwise)
+    return wx.BitmapFromImage(_image)
+
 ICONS_DIR = "res"
 
 def get_icon(icon_name):

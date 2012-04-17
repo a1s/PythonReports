@@ -91,7 +91,7 @@ class DesignPlace(wxogl.ShapeCanvas):
     def force_data_update(self):
         """Update all elements that are linked to report data"""
 
-        for _field in self.fields:
+        for _field in self.elements[Field]:
             _field.update_text()
 
 

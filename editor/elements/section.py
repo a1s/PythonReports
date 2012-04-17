@@ -7,10 +7,9 @@
 """
 import PythonReports.template as te
 import wx
-import wx.lib.buttons as wxbtns
 import wx.lib.resizewidget as wxrw
 
-from container import Container
+from container import Container, HeaderButton
 from elements.design import DesignPlace
 from elements.element import Element
 import environment as env
@@ -20,39 +19,20 @@ import utils
 SUBREPORT_MAIN = te.Subreport
 SUBREPORT_UNRESTRICTED = [te.Arg]
 
-class Subreport(wxbtns.GenButton, Element):
+class Subreport(HeaderButton, Element):
     """PythonReports subreport element"""
 
-    SUBREPORT_HEIGHT = 20
-    NORMAL_FG_COLOR = "white"
-    NORMAL_BG_COLOR = "grey"
-
     def __init__(self, parent, width, subreport_id, section):
-        wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, "Subreport",
-            size=(1, self.SUBREPORT_HEIGHT))
+        HeaderButton.__init__(self, parent, "Subreport", width)
         Element.__init__(self, SUBREPORT_MAIN,
             unrestricted_val=SUBREPORT_UNRESTRICTED)
 
         self.id = subreport_id
         self.section = section
 
-        self.SetForegroundColour(self.NORMAL_FG_COLOR)
-        self.SetBackgroundColour(self.NORMAL_BG_COLOR)
+        self.Bind(wx.EVT_BUTTON, self.OnButton)
 
-        self.Bind(wx.EVT_SET_FOCUS, self.OnFocus)
-
-    def highlight(self, need_hl):
-        """Highlight this element"""
-
-        if need_hl:
-            self.SetForegroundColour("white")
-            self.SetBackgroundColour(wx.Colour(0, 0, 0))
-        else:
-            self.SetForegroundColour(self.NORMAL_FG_COLOR)
-            self.SetBackgroundColour(self.NORMAL_BG_COLOR)
-        self.Refresh()
-
-    def OnFocus(self, evt=None):
+    def OnButton(self, evt=None):
         env.OnPropertyListener(self)
 
     def destroy(self):
@@ -87,6 +67,8 @@ UNRESTRICTED_VALIDATORS = [te.Eject, te.Style, te.Subreport]
 class Section(Container, Element):
     """Container for visual elements like fields, images, barcodes..."""
 
+    CHILD_LEFT_OFFSET = 3
+
     def __init__(self, parent, title, width):
         Container.__init__(self, parent, title, width)
         Element.__init__(self, unrestricted_val=UNRESTRICTED_VALIDATORS)
@@ -95,7 +77,7 @@ class Section(Container, Element):
 
         self.design_resizer = wxrw.ResizeWidget(self.GetPane())
         self.design_place = DesignPlace(self.design_resizer, width)
-        self.add_element(self.design_resizer)
+        self.add_element(self.design_resizer, self.CHILD_LEFT_OFFSET)
 
         self.subreports = []
 
@@ -111,12 +93,10 @@ class Section(Container, Element):
         self.design_place.set_width(width)
         #AdjustToChild doesn't work cause of an error in wx.lib.resizewidget.py
         self.design_resizer.AdjustToSize(self.design_place.GetSize())
-        self.OnPaneChanged()
 
-    def add_element(self, element):
-        """Override from Container, expand elements, don't need funny sizes"""
+        for _subreport in self.subreports:
+            _subreport.set_width(width)
 
-        self.sizer.Add(element, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 3)
         self.OnPaneChanged()
 
     def _create_subreport(self, id):
@@ -132,6 +112,8 @@ class Section(Container, Element):
     def _insert_elements(self):
         """Insert subreports and design_place into section"""
 
+        LEFT_OFFSET = 3
+
         self.subreports.sort(key=lambda sub: sub.get_sequence())
 
         added_design = False
@@ -139,13 +121,13 @@ class Section(Container, Element):
         for _sub in self.subreports:
             #check if need to add design_resizer in the middle of subreports
             if (not added_design) and (_sub.get_sequence() > 0):
-                self.add_element(self.design_resizer)
+                self.add_element(self.design_resizer, self.CHILD_LEFT_OFFSET)
                 added_design = True
 
-            self.add_element(_sub)
+            self.add_element(_sub, self.CHILD_LEFT_OFFSET)
 
         if not added_design:
-            self.add_element(self.design_resizer)
+            self.add_element(self.design_resizer, self.CHILD_LEFT_OFFSET)
 
     def update_subreports(self):
         """Update all groups of report"""

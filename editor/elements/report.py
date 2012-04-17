@@ -38,12 +38,12 @@ class Report(Container, Element):
 
         self.page = page
 
-        self.GetButton().Bind(wx.EVT_SET_FOCUS, self.OnFocus)
+        self.GetButton().Bind(wx.EVT_BUTTON, self.OnButton)
 
         self.create_sections()
         self.update_layout()
 
-    def OnFocus(self, evt=None):
+    def OnButton(self, evt=None):
         env.OnPropertyListener(self)
 
     def create_sections(self):
@@ -119,17 +119,26 @@ class Report(Container, Element):
         self._update_detail()
 
     def _insert_pair(self, pair, pos):
-        """Insert sections pair into given position"""
+        """Insert sections pair into given position
+        
+        @return position between header and footer
+        
+        """
+        LEFT_OFFSET = 3
+
+        if pair.has_head():
+            self.insert_element(pair.get_head(), pos, LEFT_OFFSET)
+            pos += 1
 
         self.insert_element(pair.get_first(), pos)
         self.insert_element(pair.get_second(), pos + 1)
+        return pos + 1
 
     def _update_pair(self, pair):
         """Update width and insert one pair"""
 
         pair.set_width(self.cur_width)
-        self._insert_pair(pair, self.cur_pos)
-        self.cur_pos += 1
+        self.cur_pos = self._insert_pair(pair, self.cur_pos)
 
     def _update_title_summary(self):
         """Update title and summary of the report"""

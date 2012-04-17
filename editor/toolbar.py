@@ -29,12 +29,12 @@ class VisualToolbar(wxaui.AuiToolBar):
     """ToolBar for new visual elements creation"""
 
     TOOLS = [
-        [env.EditingTools.select, "arrow", "arrow.png", "Select elements"],
-        [env.EditingTools.field, "field", "field.png", "Create field"],
-        [env.EditingTools.line, "Line", "line.png", "Create line"],
-        [env.EditingTools.rect, "Rectangle", "rect.png", "Create rectangle"],
-        [env.EditingTools.image, "Image", "image.png", "Create image"],
-        [env.EditingTools.barcode, "Barcode", "barcode.png", "Create barcode"],
+        (env.EditingTools.select, "arrow", "arrow.png", "Select elements"),
+        (env.EditingTools.field, "field", "field.png", "Create field"),
+        (env.EditingTools.line, "Line", "line.png", "Create line"),
+        (env.EditingTools.rect, "Rectangle", "rect.png", "Create rectangle"),
+        (env.EditingTools.image, "Image", "image.png", "Create image"),
+        (env.EditingTools.barcode, "Barcode", "barcode.png", "Create barcode"),
     ]
 
     def __init__(self, parent):

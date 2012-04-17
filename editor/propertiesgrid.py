@@ -35,7 +35,7 @@ class PropertiesListener(object):
 
     def update_property(self, changed_property):
         """Update property in dictionary by property grid's Property
-        
+         
         @note: Parent = category
         
         """
@@ -47,9 +47,8 @@ class PropertiesListener(object):
         _conversion_function = \
             datatypes_binding.DATATYPES_SETTINGS[_type.__name__].conversion_func
         _value = _conversion_function(changed_property, _type)
-        self.properties[_cat][_attr] = (_value, _type, _default_value)
 
-        self.after_property_changed(_cat, _attr)
+        self.set_value(_cat, _attr, _value)
 
     def OnPropGridChange(self, event):
         """Change element state in parent"""
@@ -100,7 +99,7 @@ class PropertiesListener(object):
         if not self.properties.get(self.LIST_CATEGORY):
             self.properties[self.LIST_CATEGORY] = {}
 
-        _prop = ListPropertyValue([], tag, attributes)
+        _prop = ListPropertyValue([], tag, attributes, self)
         self.properties[self.LIST_CATEGORY][tag] = \
             (_prop, ListPropertyValue, [])
 
@@ -139,14 +138,15 @@ class PropertiesListener(object):
         except:
             raise Exception("No property found - %s: %s" % (tag, attribute))
 
-        if value is None and _default is not None:
+        if (value is None) and (_default is not None):
             raise Exception("Property %s: %s can't be None" % (tag, attribute))
 
-        if value.__class__ is not _type:
+        if (value is not None) and (value.__class__ is not _type):
             raise Exception("Property %s: %s isn't of type %s" %
                 (tag, attribute, value.__class__.__name__))
 
-        if (value != _value_old):
+        #list properties are updated inside elements not changing them
+        if value != _value_old or tag == self.LIST_CATEGORY:
             self.properties[tag][attribute] = (value, _type, _default)
             self.after_property_changed(tag, attribute)
 
@@ -437,8 +437,9 @@ class ListPropertyValue(object):
 
         elem_id = 0
 
-        def __init__(self, tag, attributes):
+        def __init__(self, tag, attributes, parent_list_value):
             """Use only one category - element self"""
+
             PropertiesListener.__init__(self)
 
             if attributes:
@@ -446,6 +447,7 @@ class ListPropertyValue(object):
 
             self.id = self.generate_id()
             self.name = "%s %s" % (tag, self.id)
+            self.parent_list_value = parent_list_value
 
         @classmethod
         def generate_id(cls):
@@ -454,17 +456,31 @@ class ListPropertyValue(object):
             cls.elem_id += 1
             return cls.elem_id
 
-    def __init__(self, values, tag, attributes):
+        def after_property_changed(self, category, prop_name):
+            """Overrided from PropertiesListener"""
+            self.parent_list_value.fire_parent_update()
+
+
+    def __init__(self, values, tag, attributes, parent_lister=None):
         """New list property
-            
+        
         @param values: list of ListElements
         @param tag: string, name of listed elements
         @param attributes: dictionary of attributes of listed elements
-        
+        @param parent_lister: PropertyListener, this value is attached to
+                
         """
+        self.parent_lister = parent_lister
         self.values = values
         self.tag = tag
         self.attributes = attributes
+
+    def fire_parent_update(self):
+        """Try to call after_changed of parent"""
+
+        if self.parent_lister:
+            self.parent_lister.after_property_changed(
+                self.parent_lister.LIST_CATEGORY, self.tag)
 
     def has_element(self, index):
         """Check if there is a property with given index"""
@@ -472,8 +488,9 @@ class ListPropertyValue(object):
 
     def add(self):
         """Add new element to list"""
-        _elmt = self.ListElement(self.tag, self.attributes)
+        _elmt = self.ListElement(self.tag, self.attributes, self)
         self.values.append(_elmt)
+        self.fire_parent_update()
         return _elmt
 
     def get(self, index):
@@ -506,12 +523,14 @@ class ListPropertyValue(object):
         """Remove element form list by given index"""
         if self.has_element(index):
             del self.values[index]
+            self.fire_parent_update()
         else:
             raise Exception("Out of index")
 
     def move(self, from_index, to_index):
         """Move element form index to index."""
         self.values.insert(to_index, self.values.pop(from_index))
+        self.fire_parent_update()
 
     def move_up(self, index):
         """Move element closer to list start"""
@@ -525,7 +544,7 @@ class ListPropertyValue(object):
         """Move element closer to list end"""
         if self.has_element(index):
             if index < len(self.values) - 1:
-                self.__move(index, index + 1)
+                self.move(index, index + 1)
         else:
             raise Exception("Out of index")
 
@@ -550,9 +569,7 @@ class ListProperty(wxpg.PyLongStringProperty):
         return False
 
     def OnButtonClick(self, prop_grid, value):
-        #copy value and pass it to dialog
         _dlg = ListPropertyDialog(None, self.GetValue())
         _dlg.ShowModal()
         _dlg.Destroy()
-        self.prop_grid.fire_property_update(self)
         return True

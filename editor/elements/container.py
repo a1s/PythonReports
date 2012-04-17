@@ -6,24 +6,37 @@
 """
 import wx
 import wx.lib.agw.pycollapsiblepane as wxpcp
-import wx.lib.buttons as wxbtns
+import wx.lib.platebtn as wxpltbns
 
-class HeaderButton(wxbtns.GenButton):
+
+class HeaderButton(wxpltbns.PlateButton):
     """Used for creating containers' header button"""
 
     HEADER_HEIGHT = 25
-    NORMAL_FG_COLOR = "black"
-    NORMAL_BG_COLOR = wx.Colour(195, 195, 195)
+    PRESS_COLOR = wx.Colour(0, 0, 0)
 
-    def __init__(self, parent, title, width):
-        wxbtns.GenButton.__init__(self, parent, wx.ID_ANY, title,
-            size=(width, self.HEADER_HEIGHT))
-
+    def __init__(self, parent, title, width, bk_color=None):
         self.width = width
-        self.SetUseFocusIndicator(False)
+        _style = wxpltbns.PB_STYLE_SQUARE | wxpltbns.PB_STYLE_TOGGLE
+        if not bk_color:
+            _style = _style | wxpltbns.PB_STYLE_NOBG
 
-        self.SetForegroundColour(self.NORMAL_FG_COLOR)
-        self.SetBackgroundColour(self.NORMAL_BG_COLOR)
+        wxpltbns.PlateButton.__init__(self, parent, wx.ID_ANY, title,
+            size=(width, self.HEADER_HEIGHT), style=_style)
+
+        if bk_color:
+            self.SetBackgroundColour(bk_color)
+
+        self.SetPressColor(self.PRESS_COLOR)
+
+    def __PostEvent(self):
+        """Post a button event to parent of this control"""
+
+        etype = wx.wxEVT_COMMAND_BUTTON_CLICKED
+        bevt = wx.CommandEvent(etype, self.GetId())
+        bevt.SetEventObject(self)
+        bevt.SetString(self.GetLabel())
+        self.GetEventHandler().ProcessEvent(bevt)
 
     def set_width(self, width):
         """Set width of element"""
@@ -31,16 +44,38 @@ class HeaderButton(wxbtns.GenButton):
         self.width = width
         self.SetSize(self.DoGetBestSize())
 
-    def highlight(self, need_hl):
-        """Highlight this button"""
+    def set_title(self, title):
+        """Set title of this button"""
 
+        self.SetLabel(title)
+
+    def set_visible(self, visible):
+        """Set element visible or not"""
+
+        self.Show(visible)
+
+    def OnFocus(self, evt):
+        """Don't highlight on focus"""
+        pass
+
+    def OnLeftDown(self, evt):
+        """Change state to pressed"""
+
+        self.SetState(wxpltbns.PLATE_PRESSED)
+
+    def OnLeftUp(self, evt):
+        """Just post button event"""
+
+        self.__PostEvent()
+
+    def highlight(self, need_hl):
+        """Highlight this button. Mark it like pressed"""
+
+        self._pressed = need_hl
         if need_hl:
-            self.SetForegroundColour("white")
-            self.SetBackgroundColour(wx.Colour(0, 0, 0))
+            self.SetState(wxpltbns.PLATE_PRESSED)
         else:
-            self.SetForegroundColour(self.NORMAL_FG_COLOR)
-            self.SetBackgroundColour(self.NORMAL_BG_COLOR)
-        self.Refresh()
+            self.SetState(wxpltbns.PLATE_NORMAL)
 
     def DoGetBestSize(self):
         """Header must not be auto resizable"""
@@ -50,11 +85,13 @@ class HeaderButton(wxbtns.GenButton):
 class Container(wxpcp.PyCollapsiblePane):
     """Contains drawable elements"""
 
+    HEADER_COLOR = wx.Colour(220, 220, 220)
+
     def __init__(self, parent, title, width, border=wx.NO_BORDER):
         wxpcp.PyCollapsiblePane.__init__(self, parent, style=border,
             agwStyle=wx.CP_NO_TLW_RESIZE)
 
-        _head_btn = HeaderButton(self, title, width)
+        _head_btn = HeaderButton(self, title, width, self.HEADER_COLOR)
         self.SetButton(_head_btn)
         self.Unbind(wx.EVT_BUTTON, self._pButton)
         _head_btn.Bind(wx.EVT_LEFT_DCLICK, self.OnButton)
@@ -105,16 +142,16 @@ class Container(wxpcp.PyCollapsiblePane):
 
         self.SetLabel(title)
 
-    def insert_element(self, element, position):
+    def insert_element(self, element, position, left_gap=0):
         """Insert new element at position"""
 
-        self.sizer.Insert(position, element, 0, wx.VERTICAL)
+        self.sizer.Insert(position, element, 0, wx.VERTICAL | wx.LEFT, left_gap)
         self.OnPaneChanged()
 
-    def add_element(self, element):
+    def add_element(self, element, left_gap=0):
         """Add new element at the end"""
 
-        self.sizer.Add(element, 0, wx.VERTICAL)
+        self.sizer.Add(element, 0, wx.VERTICAL | wx.LEFT, left_gap)
         self.OnPaneChanged()
 
     def detach_element(self, element):

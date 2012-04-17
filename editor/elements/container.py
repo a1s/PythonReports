@@ -111,7 +111,7 @@ class Container(wxpcp.PyCollapsiblePane):
         #first parent is Containers.Pane, second is Container
         try:
             self.GetParent().GetParent().OnPaneChanged()
-        except:
+        except AttributeError:
             pass
 
         #refresh parent

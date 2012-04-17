@@ -58,20 +58,16 @@ class DesignPlace(wxogl.ShapeCanvas):
 
         _tool = env.get_active_editing_tool()
 
-        if _tool == env.EditingTools.field:
-            self.add_element(Field(self, x, y))
+        TOOL_TO_ELEMENT_LINK = {
+            env.EditingTools.field : Field,
+            env.EditingTools.rect : Rectangle,
+            env.EditingTools.image : Image,
+            env.EditingTools.barcode : Barcode,
+            env.EditingTools.line : Line
+        }
 
-        elif _tool == env.EditingTools.rect:
-            self.add_element(Rectangle(self, x, y))
-
-        elif _tool == env.EditingTools.image:
-            self.add_element(Image(self, x, y))
-
-        elif _tool == env.EditingTools.barcode:
-            self.add_element(Barcode(self, x, y))
-
-        elif _tool == env.EditingTools.line:
-            self.add_element(Line(self, x, y))
+        if TOOL_TO_ELEMENT_LINK.get(_tool):
+            self.add_element(TOOL_TO_ELEMENT_LINK[_tool](self, x, y))
 
     def add_element(self, _element):
         """Add new element to this DesignPlace"""

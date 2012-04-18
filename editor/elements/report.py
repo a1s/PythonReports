@@ -12,8 +12,20 @@ from elements import sectioncontainer as seccon
 from elements.container import Container
 from elements.element import Element
 from elements.section import Section
-import environment as env
 import utils
+
+
+Headers = datatypes.Validator(tag="headers",
+    attributes={
+        "title": (datatypes.Boolean, True),
+        "summary": (datatypes.Boolean, True),
+        "header": (datatypes.Boolean, True),
+        "footer": (datatypes.Boolean, True),
+        "swapheader": (datatypes.Boolean, False),
+        "swapfooter": (datatypes.Boolean, False),
+    }, doc="Show, hide and swap headers and footers, only for internal editor use"
+)
+
 
 DEFAULT_WIDTH = 500
 
@@ -24,7 +36,7 @@ REPORT_NAME = "Report"
 
 MAIN_VALIDATOR = te.Report
 ZERO_OR_ONE_VALIDATORS = [te.Columns]
-ONE_VALIDATORS = [te.Layout]
+ONE_VALIDATORS = [te.Layout, Headers]
 UNRESTRICTED_VALIDATORS = [te.Parameter, te.Import, te.Variable, te.Font,
     te.Data, te.Style, te.Group]
 
@@ -38,13 +50,13 @@ class Report(Container, Element):
 
         self.page = page
 
-        self.GetButton().Bind(wx.EVT_BUTTON, self.OnButton)
+        self.GetButton().Bind(wx.EVT_BUTTON, self.OnFocus)
 
         self.create_sections()
         self.update_layout()
 
-    def OnButton(self, evt=None):
-        env.OnPropertyListener(self)
+    def OnFocus(self, evt=None):
+        wx.GetApp().OnPropertyListener(self)
 
     def create_sections(self):
         """Create general sections of the report
@@ -112,38 +124,64 @@ class Report(Container, Element):
         self.set_width(self.cur_width)
 
         self.cur_pos = 0
-        self._update_header_footer()
-        self._update_title_summary()
+        self._update_headers()
         self._update_columns()
         self._update_groups()
         self._update_detail()
 
-    def _insert_pair(self, pair, pos):
-        """Insert sections pair into given position
-        
-        @return position between header and footer
-        
-        """
-        LEFT_OFFSET = 3
+    def _insert_two_headers(self, first, second, has_first, has_second):
+        """Insert two headers and set pointer on next element between them"""
 
-        if pair.has_head():
-            self.insert_element(pair.get_head(), pos, LEFT_OFFSET)
-            pos += 1
+        if has_first:
+            self.insert_element(first, self.cur_pos)
+            self.cur_pos += 1
+        first.set_visible(has_first)
 
-        self.insert_element(pair.get_first(), pos)
-        self.insert_element(pair.get_second(), pos + 1)
-        return pos + 1
+        if has_second:
+            self.insert_element(second, self.cur_pos)
+        second.set_visible(has_second)
 
-    def _update_pair(self, pair):
+    def _update_pair(self, pair, has_first=True, has_second=True):
         """Update width and insert one pair"""
 
         pair.set_width(self.cur_width)
-        self.cur_pos = self._insert_pair(pair, self.cur_pos)
 
-    def _update_title_summary(self):
+        LEFT_OFFSET = 3
+
+        if pair.has_head():
+            self.insert_element(pair.get_head(), self.cur_pos, LEFT_OFFSET)
+            self.cur_pos += 1
+
+        self._insert_two_headers(pair.get_first(), pair.get_second(),
+            has_first, has_second)
+
+    def _update_headers(self):
         """Update title and summary of the report"""
 
-        self._update_pair(self.title_summary)
+        self.title_summary.set_width(self.cur_width)
+        self.header_footer.set_width(self.cur_width)
+
+        #create tuples for all header 1 - header element, 2 - visibility
+        _header = (self.header_footer.get_first(),
+            self.get_value("headers", "header"))
+        _footer = (self.header_footer.get_second(),
+            self.get_value("headers", "footer"))
+        _title = (self.title_summary.get_first(),
+            self.get_value("headers", "title"))
+        _summary = (self.title_summary.get_second(),
+            self.get_value("headers", "summary"))
+
+        _head_seq = [_header, _title, _summary, _footer]
+
+        if self.get_value("headers", "swapheader"):
+            _head_seq[0], _head_seq[1] = _head_seq[1], _head_seq[0]
+        if self.get_value("headers", "swapfooter"):
+            _head_seq[2], _head_seq[3] = _head_seq[3], _head_seq[2]
+
+        self._insert_two_headers(_head_seq[0][0], _head_seq[3][0],
+            _head_seq[0][1], _head_seq[3][1])
+        self._insert_two_headers(_head_seq[1][0], _head_seq[2][0],
+            _head_seq[1][1], _head_seq[2][1])
 
     def _update_columns(self):
         """Update columns if they are set in report"""
@@ -157,7 +195,10 @@ class Report(Container, Element):
             self.columns.set_visible(True)
             self.columns.synchronize_attributes("columns", \
                 self.get_category("columns"))
-            self._update_pair(self.columns)
+
+            self._update_pair(self.columns,
+                self.columns.get_value("headers", "header"),
+                self.columns.get_value("headers", "footer"))
         else:
             self.columns.set_visible(False)
 
@@ -170,7 +211,9 @@ class Report(Container, Element):
         """Update one group element"""
 
         group.update_name()
-        self._update_pair(group)
+        self._update_pair(group,
+            group.get_value("headers", "title"),
+            group.get_value("headers", "summary"))
 
     def _update_groups(self):
         """Update all groups of report"""
@@ -179,11 +222,6 @@ class Report(Container, Element):
             self._create_group, self._update_group)
         utils.destroy_difference(self.groups, _new_groups)
         self.groups = _new_groups
-
-    def _update_header_footer(self):
-        """Update header and footer of the report"""
-
-        self._update_pair(self.header_footer)
 
     def _update_detail(self):
         """Update detail of the report"""
@@ -218,7 +256,8 @@ class Report(Container, Element):
         """Overrided from PropertiesListener"""
 
         if (category == "layout") or (category == "columns") \
-        or (category == "lists" and attribute == "group"):
+        or (category == "lists" and attribute == "group") \
+        or (category == "headers"):
             self.update_layout()
 
         if (category == "layout"):

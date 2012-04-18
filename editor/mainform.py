@@ -8,7 +8,6 @@ import wx.lib.agw.aui as wxaui
 import wx.lib.ogl as wxogl
 import wx.py as wxpy
 
-import environment as env
 from propertiesgrid import PropertiesGrid
 from toolbar import FileToolbar, VisualToolbar
 import utils
@@ -31,9 +30,6 @@ class EditorForm(wx.Frame):
         self.setup_aui()
 
         self.create_windows()
-        env.setup_environment(self.workspace, self.property_grid, self.shell,
-            self.file_toolbar, self.visual_toolbar)
-        self.workspace.create_new_report()
 
         menuBar = wx.MenuBar()
         fileMenu = wx.Menu()
@@ -46,7 +42,7 @@ class EditorForm(wx.Frame):
         self.bind_events()
 
     def setup_aui(self):
-        """Setup flags fro AUI manager"""
+        """Setup flags to AUI manager"""
 
         _agw_flags = self.aui_mgr.GetAGWFlags()
         _agw_flags = _agw_flags ^ \

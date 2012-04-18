@@ -12,7 +12,6 @@ import wx.lib.resizewidget as wxrw
 from container import Container, HeaderButton
 from elements.design import DesignPlace
 from elements.element import Element
-import environment as env
 import utils
 
 
@@ -30,10 +29,10 @@ class Subreport(HeaderButton, Element):
         self.id = subreport_id
         self.section = section
 
-        self.Bind(wx.EVT_BUTTON, self.OnButton)
+        self.Bind(wx.EVT_BUTTON, self.OnFocus)
 
-    def OnButton(self, evt=None):
-        env.OnPropertyListener(self)
+    def OnFocus(self, evt=None):
+        wx.GetApp().OnPropertyListener(self)
 
     def destroy(self):
         """Destroy self"""
@@ -84,7 +83,7 @@ class Section(Container, Element):
         self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnPaneChanged)
 
     def OnFocus(self, evt=None):
-        env.OnPropertyListener(self)
+        wx.GetApp().OnPropertyListener(self)
 
     def set_width(self, width):
         """Set width of container element"""

@@ -32,11 +32,11 @@ class HeaderButton(wxpltbns.PlateButton):
     def __PostEvent(self):
         """Post a button event to parent of this control"""
 
-        etype = wx.wxEVT_COMMAND_BUTTON_CLICKED
-        bevt = wx.CommandEvent(etype, self.GetId())
-        bevt.SetEventObject(self)
-        bevt.SetString(self.GetLabel())
-        self.GetEventHandler().ProcessEvent(bevt)
+        _etype = wx.wxEVT_COMMAND_BUTTON_CLICKED
+        _bevt = wx.CommandEvent(_etype, self.GetId())
+        _bevt.SetEventObject(self)
+        _bevt.SetString(self.GetLabel())
+        self.GetEventHandler().ProcessEvent(_bevt)
 
     def set_width(self, width):
         """Set width of element"""

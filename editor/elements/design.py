@@ -13,7 +13,6 @@ import wx
 import wx.lib.ogl as wxogl
 
 from elements.element import Element
-import environment as env
 import utils
 
 
@@ -24,6 +23,8 @@ class DesignPlace(wxogl.ShapeCanvas):
 
     def __init__(self, parent, width):
         wxogl.ShapeCanvas.__init__(self, parent, size=(width, MIN_SIZE))
+
+        self.app = wx.GetApp()
 
         self.SetMinSize((width, MIN_SIZE))
         self.SetMaxSize((width, -1))
@@ -54,26 +55,17 @@ class DesignPlace(wxogl.ShapeCanvas):
 
     def OnLeftClick(self, x, y, keys):
         """Create new elements if needed"""
-        env.remove_focus()
+        self.app.remove_focus()
 
-        _tool = env.get_active_editing_tool()
-
-        TOOL_TO_ELEMENT_LINK = {
-            env.EditingTools.field : Field,
-            env.EditingTools.rect : Rectangle,
-            env.EditingTools.image : Image,
-            env.EditingTools.barcode : Barcode,
-            env.EditingTools.line : Line
-        }
-
-        if TOOL_TO_ELEMENT_LINK.get(_tool):
-            self.add_element(TOOL_TO_ELEMENT_LINK[_tool](self, x, y))
+        _class_to_create = self.app.get_active_design_tool().element_class
+        if _class_to_create:
+            self.add_element(_class_to_create(self, x, y))
 
     def add_element(self, _element):
         """Add new element to this DesignPlace"""
 
         self.elements[_element.__class__].append(_element)
-        env.OnPropertyListener(_element)
+        self.app.OnPropertyListener(_element)
         self.Refresh(False)
 
     def delete_active(self):
@@ -81,7 +73,7 @@ class DesignPlace(wxogl.ShapeCanvas):
 
         if self.active:
             _elem_to_delete = self.active
-            env.remove_focus()
+            self.app.remove_focus()
             self.elements[_elem_to_delete.__class__].remove(_elem_to_delete)
             self.RemoveShape(_elem_to_delete)
             self.Refresh(False)
@@ -101,12 +93,14 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
     def __init__(self):
         wxogl.ShapeEvtHandler.__init__(self)
 
+        self.app = wx.GetApp()
+
     def OnLeftClick(self, x, y, keys=0, attach=0):
         shape = self.GetShape()
-        env.OnPropertyListener(shape)
+        self.app.OnPropertyListener(shape)
 
     def OnBeginDragLeft(self, x, y, keys, attach):
-        env.toggle_double_buffering(False)
+        self.app.toggle_double_buffering(False)
 
         self.GetPreviousHandler().OnBeginDragLeft(x, y, keys, attach)
 
@@ -118,10 +112,10 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
         self.GetPreviousHandler().OnEndDragLeft(x, y, keys, attach)
 
         self.GetShape().synchronize_box()
-        env.toggle_double_buffering(True)
+        self.app.toggle_double_buffering(True)
 
     def OnSizingBeginDragLeft(self, pt, x, y, keys, attach):
-        env.toggle_double_buffering(False)
+        self.app.toggle_double_buffering(False)
 
         self.GetPreviousHandler().OnSizingBeginDragLeft(pt, x, y, keys, attach)
 
@@ -129,7 +123,7 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
         self.GetPreviousHandler().OnSizingEndDragLeft(pt, x, y, keys, attach)
 
         self.GetShape().synchronize_box()
-        env.toggle_double_buffering(True)
+        self.app.toggle_double_buffering(True)
 
     def OnMovePost(self, dc, x, y, oldX, oldY, display):
         self.GetPreviousHandler().OnMovePost(dc, x, y, oldX, oldY, display)
@@ -153,6 +147,8 @@ class ShapeBase(Element):
     def __init__(self, main_val, zero_or_one_val):
         Element.__init__(self, main_val, zero_or_one_val, BOX_ONE,
             STYLE_UNRESTRICTED)
+
+        self.app = wx.GetApp()
 
     def init_shape(self, parent_canvas, x, y):
         """Setup settings for shape"""
@@ -261,7 +257,7 @@ class ShapeBase(Element):
         self.set_value("box", "x", utils.screen_to_dim(_pos[0]))
         self.set_value("box", "y", utils.screen_to_dim(_pos[1]))
 
-        env.OnPropertyListener(self)
+        self.app.OnPropertyListener(self)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
@@ -296,7 +292,7 @@ class Field(wxogl.TextShape, ShapeBase):
         _expr = self.get_value("field", "expr")
         _pre_data = self.get_value("field", "data")
         if _pre_data:
-            _pre_data = env.get_predefined_data(_pre_data)
+            _pre_data = self.app.get_predefined_data(_pre_data)
             if _pre_data:
                 _pre_data = _pre_data.get_value("data", self.BODY_PROPERTY)
             else:
@@ -492,7 +488,7 @@ class Image(ResizableBitmapShape, ShapeBase):
             _type = self.get_value("image", "type")
 
             if not os.path.isabs(_file_name):
-                _file_name = os.path.join(env.get_work_dir(), _file_name)
+                _file_name = os.path.join(self.app.get_work_dir(), _file_name)
 
             try:
                 self.SetFilename(_file_name, self.TYPES_LINK[_type])
@@ -539,3 +535,20 @@ class Barcode(ResizableBitmapShape, ShapeBase):
 
         if attribute == "vertical":
             self.update_orientation()
+
+
+class DESIGN_TOOL(object):
+    """Contain info about tools"""
+
+    def __init__(self, id, el_class):
+        self.id = id
+        self.element_class = el_class
+
+DESIGN_TOOLS = {
+    "Select" : DESIGN_TOOL(1, None),
+    "Field" : DESIGN_TOOL(2, Field),
+    "Line" : DESIGN_TOOL(3, Line),
+    "Rectangle" : DESIGN_TOOL(4, Rectangle),
+    "Image" : DESIGN_TOOL(5, Image),
+    "Barcode" : DESIGN_TOOL(6, Barcode)
+}

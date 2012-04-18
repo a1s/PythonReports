@@ -7,7 +7,6 @@ import wx
 import wx.lib.scrolledpanel as wxscrolled
 
 from elements.report import Report
-import environment as env
 import utils
 
 class Page(wx.Panel):

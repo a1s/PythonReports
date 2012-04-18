@@ -5,12 +5,13 @@
 """
 
 import PythonReports.template as te
+from PythonReports import datatypes
 import wx
 
 from container import HeaderButton
 from elements.element import Element
-import environment as env
 from section import Section
+
 
 PAIR_TITLE_SUMMARY = 0
 PAIR_HEADER_FOOTER = 1
@@ -85,7 +86,16 @@ class SectionPair(object):
         self.first.force_data_update()
         self.second.force_data_update()
 
+
+Column_Headers = datatypes.Validator(tag="headers",
+    attributes={
+        "header": (datatypes.Boolean, True),
+        "footer": (datatypes.Boolean, True),
+    }, doc="Show and hide headers and footers, only for internal editor use"
+)
+
 UNRESTRICTED_STYLE = [te.Style]
+COLUMN_HEADERS = [Column_Headers]
 MAIN_COLUMNS = te.Columns
 
 COLUMN_PREFIX = "Column "
@@ -96,7 +106,7 @@ class Columns(SectionPair, Element):
     def __init__(self, parent, width, report):
         SectionPair.__init__(self, parent, width, PAIR_HEADER_FOOTER,
             COLUMN_PREFIX, True)
-        Element.__init__(self, main_val=MAIN_COLUMNS,
+        Element.__init__(self, main_val=MAIN_COLUMNS, one_val=COLUMN_HEADERS,
             unrestricted_val=UNRESTRICTED_STYLE)
 
         self.head_btn.set_title("Columns")
@@ -105,7 +115,7 @@ class Columns(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        env.OnPropertyListener(self)
+        wx.GetApp().OnPropertyListener(self)
 
     def count_width(self, width, number, gap):
         """Count columns width by columns number and gap"""
@@ -118,8 +128,19 @@ class Columns(SectionPair, Element):
         if category == "columns":
             self.report.synchronize_columns()
 
+        if category == "headers":
+            self.report.update_layout()
+
+
+Group_Headers = datatypes.Validator(tag="headers",
+    attributes={
+        "title": (datatypes.Boolean, True),
+        "summary": (datatypes.Boolean, True),
+    }, doc="Show and hide headers and footers, only for internal editor use"
+)
 
 MAIN_GROUP = te.Group
+GROUP_HEADERS = [Group_Headers]
 GROUP_PREFIX = "Group "
 
 class Group(SectionPair, Element):
@@ -128,7 +149,7 @@ class Group(SectionPair, Element):
     def __init__(self, parent, width, group_id, report):
         SectionPair.__init__(self, parent, width, PAIR_TITLE_SUMMARY,
             GROUP_PREFIX, True)
-        Element.__init__(self, main_val=MAIN_GROUP,
+        Element.__init__(self, main_val=MAIN_GROUP, one_val=GROUP_HEADERS,
             unrestricted_val=UNRESTRICTED_STYLE)
 
         self.head_btn.set_title("Group")
@@ -138,7 +159,7 @@ class Group(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        env.OnPropertyListener(self)
+        wx.GetApp().OnPropertyListener(self)
 
     def set_visible(self, visible):
         """Overrided from SectionPair"""
@@ -168,3 +189,6 @@ class Group(SectionPair, Element):
         if category == "group":
             self.update_name()
             self.report.synchronize_group(self)
+
+        if category == "headers":
+            self.report.update_layout()

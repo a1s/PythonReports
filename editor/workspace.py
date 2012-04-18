@@ -93,10 +93,15 @@ class Workspace(wxscrolled.ScrolledPanel):
 
         self.Bind(wx.EVT_PAINT, self.OnPaint)
 
+    def close_report(self):
+        """Destroy current report"""
+
+        self.page_sizer.Clear(True)
+
     def create_new_report(self):
         """Destroy old and create new Report element"""
 
-        self.page_sizer.Clear(True)
+        self.close_report()
 
         self.page = Page(self)
         self.page_sizer.Add(self.page, 0, wx.ALL, 25)

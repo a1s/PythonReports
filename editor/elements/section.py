@@ -32,7 +32,7 @@ class Subreport(HeaderButton, Element):
         self.Bind(wx.EVT_BUTTON, self.OnFocus)
 
     def OnFocus(self, evt=None):
-        wx.GetApp().OnPropertyListener(self)
+        wx.GetApp().set_focus(self)
 
     def destroy(self):
         """Destroy self"""
@@ -83,7 +83,7 @@ class Section(Container, Element):
         self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnPaneChanged)
 
     def OnFocus(self, evt=None):
-        wx.GetApp().OnPropertyListener(self)
+        wx.GetApp().set_focus(self)
 
     def set_width(self, width):
         """Set width of container element"""

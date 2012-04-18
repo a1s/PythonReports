@@ -56,7 +56,7 @@ class Report(Container, Element):
         self.update_layout()
 
     def OnFocus(self, evt=None):
-        wx.GetApp().OnPropertyListener(self)
+        wx.GetApp().set_focus(self)
 
     def create_sections(self):
         """Create general sections of the report
@@ -173,13 +173,16 @@ class Report(Container, Element):
 
         _head_seq = [_header, _title, _summary, _footer]
 
+        #swap elements in list if necessary
         if self.get_value("headers", "swapheader"):
             _head_seq[0], _head_seq[1] = _head_seq[1], _head_seq[0]
         if self.get_value("headers", "swapfooter"):
             _head_seq[2], _head_seq[3] = _head_seq[3], _head_seq[2]
 
+        #insert first and last tuples (see tuple struct above)
         self._insert_two_headers(_head_seq[0][0], _head_seq[3][0],
             _head_seq[0][1], _head_seq[3][1])
+        #insert middle tuples (see tuple struct above)
         self._insert_two_headers(_head_seq[1][0], _head_seq[2][0],
             _head_seq[1][1], _head_seq[2][1])
 

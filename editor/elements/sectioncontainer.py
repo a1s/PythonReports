@@ -115,7 +115,7 @@ class Columns(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        wx.GetApp().OnPropertyListener(self)
+        wx.GetApp().set_focus(self)
 
     def count_width(self, width, number, gap):
         """Count columns width by columns number and gap"""
@@ -159,7 +159,7 @@ class Group(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        wx.GetApp().OnPropertyListener(self)
+        wx.GetApp().set_focus(self)
 
     def set_visible(self, visible):
         """Overrided from SectionPair"""

@@ -8,7 +8,7 @@ import wx
 from mainform import EditorForm
 import utils
 
-class EditorApplication(wx.App):
+class EditorApplication(wx.PySimpleApp):
     """Main class, environment of editor"""
 
     def __init_(self):
@@ -28,7 +28,7 @@ class EditorApplication(wx.App):
         self.last_focus = None
         return True
 
-    def OnPropertyListener(self, listener):
+    def set_focus(self, listener):
         """Unfocus last element, focus new, update properties in prop grid"""
 
         self.remove_focus()
@@ -45,6 +45,17 @@ class EditorApplication(wx.App):
         self.last_focus.highlight(False)
         self.frame.property_grid.unsetup()
         self.last_focus = None
+
+    def delete_focus(self):
+        """Delete focused element if it has 'delete' method"""
+
+        if not self.last_focus:
+            return
+
+        if hasattr(self.last_focus, "delete"):
+            _to_delete = self.last_focus
+            self.remove_focus()
+            _to_delete.delete()
 
     def get_active_design_tool(self):
         """Return active edit tool - selected from toolbar"""
@@ -96,3 +107,8 @@ class EditorApplication(wx.App):
             return DEFAULT_DIR
         else:
             return _basedir
+
+    def app_close(self):
+        """Close this application"""
+
+        self.frame.OnClose()

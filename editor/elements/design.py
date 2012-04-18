@@ -33,7 +33,6 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.SetDiagram(self.diagram)
         self.diagram.SetCanvas(self)
 
-        self.active = None
         self.init_lists()
 
     def init_lists(self):
@@ -61,22 +60,19 @@ class DesignPlace(wxogl.ShapeCanvas):
         if _class_to_create:
             self.add_element(_class_to_create(self, x, y))
 
-    def add_element(self, _element):
+    def add_element(self, element):
         """Add new element to this DesignPlace"""
 
-        self.elements[_element.__class__].append(_element)
-        self.app.OnPropertyListener(_element)
+        self.elements[element.__class__].append(element)
+        self.app.set_focus(element)
         self.Refresh(False)
 
-    def delete_active(self):
-        """Delete active element from DesignPlace"""
+    def delete_element(self, element):
+        """Delete element from DesignPlace"""
 
-        if self.active:
-            _elem_to_delete = self.active
-            self.app.remove_focus()
-            self.elements[_elem_to_delete.__class__].remove(_elem_to_delete)
-            self.RemoveShape(_elem_to_delete)
-            self.Refresh(False)
+        self.elements[element.__class__].remove(element)
+        self.RemoveShape(element)
+        self.Refresh(False)
 
     def force_data_update(self):
         """Update all elements that are linked to report data"""
@@ -97,7 +93,7 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
 
     def OnLeftClick(self, x, y, keys=0, attach=0):
         shape = self.GetShape()
-        self.app.OnPropertyListener(shape)
+        self.app.set_focus(shape)
 
     def OnBeginDragLeft(self, x, y, keys, attach):
         self.app.toggle_double_buffering(False)
@@ -182,6 +178,11 @@ class ShapeBase(Element):
             _canvas.active = None
         self.Select(need_hl, _dc)
 
+    def delete(self):
+        """Delete this element from Design place"""
+
+        self.GetCanvas().delete_element(self)
+
     def get_shape_center(self):
         """Return local shape center"""
 
@@ -257,7 +258,7 @@ class ShapeBase(Element):
         self.set_value("box", "x", utils.screen_to_dim(_pos[0]))
         self.set_value("box", "y", utils.screen_to_dim(_pos[1]))
 
-        self.app.OnPropertyListener(self)
+        self.app.set_focus(self)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""

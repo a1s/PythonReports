@@ -8,6 +8,7 @@ import wx.lib.agw.aui as wxaui
 import wx.lib.ogl as wxogl
 import wx.py as wxpy
 
+from mainmenu import MainMenu
 from propertiesgrid import PropertiesGrid
 from toolbar import FileToolbar, VisualToolbar
 import utils
@@ -31,11 +32,8 @@ class EditorForm(wx.Frame):
 
         self.create_windows()
 
-        menuBar = wx.MenuBar()
-        fileMenu = wx.Menu()
-        exitMenuItem = fileMenu.Append(wx.NewId(), "Exit", "Exit the application")
-        menuBar.Append(fileMenu, "&File")
-        self.SetMenuBar(menuBar)
+        self.main_menu = MainMenu(self)
+        self.SetMenuBar(self.main_menu)
 
         self.aui_mgr.Update()
 
@@ -81,7 +79,14 @@ class EditorForm(wx.Frame):
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
-    def OnClose(self, event):
-        self.aui_mgr.UnInit()
-        wxogl.OGLCleanUp()
-        self.Destroy()
+    def OnClose(self, event=None):
+        _dlg = wx.MessageDialog(self,
+            "Do you really want to close PythonReports editor?",
+            "Confirm Exit", wx.OK | wx.CANCEL | wx.ICON_QUESTION)
+        _dlg_result = _dlg.ShowModal()
+        _dlg.Destroy()
+
+        if _dlg_result == wx.ID_OK:
+            self.aui_mgr.UnInit()
+            wxogl.OGLCleanUp()
+            self.Destroy()

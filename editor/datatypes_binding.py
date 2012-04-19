@@ -105,7 +105,7 @@ DATATYPES_SETTINGS = {
     "EjectType": ("page", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "Encoding": ("base64", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "PageSize": ("A4", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
-    "PenType": ("dot", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
+    "PenTypeExtended": ("1", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "TextAlignment": ("left", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "VariableIteration": ("detail", "wx.propgrid.EnumProperty", c_enum, "VALUES", by_str),
     "ListPropertyValue": (None, "propertiesgrid.ListProperty", c_list, None, by_dir),

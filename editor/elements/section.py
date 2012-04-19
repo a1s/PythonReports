@@ -80,10 +80,18 @@ class Section(Container, Element):
 
         self.subreports = []
 
-        self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnPaneChanged)
+        self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnExpandedCollapsed)
 
     def OnFocus(self, evt=None):
         wx.GetApp().set_focus(self)
+
+    def set_height(self, height):
+        """Set height of container element"""
+
+        self.design_place.set_height(height)
+        self.design_resizer.AdjustToSize(self.design_place.GetSize())
+
+        self.OnPaneChanged()
 
     def set_width(self, width):
         """Set width of container element"""

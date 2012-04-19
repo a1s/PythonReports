@@ -111,6 +111,9 @@ class Report(Container, Element):
         """Determine if this report has columns"""
         return self.get_value("columns", self.EXISTANCE_PROPERTY)
 
+    #Just add this value to width to fix rounding and +-1 errors
+    WIDTH_ROUND_FIX = 10
+
     def update_layout(self):
         """Change size of work space, using properties['layout']"""
 
@@ -120,6 +123,8 @@ class Report(Container, Element):
         (_top_m, _right_m, _bot_m, _left_m) = self.get_margins()
         self.cur_width -= \
             utils.dim_to_screen(_right_m) + utils.dim_to_screen(_left_m)
+
+        self.cur_width += self.WIDTH_ROUND_FIX
 
         self.set_width(self.cur_width)
 

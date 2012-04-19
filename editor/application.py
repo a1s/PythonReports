@@ -3,15 +3,18 @@
 04-apr-2012 [kacah]    created
 
 """
+import os
+
 import wx
 
 from mainform import EditorForm
+import templateloader
 import utils
 
 class EditorApplication(wx.PySimpleApp):
     """Main class, environment of editor"""
 
-    def __init_(self):
+    def __init__(self):
         wx.App.__init__(self)
 
         #disable logs to prevent automatic error windows
@@ -75,6 +78,29 @@ class EditorApplication(wx.PySimpleApp):
 
         self.remove_focus()
         self.frame.workspace.create_new_report()
+
+    def report_open(self):
+        """Show dialog and open template in workspace"""
+
+        _dlg = wx.FileDialog(self.frame, "Choose a template file", os.getcwd(),
+            "", "*.*", wx.OPEN)
+        if _dlg.ShowModal() == wx.ID_OK:
+            _file_name = _dlg.GetPath()
+            _dlg.Destroy()
+        else:
+            _dlg.Destroy()
+            return
+
+        try:
+            _template = templateloader.load_template_file(_file_name)
+        except Exception, _ex:
+            #TODO add user friendly error reporting here
+            print "Invalid template file"
+            return
+
+        self.report_new()
+        _report = self.frame.workspace.get_report()
+        templateloader.load_template(_template, _report)
 
     def get_predefined_data(self, data_name):
         """Get data element from current report element. 

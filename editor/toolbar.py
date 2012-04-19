@@ -23,6 +23,8 @@ class FileToolbar(wxaui.AuiToolBar):
             agwStyle=wxaui.AUI_TB_DEFAULT_STYLE)
         self.SetToolBitmapSize(wx.Size(24, 24))
 
+        self.app = wx.GetApp()
+
         for _tool in self.TOOLS:
             _icon = utils.get_icon(_tool[2])
             self.AddSimpleTool(_tool[0], _tool[1], _icon, _tool[3])
@@ -31,10 +33,10 @@ class FileToolbar(wxaui.AuiToolBar):
         self.Realize()
 
     def OnNew(self, evt):
-        wx.GetApp().report_new()
+        self.app.report_new()
 
     def OnOpen(self, evt):
-        pass
+        self.app.report_open()
 
     def OnSave(self, evt):
         pass

@@ -96,12 +96,15 @@ class Container(wxpcp.PyCollapsiblePane):
         self.Unbind(wx.EVT_BUTTON, self._pButton)
         _head_btn.Bind(wx.EVT_LEFT_DCLICK, self.OnButton)
 
-        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self)
+        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnExpandedCollapsed, self)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.GetPane().SetSizer(self.sizer)
 
-    def OnPaneChanged(self, evt=None):
+    def OnExpandedCollapsed(self, evt):
+        self.OnPaneChanged()
+
+    def OnPaneChanged(self):
         """Update layout and try to update parents"""
 
         #update self size to fit all changed children

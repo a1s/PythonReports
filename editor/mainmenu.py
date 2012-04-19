@@ -75,7 +75,7 @@ class MainMenu(wx.MenuBar):
         self.app.report_new()
 
     def OnOpen(self, evt):
-        pass
+        self.app.report_open()
 
     def OnSave(self, evt):
         pass

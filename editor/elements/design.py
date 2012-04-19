@@ -7,10 +7,12 @@
 
 """
 import os
+import re
 
 import PythonReports.template as te
 import wx
 import wx.lib.ogl as wxogl
+import wx.lib.wordwrap as wxww
 
 from elements.element import Element
 import utils
@@ -22,7 +24,8 @@ class DesignPlace(wxogl.ShapeCanvas):
     """Place for painting visual elements"""
 
     def __init__(self, parent, width):
-        wxogl.ShapeCanvas.__init__(self, parent, size=(width, MIN_SIZE))
+        wxogl.ShapeCanvas.__init__(self, parent, size=(width, MIN_SIZE),
+            style=wx.NO_BORDER)
 
         self.app = wx.GetApp()
 
@@ -45,12 +48,19 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.elements[Barcode] = []
         self.elements[Line] = []
 
+    def set_height(self, height):
+        """Set height of design place"""
+
+        self.SetSize((self.GetSize().GetWidth(), height))
+
     def set_width(self, width):
         """Set min, max and actual width of design place"""
 
         self.SetSize((width, self.GetSize().GetHeight()))
         self.SetMinSize((width, MIN_SIZE))
         self.SetMaxSize((width, -1))
+
+        self.update_all_boxes()
 
     def OnLeftClick(self, x, y, keys):
         """Create new elements if needed"""
@@ -73,6 +83,13 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.elements[element.__class__].remove(element)
         self.RemoveShape(element)
         self.Refresh(False)
+
+    def update_all_boxes(self):
+        """Update boxes of all elements in design place"""
+
+        for (_el_class, _el_list) in self.elements.items():
+            for _elem in _el_list:
+                _elem.update_box()
 
     def force_data_update(self):
         """Update all elements that are linked to report data"""
@@ -146,8 +163,12 @@ class ShapeBase(Element):
 
         self.app = wx.GetApp()
 
-    def init_shape(self, parent_canvas, x, y):
-        """Setup settings for shape"""
+    def init_shape(self, parent_canvas, x, y, sync_box):
+        """Setup settings for shape
+        
+        @param sync_box: if set to true shape params will be applied to box
+        
+        """
 
         self.SetDraggable(True, True)
         self.SetCanvas(parent_canvas)
@@ -163,7 +184,10 @@ class ShapeBase(Element):
         _evthandler.SetPreviousHandler(self.GetEventHandler())
         self.SetEventHandler(_evthandler)
 
-        self.synchronize_box()
+        if sync_box:
+            self.synchronize_box()
+        else:
+            self.update_box()
 
     def highlight(self, need_hl):
         """Highlight shape"""
@@ -205,34 +229,58 @@ class ShapeBase(Element):
         """Get size tuple from properties"""
         return (self.GetWidth(), self.GetHeight())
 
-    def correct_x_dimension(self, dim):
-        """If dim < 0 make it as offset from from width"""
+    def get_vert_alignment(self):
+        """Get wx.ALIGN_ from box properties"""
+
+        V_FLAGS_LINK = {
+            "top": wx.ALIGN_TOP,
+            "center": wx.ALIGN_CENTER_VERTICAL,
+            "bottom": wx.ALIGN_BOTTOM,
+        }
+
+        return V_FLAGS_LINK[self.get_value("box", "valign")]
+
+    def get_hor_alignment(self):
+        H_FLAGS_LINK = {
+            "left": wx.ALIGN_LEFT,
+            "center": wx.ALIGN_CENTER_HORIZONTAL,
+            "right": wx.ALIGN_RIGHT,
+        }
+
+        return H_FLAGS_LINK[self.get_value("box", "halign")]
+
+    def correct_dim_pair(self, coord, dim, max_dim):
+        """Count x and width using offset if negative values"""
+
+        if coord < 0:
+            coord = max_dim + coord
 
         if dim < 0:
-            _size = self.GetCanvas().GetSize()
-            dim = _size.GetWidth() + dim
-        return dim
+            dim = max_dim + dim - coord
 
-    def correct_y_dimension(self, dim):
-        """If dim < 0 make it as offset from from height"""
+        return (coord, dim)
 
-        if dim < 0:
-            _size = self.GetCanvas().GetSize()
-            dim = _size.GetHeight() + dim
-        return dim
+    def get_box_screen_coords(self):
+        """Get x and y from box converted to screen coords"""
+
+        return (utils.dim_to_screen(self.get_value("box", "x")),
+            utils.dim_to_screen(self.get_value("box", "y")))
+
+    def get_box_screen_dims(self):
+        """Get width and height from box converted to screen coords"""
+
+        return (utils.dim_to_screen(self.get_value("box", "width")),
+            utils.dim_to_screen(self.get_value("box", "height")))
 
     def get_precise_rectangle(self):
         """Get bounding box of line from properties - more precise than shapes"""
 
-        _x = utils.dim_to_screen(self.get_value("box", "x"))
-        _y = utils.dim_to_screen(self.get_value("box", "y"))
-        _width = utils.dim_to_screen(self.get_value("box", "width"))
-        _height = utils.dim_to_screen(self.get_value("box", "height"))
+        (_x, _y) = self.get_box_screen_coords()
+        (_width, _height) = self.get_box_screen_dims()
 
-        _x = self.correct_x_dimension(_x)
-        _y = self.correct_y_dimension(_y)
-        _width = self.correct_x_dimension(_width)
-        _height = self.correct_y_dimension(_height)
+        _size = self.GetCanvas().GetSize()
+        (_x, _width) = self.correct_dim_pair(_x, _width, _size.GetWidth())
+        (_y, _height) = self.correct_dim_pair(_y, _height, _size.GetHeight())
 
         return (_x, _y, _width, _height)
 
@@ -268,24 +316,65 @@ class ShapeBase(Element):
 
 
 FIELD_MAIN = te.Field
+FIELD_MIN_HEIGHT = 12
 DEFAULT_TEXT = "[Empty Field]"
 NOT_FOUND_TEXT = "[Data not found]"
+EXPRESSION_TEXT = "%EX"
 
 class Field(wxogl.TextShape, ShapeBase):
     """Visual field element"""
 
-    def __init__(self, parent_canvas, x, y):
+    def __init__(self, parent_canvas, x, y, sync_box=True):
         wxogl.TextShape.__init__(self, DEFAULT_WIDTH, DEFAULT_HEIGHT)
         ShapeBase.__init__(self, FIELD_MAIN, DATA_ZERO_OR_ONE)
 
-        self.init_shape(parent_canvas, x, y)
+        self.init_shape(parent_canvas, x, y, sync_box)
         self.set_text(DEFAULT_TEXT)
+
+    format_escape_chars = re.compile("%[d,i,o,u,x,X,e,E,f,F,g,G,c,r,s]")
+
+    def OnDraw(self, dc):
+        """Draw formated text and align it"""
+
+        (_left_x, _left_y, _width, _height) = self.get_precise_rectangle()
+        _shape_rect = wx.Rect(_left_x, _left_y, _width, _height)
+
+        _font = wx.Font(8, wx.NORMAL, wx.NORMAL, wx.NORMAL)
+        dc.SetFont(_font)
+
+        _format_string = self.get_value("field", "format")
+        _format_string = self.format_escape_chars.sub("{0}", _format_string)
+        _format_string.replace("%%", "%")
+        _text = _format_string.format(self.text)
+        _text = wxww.wordwrap(_text, _width, dc)
+
+        dc.SetClippingRect(_shape_rect)
+        dc.DrawLabel(_text, wx.Rect(_left_x, _left_y, _width, _height),
+            self.get_text_alignment())
+        dc.DestroyClippingRegion()
 
     def set_text(self, text):
         """Set text of field"""
 
-        self.ClearText()
-        self.AddText(text)
+        self.text = text
+
+    def get_text_alignment(self):
+        """Get real alignment of text form box and field"""
+
+        TEXT_FLAGS_LINK = {
+            "left": wx.ALIGN_LEFT,
+            "center": wx.ALIGN_CENTER_HORIZONTAL,
+            "right": wx.ALIGN_RIGHT,
+            "justified": wx.ALIGN_CENTER_HORIZONTAL,
+        }
+
+        _h_align = self.get_value("field", "align")
+        if _h_align == "left":
+            _h_align = self.get_hor_alignment()
+        else:
+            _h_align = TEXT_FLAGS_LINK[self.get_value("field", "align")]
+
+        return self.get_vert_alignment() | _h_align
 
     def update_text(self):
         """Update text of shape from properties"""
@@ -301,7 +390,7 @@ class Field(wxogl.TextShape, ShapeBase):
         _data = self.get_value("data", self.BODY_PROPERTY)
 
         if _expr and _expr != "":
-            self.set_text(_expr)
+            self.set_text(EXPRESSION_TEXT)
         elif _pre_data and _pre_data != "":
             self.set_text(_pre_data)
         elif self.get_value("data", self.EXISTANCE_PROPERTY) and _data != "":
@@ -311,13 +400,24 @@ class Field(wxogl.TextShape, ShapeBase):
 
         self.GetCanvas().Refresh(False)
 
+    def check_min_size(self):
+        """If this shape < FIELD_MIN_HEIGHT grow it"""
+
+        if self.get_size()[1] < FIELD_MIN_HEIGHT:
+            self.SetSize(self.get_size()[0], FIELD_MIN_HEIGHT)
+            self.synchronize_box()
+
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
 
         ShapeBase.after_property_changed(self, category, attribute)
 
-        if attribute == "expr" or attribute == "data" or category == "data":
+        if attribute == "expr" or attribute == "data" or category == "data" \
+        or attribute == "format":
             self.update_text()
+
+        if category == "box" and attribute == "height":
+            self.check_min_size()
 
 
 LINE_MAIN = te.Line
@@ -325,11 +425,11 @@ LINE_MAIN = te.Line
 class Line(wxogl.RectangleShape, ShapeBase):
     """Visual image element"""
 
-    def __init__(self, parent_canvas, x, y):
+    def __init__(self, parent_canvas, x, y, sync_box=True):
         wxogl.RectangleShape.__init__(self, DEFAULT_WIDTH, DEFAULT_HEIGHT)
         ShapeBase.__init__(self, LINE_MAIN, [])
 
-        self.init_shape(parent_canvas, x, y)
+        self.init_shape(parent_canvas, x, y, sync_box)
 
     def OnDraw(self, dc):
         """Draw line and check if it is backslant"""
@@ -356,11 +456,11 @@ RECTANGLE_MAIN = te.Rectangle
 class Rectangle(wxogl.RectangleShape, ShapeBase):
     """Visual rectangle element"""
 
-    def __init__(self, parent_canvas, x, y):
+    def __init__(self, parent_canvas, x, y, sync_box=True):
         wxogl.RectangleShape.__init__(self, DEFAULT_WIDTH, DEFAULT_HEIGHT)
         ShapeBase.__init__(self, RECTANGLE_MAIN, [])
 
-        self.init_shape(parent_canvas, x, y)
+        self.init_shape(parent_canvas, x, y, sync_box)
         self.update_transparence()
 
     def update_transparence(self):
@@ -471,12 +571,12 @@ class Image(ResizableBitmapShape, ShapeBase):
         "gif" : wx.BITMAP_TYPE_GIF,
     }
 
-    def __init__(self, parent_canvas, x, y):
+    def __init__(self, parent_canvas, x, y, sync_box=True):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, IMAGE_MAIN, DATA_ZERO_OR_ONE)
 
         self.SetFilename(DEFAULT_IMAGE)
-        self.init_shape(parent_canvas, x, y)
+        self.init_shape(parent_canvas, x, y, sync_box)
 
     def update_picture(self):
         """Update picture from properties"""
@@ -513,12 +613,21 @@ BARCODE_MAIN = te.BarCode
 class Barcode(ResizableBitmapShape, ShapeBase):
     """Visual barcode element"""
 
-    def __init__(self, parent_canvas, x, y):
+    BARCODE_WIDTH = 50
+    BARCODE_HEIGHT = 20
+
+    def __init__(self, parent_canvas, x, y, sync_box=True):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, BARCODE_MAIN, DATA_ZERO_OR_ONE)
 
         self.SetFilename(BARCODE_IMAGE)
-        self.init_shape(parent_canvas, x, y)
+        self.init_shape(parent_canvas, x, y, sync_box)
+        self.SetFixedSize(self.BARCODE_WIDTH, self.BARCODE_HEIGHT)
+
+    def get_box_screen_dims(self):
+        """Ignore box size for barcode"""
+
+        return (self.BARCODE_WIDTH, self.BARCODE_HEIGHT)
 
     def update_orientation(self):
         """Update orientation from properties"""

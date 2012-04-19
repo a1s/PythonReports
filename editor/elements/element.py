@@ -3,6 +3,8 @@
 20-mar-2012 [kacah]    created
 
 """
+from copy import copy
+
 from propertiesgrid import PropertiesListener
 from PythonReports import datatypes
 
@@ -18,6 +20,15 @@ class XmlBody(datatypes.String):
     @note: is needed to identify class in datatypes_binding.py
     
     """
+
+
+class PenTypeExtended(datatypes._Codes):
+    """Normal enum for PenType - don't convert self into Dimension"""
+
+    PEN_SIZES = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+        "12", "18", "24", "36", "48", ]
+
+    VALUES = tuple(list(datatypes.PenType.VALUES) + PEN_SIZES)
 
 
 class Element(PropertiesListener):
@@ -38,28 +49,41 @@ class Element(PropertiesListener):
 
     BODY_PROPERTY = "__body"
 
-    def check_validator_body(self, validator):
+    def check_validator_body(self, tag, attributes):
         """Check if given validator has xml body if true add __body attribute"""
-        if validator.tag in ELEMENTS_WITH_BODY:
-            validator.attributes[self.BODY_PROPERTY] = (XmlBody, "")
 
-    def __add_prop_one(self, val, val_type):
-        """Add properties form one validator"""
-        self.check_validator_body(val)
-        self.add_attributes(val.tag, val.attributes, val_type)
+        if tag in ELEMENTS_WITH_BODY:
+            attributes[self.BODY_PROPERTY] = (XmlBody, "")
 
-    def __add_prop_list(self, val_list, val_type):
-        """Add properties form validators list"""
+    def check_pentype(self, attributes):
+        """Check if validator has PenType and change it to PenTypeExtended"""
+
+        for (_attr_name, _attr) in attributes.items():
+            if _attr[0] == datatypes.PenType:
+                _new_attr = (PenTypeExtended, _attr[1])
+                attributes[_attr_name] = _new_attr
+
+    def _add_prop_one(self, val, val_type):
+        """Add properties forom one validator"""
+
+        _attributes = val.attributes.copy()
+        self.check_validator_body(val.tag, _attributes)
+        self.check_pentype(_attributes)
+        self.add_attributes(val.tag, _attributes, val_type)
+
+    def _add_prop_list(self, val_list, val_type):
+        """Add properties from validators list"""
+
         for _validator in val_list:
-            self.__add_prop_one(_validator, val_type)
+            self._add_prop_one(_validator, val_type)
 
     def add_properties_from_validators(self):
         """Add all properties from validators to "properties" dictionary"""
 
         if self.main_val:
-            self.__add_prop_one(self.main_val, datatypes.Validator.ONE)
-        self.__add_prop_list(self.zero_or_one_val,
+            self._add_prop_one(self.main_val, datatypes.Validator.ONE)
+        self._add_prop_list(self.zero_or_one_val,
             datatypes.Validator.ZERO_OR_ONE)
-        self.__add_prop_list(self.one_val, datatypes.Validator.ONE)
-        self.__add_prop_list(self.unrestricted_val,
+        self._add_prop_list(self.one_val, datatypes.Validator.ONE)
+        self._add_prop_list(self.unrestricted_val,
             datatypes.Validator.UNRESTRICTED)

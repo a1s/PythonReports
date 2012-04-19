@@ -87,7 +87,7 @@ class SectionPair(object):
         self.second.force_data_update()
 
 
-Column_Headers = datatypes.Validator(tag="headers",
+ColumnHeaders = datatypes.Validator(tag="headers",
     attributes={
         "header": (datatypes.Boolean, True),
         "footer": (datatypes.Boolean, True),
@@ -95,7 +95,7 @@ Column_Headers = datatypes.Validator(tag="headers",
 )
 
 UNRESTRICTED_STYLE = [te.Style]
-COLUMN_HEADERS = [Column_Headers]
+COLUMN_HEADERS = [ColumnHeaders]
 MAIN_COLUMNS = te.Columns
 
 COLUMN_PREFIX = "Column "
@@ -132,7 +132,7 @@ class Columns(SectionPair, Element):
             self.report.update_layout()
 
 
-Group_Headers = datatypes.Validator(tag="headers",
+GroupHeaders = datatypes.Validator(tag="headers",
     attributes={
         "title": (datatypes.Boolean, True),
         "summary": (datatypes.Boolean, True),
@@ -140,7 +140,7 @@ Group_Headers = datatypes.Validator(tag="headers",
 )
 
 MAIN_GROUP = te.Group
-GROUP_HEADERS = [Group_Headers]
+GROUP_HEADERS = [GroupHeaders]
 GROUP_PREFIX = "Group "
 
 class Group(SectionPair, Element):

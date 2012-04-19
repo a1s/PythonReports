@@ -73,8 +73,8 @@ class PropertiesListener(object):
 
             _value = _default_value
             if _value is datatypes.REQUIRED:
-                _value = datatypes_binding.DATATYPES_SETTINGS[
-                    _attr_class.__name__].default_value
+                _value = _attr_class(datatypes_binding.DATATYPES_SETTINGS[
+                    _attr_class.__name__].default_value)
             elif _value is None:
                 pass
             else:
@@ -116,12 +116,25 @@ class PropertiesListener(object):
         elif attr_type == datatypes.Validator.UNRESTRICTED:
             self.add_attr_UNRESTRICTED(tag, attributes)
 
+    def has_category(self, tag):
+        """Get if this listener has category with given name"""
+
+        return self.properties.has_key(tag)
+
     def get_category(self, tag):
         """Return category by name"""
         try:
             return self.properties[tag]
         except:
             raise Exception("No category found - %s" % tag)
+
+    def has_value(self, tag, attribute):
+        """Get if this listener has value with given category and attribute"""
+
+        if not self.has_category(tag):
+            return False
+
+        return self.properties[tag].has_key(attribute)
 
     def get_value(self, tag, attribute):
         """Return value of given category and attribute"""
@@ -157,18 +170,13 @@ class PropertiesListener(object):
         @param attributes: dictionary of attributes, value is property tuple
         
         """
-        #check if category exists
-        try:
-            self.get_category(tag)
-        except:
+        if not self.has_category(tag):
             return
 
         for (_attr, _prop_tuple) in attributes.items():
             (_value, _type, _default_value) = _prop_tuple
-            try:
+            if self.has_value(tag, _attr):
                 self.set_value(tag, _attr, _value)
-            except:
-                pass
 
     def synchronize_list_category(self, attr, obj_list, create_func,
         for_each_func):

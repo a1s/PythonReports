@@ -404,7 +404,7 @@ class Dimension(float, _Value):
     UNITS = {
         "mm": 25.4 / 72,
         "cm": 2.54 / 72,
-        "in": 1.0 /72,
+        "in": 1.0 / 72,
         "pt": 1.0,
     }
 
@@ -554,7 +554,7 @@ class Color(_Value):
                 raise InvalidLiteral(cls, color)
             if (_color < 0) or (_color >= (1 << 24)):
                 raise InvalidLiteral(cls, color)
-            _rgb = ((_color>>16) & 255, (_color>>8) & 255, _color & 255)
+            _rgb = ((_color >> 16) & 255, (_color >> 8) & 255, _color & 255)
         # at this point, _rgb must be 3-element sequence of ints or floats
         _spec = [_c for _c in _rgb if isinstance(_c, float) and (0 <= _c <= 1)]
         if len(_spec) == 3:
@@ -790,6 +790,7 @@ class PenType(_Codes):
     @classmethod
     def fromValue(cls, value):
         """Return Dimension or type code or None"""
+
         try:
             return Dimension.fromValue(value)
         except InvalidLiteral:
@@ -1124,10 +1125,10 @@ class _DataBlock(Validator):
         _encoding = attrib.get("encoding")
         if _encoding == "base64":
             _data = binascii.b2a_base64(_data)
-            _data = "\n".join([""] + [_data[_ii:_ii+76]
+            _data = "\n".join([""] + [_data[_ii:_ii + 76]
                 for _ii in xrange(0, len(_data), 76)])
         elif _encoding == "uu":
-            _data = "".join(["\n"] + [binascii.b2a_uu(_data[_ii:_ii+45])
+            _data = "".join(["\n"] + [binascii.b2a_uu(_data[_ii:_ii + 45])
                 for _ii in xrange(0, len(_data), 45)])
         elif _encoding == "qp":
             _data = "\n" + binascii.b2a_qp(_data, True, False) + "\n"

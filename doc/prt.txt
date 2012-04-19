@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.4.0
-:Date: 07-jan-2010
+:Version: 0.5.0
+:Date: 19-apr-2012
 
 .. TODO: variables iterated at start of section
 
@@ -411,9 +411,10 @@ Attributes:
 ``width``          O    dimension Element width.  Negative values
                                   are offset from the right margin.
                                   [#negative_size]_  Default: -1.
-``height``         O    dimension Element height.  Negative values
-                                  are offset from the bottom of section.
-                                  [#negative_size]_  Default: -1.
+``height``         O    dimension Element height. [#minheight]_
+                                  Negative values are offset from the
+                                  bottom of section. [#negative_size]_
+                                  Default: -1.
 ``halign``         O    string    Horizontal alignment for `field`_,
                                   `image`_ and `barcode`_ elements:
                                   ``left``, ``right`` or ``center``.
@@ -440,6 +441,12 @@ Attributes:
                     i.e. an element with ``width="-1"``
                     will use all space remaining
                     till right margin of the section.
+
+.. [#minheight] For text fields, minimal box height is determined
+                by font metrics.  If box height in a template is
+                non-negative but less than the height of the text line,
+                height of the printout box is made big enough for at
+                least one line of text.
 
 ``eject``
 ---------

@@ -5,10 +5,15 @@
 """
 from PythonReports import datatypes
 import PythonReports.template as te
+import wx
 
 from elements.element import *
 from elements import design as ds
 import utils
+
+
+#list of tuples, where first is xml section but second report section element
+sections_to_process = []
 
 def load_template_file(template_file):
     """Load template file and return template"""
@@ -18,7 +23,12 @@ def load_template_file(template_file):
 def load_template(template, report):
     """Load template_file into given report"""
 
+    global sections_to_process
+    sections_to_process = []
     load_report(template.getroot(), report)
+    #yield events of report to complete sections creating
+    wx.GetApp().Yield()
+    process_sections()
 
 def load_report(xml_report, report):
     """Load data from xml_report to report element"""
@@ -85,7 +95,7 @@ def load_groups(xml_parent, report):
     #if there is a detail section finish loading groups
     _xml_detail = xml_parent.find("detail")
     if _xml_detail is not None:
-        load_section(_xml_detail, report.detail)
+        sections_to_process.append((_xml_detail, report.detail))
         return
 
     _xml_group = xml_parent.find("group")
@@ -124,7 +134,13 @@ def load_one_of_pair(xml_section, section_pair, report_section, section_name):
         datatypes.Boolean(_has_section))
 
     if _has_section:
-        load_section(xml_section, report_section)
+        sections_to_process.append((xml_section, report_section))
+
+def process_sections():
+    """Process all the sections of report from global list"""
+
+    for _section in sections_to_process:
+        load_section(_section[0], _section[1])
 
 def load_section(xml_section, report_section):
     """Load data from xml section to report section"""
@@ -133,14 +149,13 @@ def load_section(xml_section, report_section):
     load_list_validator(xml_section, report_section, te.Style)
     load_list_validator(xml_section, report_section, te.Eject)
 
+    load_shapes(xml_section, report_section)
+
     _xml_box = xml_section.find(te.Box.tag)
     if _xml_box is not None:
         report_section.set_height(utils.dim_to_screen(_xml_box.get("height")))
     else:
-        #TODO: adjust section to elements
-        report_section.set_height(300)
-
-    load_shapes(xml_section, report_section)
+        report_section.adjust_to_design_place()
 
 def load_subreports(xml_section, report_section):
     """Load subreports from xml section to report section"""

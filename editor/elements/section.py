@@ -93,6 +93,11 @@ class Section(Container, Element):
 
         self.OnPaneChanged()
 
+    def adjust_to_design_place(self):
+        """Adjust section height to lowest element in design place"""
+
+        self.set_height(self.design_place.get_lowest_point())
+
     def set_width(self, width):
         """Set width of container element"""
 

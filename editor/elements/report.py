@@ -112,7 +112,7 @@ class Report(Container, Element):
         return self.get_value("columns", self.EXISTANCE_PROPERTY)
 
     #Just add this value to width to fix rounding and +-1 errors
-    WIDTH_ROUND_FIX = 10
+    WIDTH_ROUND_FIX = 1
 
     def update_layout(self):
         """Change size of work space, using properties['layout']"""

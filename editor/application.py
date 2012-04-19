@@ -99,6 +99,8 @@ class EditorApplication(wx.PySimpleApp):
             return
 
         self.report_new()
+
+        self.Yield()
         _report = self.frame.workspace.get_report()
         templateloader.load_template(_template, _report)
 

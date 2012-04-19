@@ -52,6 +52,31 @@ class DesignPlace(wxogl.ShapeCanvas):
         """Set height of design place"""
 
         self.SetSize((self.GetSize().GetWidth(), height))
+        self.update_all_boxes()
+
+    def get_lowest_point(self):
+        """Count lowest element and get it lowest point"""
+
+        _lowest_point = MIN_SIZE
+
+        for (_el_class, _el_list) in self.elements.items():
+            for _elem in _el_list:
+                _elem_lowest = self.get_element_lowest_point(_elem)
+                if _elem_lowest > _lowest_point:
+                    _lowest_point = _elem_lowest
+
+        return _lowest_point
+
+    def get_element_lowest_point(self, elem):
+        """Get lowest point of element (y + height) Return 0 if dims < 0"""
+
+        (_x, _y) = elem.get_box_screen_coords()
+        (_width, _height) = elem.get_box_screen_dims()
+
+        if _y < 0 or _height < 0:
+            return 0
+        else:
+            return _y + _height
 
     def set_width(self, width):
         """Set min, max and actual width of design place"""
@@ -157,10 +182,11 @@ DEFAULT_HEIGHT = 40
 class ShapeBase(Element):
     """Methods for all shapes"""
 
-    def __init__(self, main_val, zero_or_one_val):
+    def __init__(self, main_val, zero_or_one_val, min_size=(-1, -1)):
         Element.__init__(self, main_val, zero_or_one_val, BOX_ONE,
             STYLE_UNRESTRICTED)
 
+        self.min_size = min_size
         self.app = wx.GetApp()
 
     def init_shape(self, parent_canvas, x, y, sync_box):
@@ -289,6 +315,11 @@ class ShapeBase(Element):
 
         (_x, _y, _width, _height) = self.get_precise_rectangle()
 
+        if _width < self.min_size[0]:
+            _width = self.min_size[0]
+        if _height < self.min_size[1]:
+            _height = self.min_size[1]
+
         self.SetSize(_width, _height)
         self.set_pos(_x, _y)
 
@@ -298,7 +329,7 @@ class ShapeBase(Element):
     def synchronize_box(self):
         """Add self dimensions into box property"""
 
-        _size = self.GetBoundingBoxMin()
+        _size = self.get_size()
         _pos = self.get_pos()
 
         self.set_value("box", "width", utils.screen_to_dim(_size[0]))
@@ -326,7 +357,8 @@ class Field(wxogl.TextShape, ShapeBase):
 
     def __init__(self, parent_canvas, x, y, sync_box=True):
         wxogl.TextShape.__init__(self, DEFAULT_WIDTH, DEFAULT_HEIGHT)
-        ShapeBase.__init__(self, FIELD_MAIN, DATA_ZERO_OR_ONE)
+        ShapeBase.__init__(self, FIELD_MAIN, DATA_ZERO_OR_ONE,
+            min_size=(-1, FIELD_MIN_HEIGHT))
 
         self.init_shape(parent_canvas, x, y, sync_box)
         self.set_text(DEFAULT_TEXT)
@@ -335,9 +367,9 @@ class Field(wxogl.TextShape, ShapeBase):
 
     def OnDraw(self, dc):
         """Draw formated text and align it"""
-
-        (_left_x, _left_y, _width, _height) = self.get_precise_rectangle()
-        _shape_rect = wx.Rect(_left_x, _left_y, _width, _height)
+        (_x, _y) = self.get_pos()
+        (_width, _height) = self.get_size()
+        _shape_rect = wx.Rect(_x, _y, _width, _height)
 
         _font = wx.Font(8, wx.NORMAL, wx.NORMAL, wx.NORMAL)
         dc.SetFont(_font)
@@ -349,8 +381,7 @@ class Field(wxogl.TextShape, ShapeBase):
         _text = wxww.wordwrap(_text, _width, dc)
 
         dc.SetClippingRect(_shape_rect)
-        dc.DrawLabel(_text, wx.Rect(_left_x, _left_y, _width, _height),
-            self.get_text_alignment())
+        dc.DrawLabel(_text, _shape_rect, self.get_text_alignment())
         dc.DestroyClippingRegion()
 
     def set_text(self, text):
@@ -400,24 +431,14 @@ class Field(wxogl.TextShape, ShapeBase):
 
         self.GetCanvas().Refresh(False)
 
-    def check_min_size(self):
-        """If this shape < FIELD_MIN_HEIGHT grow it"""
-
-        if self.get_size()[1] < FIELD_MIN_HEIGHT:
-            self.SetSize(self.get_size()[0], FIELD_MIN_HEIGHT)
-            self.synchronize_box()
-
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
 
         ShapeBase.after_property_changed(self, category, attribute)
 
         if attribute == "expr" or attribute == "data" or category == "data" \
-        or attribute == "format":
+        or attribute == "format" or category == "box":
             self.update_text()
-
-        if category == "box" and attribute == "height":
-            self.check_min_size()
 
 
 LINE_MAIN = te.Line

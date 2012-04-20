@@ -39,7 +39,7 @@ class FileToolbar(wxaui.AuiToolBar):
         self.app.report_open()
 
     def OnSave(self, evt):
-        pass
+        self.app.report_save()
 
 
 class VisualToolbar(wxaui.AuiToolBar):

@@ -42,11 +42,9 @@ class DesignPlace(wxogl.ShapeCanvas):
         """Setup lists for all types of elements"""
 
         self.elements = {}
-        self.elements[Field] = []
-        self.elements[Rectangle] = []
-        self.elements[Image] = []
-        self.elements[Barcode] = []
-        self.elements[Line] = []
+        for (_name, _tool) in DESIGN_TOOLS.items():
+            if _tool.element_class is not None:
+                self.elements[_tool.element_class] = []
 
     def set_height(self, height):
         """Set height of design place"""

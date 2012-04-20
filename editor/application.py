@@ -8,7 +8,7 @@ import os
 import wx
 
 from mainform import EditorForm
-import templateloader
+import templateloader, templatesaver
 import utils
 
 class EditorApplication(wx.PySimpleApp):
@@ -99,10 +99,31 @@ class EditorApplication(wx.PySimpleApp):
             return
 
         self.report_new()
-
-        self.Yield()
         _report = self.frame.workspace.get_report()
         templateloader.load_template(_template, _report)
+
+    def report_save(self):
+        """Show dialog and save template from workspace"""
+
+        _report = self.frame.workspace.get_report()
+        if not _report:
+            return
+
+        _dlg = wx.FileDialog(self.frame, "Choose a template file", os.getcwd(),
+            "", "*.*", wx.SAVE)
+        if _dlg.ShowModal() == wx.ID_OK:
+            _file_name = _dlg.GetPath()
+            _dlg.Destroy()
+        else:
+            _dlg.Destroy()
+            return
+
+        try:
+            templatesaver.save_template_file(_report, _file_name)
+        except Exception, _ex:
+            #TODO add user friendly error reporting here
+            print "Error saving template file", _ex
+            return
 
     def get_predefined_data(self, data_name):
         """Get data element from current report element. 

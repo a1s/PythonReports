@@ -108,6 +108,9 @@ class Workspace(wxscrolled.ScrolledPanel):
 
     def get_report(self):
         """Get current active report"""
+        if not self.page:
+            return None
+
         return self.page.report
 
     def OnChildFocus(self, evt):

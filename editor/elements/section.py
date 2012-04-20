@@ -98,6 +98,11 @@ class Section(Container, Element):
 
         self.set_height(self.design_place.get_lowest_point())
 
+    def get_height(self):
+        """Get height of section"""
+
+        return self.design_place.GetSize()[1]
+
     def set_width(self, width):
         """Set width of container element"""
 

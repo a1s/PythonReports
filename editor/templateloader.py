@@ -43,38 +43,31 @@ def load_report(xml_report, report):
     load_list_validator(xml_report, report, te.Variable)
     load_list_validator(xml_report, report, te.Font)
     load_list_validator(xml_report, report, te.Data)
-
     load_list_validator(_xml_layout, report, te.Style)
 
     load_main_headers(_xml_layout, report)
     load_columns(_xml_layout, report)
     load_groups(_xml_layout, report)
 
+#1 - header tag, 2 - object in report, 3 - swap link
+HEADERS_LINK = [
+    (te.Header.tag, "report.header_footer.get_first()", None),
+    (te.Footer.tag, "report.header_footer.get_second()", None),
+    (te.Title.tag, "report.title_summary.get_first()", "swapheader"),
+    (te.Summary.tag, "report.title_summary.get_second()", "swapfooter"),
+]
+
 def load_main_headers(xml_layout, report):
     """Load headers and footers from xml layout to report element"""
 
-    _xml_headers = [
-        xml_layout.find(te.Header.tag), xml_layout.find(te.Title.tag),
-        xml_layout.find(te.Summary.tag), xml_layout.find(te.Footer.tag)
-    ]
-
-    #1 - id in _xml_headers, 2 - attribute in report, 3 - object in report
-    #4 - swap link
-    HEADERS_LINK = [
-        (0, "header", report.header_footer.get_first(), None),
-        (1, "title", report.title_summary.get_first(), "swapheader"),
-        (2, "summary", report.title_summary.get_second(), "swapfooter"),
-        (3, "footer", report.header_footer.get_second(), None),
-    ]
-
     for _header in HEADERS_LINK:
-        _xml_section = _xml_headers[_header[0]]
+        _xml_section = xml_layout.find(_header[0])
 
-        load_one_of_pair(_xml_section, report, _header[2], _header[1])
+        load_one_of_pair(_xml_section, report, eval(_header[1]))
 
-        if (_xml_section is not None) and _header[3]:
-            report.set_value("headers", _header[3],
-                datatypes.Boolean(_xml_section.get(_header[3])))
+        if (_xml_section is not None) and _header[2]:
+            report.set_value("headers", _header[2],
+                datatypes.Boolean(_xml_section.get(_header[2])))
 
 def load_columns(xml_layout, report):
     """Load data from xml_layout to columns element"""
@@ -84,21 +77,22 @@ def load_columns(xml_layout, report):
     if _xml_columns is not None:
         load_one_validator(_xml_columns, report.columns, te.Columns)
         load_list_validator(_xml_columns, report.columns, te.Style)
-        load_section_pair(_xml_columns, report.columns, ("header", "footer"))
+        load_section_pair(_xml_columns, report.columns,
+            (te.Header.tag, te.Footer.tag))
 
     report.set_value(te.Columns.tag, report.EXISTANCE_PROPERTY,
         datatypes.Boolean(_xml_columns is not None))
 
 def load_groups(xml_parent, report):
-    """Load data from xml_layout to groups list"""
+    """Load data from xml_layout to groups list. Load Detail section."""
 
     #if there is a detail section finish loading groups
-    _xml_detail = xml_parent.find("detail")
+    _xml_detail = xml_parent.find(te.Detail.tag)
     if _xml_detail is not None:
         sections_to_process.append((_xml_detail, report.detail))
         return
 
-    _xml_group = xml_parent.find("group")
+    _xml_group = xml_parent.find(te.Group.tag)
     if _xml_group is not None:
         load_group(_xml_group, report)
         load_groups(_xml_group, report)
@@ -115,22 +109,22 @@ def load_group(xml_group, group_parent):
     _report_group = group_parent.groups[-1]
 
     load_list_validator(xml_group, _report_group, te.Style)
-    load_section_pair(xml_group, _report_group, ("title", "summary"))
+    load_section_pair(xml_group, _report_group, (te.Title.tag, te.Summary.tag))
 
 def load_section_pair(xml_elmnt, section_pair, pair_names):
     """Load header-footer or title-summary pair"""
 
     load_one_of_pair(xml_elmnt.find(pair_names[0]), section_pair,
-        section_pair.get_first(), pair_names[0])
+        section_pair.get_first())
     load_one_of_pair(xml_elmnt.find(pair_names[1]), section_pair,
-        section_pair.get_second(), pair_names[1])
+        section_pair.get_second())
 
-def load_one_of_pair(xml_section, section_pair, report_section, section_name):
+def load_one_of_pair(xml_section, section_pair, report_section):
     """Load one of section pair sections"""
 
     _has_section = xml_section is not None
 
-    section_pair.set_value("headers", section_name,
+    section_pair.set_value("headers", xml_section.tag,
         datatypes.Boolean(_has_section))
 
     if _has_section:
@@ -170,20 +164,20 @@ def load_subreports(xml_section, report_section):
         load_main_validator(_xml_subreport, _subreport)
         load_list_validator(_xml_subreport, _subreport, te.Arg)
 
+SHAPES_LINK = [
+    (te.Rectangle, ds.Rectangle), (te.Image, ds.Image),
+    (te.BarCode, ds.Barcode), (te.Line, ds.Line), (te.Field, ds.Field), ]
+
 def load_shapes(xml_section, report_section):
     """Load Fields, Rectangles, Lines, Images and Barcodes to section"""
 
-    SHAPES_TYPES = [
-        ("rectangle", ds.Rectangle), ("image", ds.Image),
-        ("barcode", ds.Barcode), ("line", ds.Line), ("field", ds.Field), ]
+    for _shape_type in SHAPES_LINK:
+        load_shape_type(xml_section, report_section, _shape_type)
 
-    for _shape_type in SHAPES_TYPES:
-        load_shape(xml_section, report_section, _shape_type)
-
-def load_shape(xml_section, report_section, shape_type):
+def load_shape_type(xml_section, report_section, shape_type):
     """Load one type of shapes to section"""
 
-    _xml_shapes = xml_section.findall(shape_type[0])
+    _xml_shapes = xml_section.findall(shape_type[0].tag)
     _design_place = report_section.design_place
 
     for _xml_shape in _xml_shapes:
@@ -210,7 +204,7 @@ def load_main_validator(xml_elmnt, report_elmnt):
     load_one_validator(xml_elmnt, report_elmnt, report_elmnt.main_val)
 
 def fix_element_changed(element, elem_type):
-    """Fix elements that in editor are represenped with ither type.
+    """Fix elements that in editor are represented with other type.
     
     @note For example PenType changed to PenTypeExtended
     
@@ -220,7 +214,7 @@ def fix_element_changed(element, elem_type):
     }
 
     if CHANGE_TABLE.has_key(elem_type):
-        return CHANGE_TABLE[elem_type](element.__str__())
+        return CHANGE_TABLE[elem_type](str(element))
     else:
         return element
 
@@ -231,9 +225,9 @@ def load_one_validator(xml_elmnt, report_elmnt, validator):
         _value = fix_element_changed(xml_elmnt.get(_attr_name), _type)
         report_elmnt.set_value(validator.tag, _attr_name, _value)
 
-    if xml_elmnt.tag in ELEMENTS_WITH_BODY:
+    if validator.tag in ELEMENTS_WITH_BODY:
         report_elmnt.set_value(validator.tag, Element.BODY_PROPERTY,
-            XmlBody(xml_elmnt.text))
+            XmlBody(xml_elmnt.text.strip()))
 
 def load_list_validator(xml_parent, report_parent, validator):
     """Load all list properties from xml tree to report element"""

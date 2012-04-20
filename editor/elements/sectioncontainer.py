@@ -89,8 +89,8 @@ class SectionPair(object):
 
 ColumnHeaders = datatypes.Validator(tag="headers",
     attributes={
-        "header": (datatypes.Boolean, True),
-        "footer": (datatypes.Boolean, True),
+        te.Header.tag: (datatypes.Boolean, True),
+        te.Footer.tag: (datatypes.Boolean, True),
     }, doc="Show and hide headers and footers, only for internal editor use"
 )
 
@@ -134,8 +134,8 @@ class Columns(SectionPair, Element):
 
 GroupHeaders = datatypes.Validator(tag="headers",
     attributes={
-        "title": (datatypes.Boolean, True),
-        "summary": (datatypes.Boolean, True),
+        te.Title.tag: (datatypes.Boolean, True),
+        te.Summary.tag: (datatypes.Boolean, True),
     }, doc="Show and hide headers and footers, only for internal editor use"
 )
 

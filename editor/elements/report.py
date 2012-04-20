@@ -17,10 +17,10 @@ import utils
 
 Headers = datatypes.Validator(tag="headers",
     attributes={
-        "title": (datatypes.Boolean, True),
-        "summary": (datatypes.Boolean, True),
-        "header": (datatypes.Boolean, True),
-        "footer": (datatypes.Boolean, True),
+        te.Title.tag: (datatypes.Boolean, True),
+        te.Summary.tag: (datatypes.Boolean, True),
+        te.Header.tag: (datatypes.Boolean, True),
+        te.Footer.tag: (datatypes.Boolean, True),
         "swapheader": (datatypes.Boolean, False),
         "swapfooter": (datatypes.Boolean, False),
     }, doc="Show, hide and swap headers and footers, only for internal editor use"

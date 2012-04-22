@@ -18,23 +18,29 @@ from elements.element import Element
 import utils
 
 
-MIN_SIZE = 10
+START_SIZE = 10
 
 class DesignPlace(wxogl.ShapeCanvas):
     """Place for painting visual elements"""
 
-    def __init__(self, parent, width):
-        wxogl.ShapeCanvas.__init__(self, parent, size=(width, MIN_SIZE),
-            style=wx.NO_BORDER)
+    def __init__(self, parent, width, parent_section):
+        wxogl.ShapeCanvas.__init__(self, parent, style=wx.NO_BORDER)
 
         self.app = wx.GetApp()
+        self.section = parent_section
 
-        self.SetMinSize((width, MIN_SIZE))
+        self.SetSize((width, START_SIZE))
+        #be careful here with min height. 
+        #It seems like bug in wx, if it is set SetSize donesn't work, 
+        #and size is MinSize until events in App are Yielded
+        self.SetMinSize((width, -1))
         self.SetMaxSize((width, -1))
 
         self.diagram = wxogl.Diagram()
         self.SetDiagram(self.diagram)
         self.diagram.SetCanvas(self)
+
+        self.lowest_point = 0
 
         self.init_lists()
 
@@ -53,41 +59,43 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.update_all_boxes()
 
     def get_lowest_point(self):
+        """Get lowest point of all shapes. Counted adding and changing shapes"""
+
+        return self.lowest_point
+
+    def recount_lowest_point(self):
         """Count lowest element and get it lowest point"""
 
-        _lowest_point = MIN_SIZE
+        _old_lowest = self.lowest_point
+        self.lowest_point = 0
 
         for (_el_class, _el_list) in self.elements.items():
             for _elem in _el_list:
-                _elem_lowest = self.get_element_lowest_point(_elem)
-                if _elem_lowest > _lowest_point:
-                    _lowest_point = _elem_lowest
+                self.recount_element_lowest(_elem)
 
-        return _lowest_point
+        #call section's update height to adjust it to lowest point update
+        if self.lowest_point <> _old_lowest:
+            self.section.update_height()
 
-    def get_element_lowest_point(self, elem):
-        """Get lowest point of element (y + height) Return 0 if dims < 0"""
+    def recount_element_lowest(self, elem):
+        """Recount lowest point of one element"""
 
-        (_x, _y) = elem.get_box_screen_coords()
-        (_width, _height) = elem.get_box_screen_dims()
-
-        if _y < 0 or _height < 0:
-            return 0
-        else:
-            return _y + _height
+        _elem_lowest = elem.get_lowest_point()
+        if _elem_lowest > self.lowest_point:
+            self.lowest_point = _elem_lowest
 
     def set_width(self, width):
         """Set min, max and actual width of design place"""
 
         self.SetSize((width, self.GetSize().GetHeight()))
-        self.SetMinSize((width, MIN_SIZE))
+        self.SetMinSize((width, -1))
         self.SetMaxSize((width, -1))
 
         self.update_all_boxes()
 
     def OnLeftClick(self, x, y, keys):
         """Create new elements if needed"""
-        self.app.remove_focus()
+        self.app.focus_remove()
 
         _class_to_create = self.app.get_active_design_tool().element_class
         if _class_to_create:
@@ -97,8 +105,10 @@ class DesignPlace(wxogl.ShapeCanvas):
         """Add new element to this DesignPlace"""
 
         self.elements[element.__class__].append(element)
-        self.app.set_focus(element)
+        self.app.focus_set(element)
         self.Refresh(False)
+
+        self.recount_lowest_point()
 
     def delete_element(self, element):
         """Delete element from DesignPlace"""
@@ -106,6 +116,8 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.elements[element.__class__].remove(element)
         self.RemoveShape(element)
         self.Refresh(False)
+
+        self.recount_lowest_point()
 
     def update_all_boxes(self):
         """Update boxes of all elements in design place"""
@@ -133,7 +145,7 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
 
     def OnLeftClick(self, x, y, keys=0, attach=0):
         shape = self.GetShape()
-        self.app.set_focus(shape)
+        self.app.focus_set(shape)
 
     def OnBeginDragLeft(self, x, y, keys, attach):
         self.app.toggle_double_buffering(False)
@@ -231,6 +243,17 @@ class ShapeBase(Element):
 
         self.GetCanvas().delete_element(self)
 
+    def get_lowest_point(self):
+        """Get lowest point of shape (y + height) Return 0 if dims < 0"""
+
+        (_x, _y) = self.get_box_screen_coords()
+        (_width, _height) = self.get_box_screen_dims()
+
+        if _y < 0 or _height < 0:
+            return 0
+        else:
+            return _y + _height
+
     def get_shape_center(self):
         """Return local shape center"""
 
@@ -322,6 +345,7 @@ class ShapeBase(Element):
         self.set_pos(_x, _y)
 
         self.ResetControlPoints()
+        self.GetCanvas().recount_lowest_point()
         self.GetCanvas().Refresh(False)
 
     def synchronize_box(self):
@@ -335,7 +359,7 @@ class ShapeBase(Element):
         self.set_value("box", "x", utils.screen_to_dim(_pos[0]))
         self.set_value("box", "y", utils.screen_to_dim(_pos[1]))
 
-        self.app.set_focus(self)
+        self.app.focus_set(self)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
@@ -346,6 +370,7 @@ class ShapeBase(Element):
 
 FIELD_MAIN = te.Field
 FIELD_MIN_HEIGHT = 12
+DEFAULT_FONT_SIZE = 8
 DEFAULT_TEXT = "[Empty Field]"
 NOT_FOUND_TEXT = "[Data not found]"
 EXPRESSION_TEXT = "%EX"
@@ -369,7 +394,8 @@ class Field(wxogl.TextShape, ShapeBase):
         (_width, _height) = self.get_size()
         _shape_rect = wx.Rect(_x, _y, _width, _height)
 
-        _font = wx.Font(8, wx.NORMAL, wx.NORMAL, wx.NORMAL)
+        _font = wx.Font(DEFAULT_FONT_SIZE * self.app.zoom_get(),
+            wx.NORMAL, wx.NORMAL, wx.NORMAL)
         dc.SetFont(_font)
 
         _format_string = self.get_value("field", "format")
@@ -641,12 +667,12 @@ class Barcode(ResizableBitmapShape, ShapeBase):
 
         self.SetFilename(BARCODE_IMAGE)
         self.init_shape(parent_canvas, x, y, sync_box)
-        self.SetFixedSize(self.BARCODE_WIDTH, self.BARCODE_HEIGHT)
 
     def get_box_screen_dims(self):
         """Ignore box size for barcode"""
 
-        return (self.BARCODE_WIDTH, self.BARCODE_HEIGHT)
+        return (self.BARCODE_WIDTH * self.app.zoom_get(),
+            self.BARCODE_HEIGHT * self.app.zoom_get())
 
     def update_orientation(self):
         """Update orientation from properties"""

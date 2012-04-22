@@ -66,7 +66,7 @@ class Page(wx.Panel):
         self.hbox.Add(self.rep_sizer, 0)
         self.hbox.Add(_margin_right, 0)
 
-        self.GetParent().SetupScrolling(scrollToTop=False)
+        self.Refresh()
 
 
 class Workspace(wxscrolled.ScrolledPanel):
@@ -80,6 +80,7 @@ class Workspace(wxscrolled.ScrolledPanel):
 
         self.page_sizer = wx.BoxSizer(wx.VERTICAL)
         self.page = None
+        self.zoom = 1.0
 
         #HALIGN CENTER
         _hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -112,6 +113,32 @@ class Workspace(wxscrolled.ScrolledPanel):
             return None
 
         return self.page.report
+
+    def update_report(self):
+        """Update page and report"""
+
+        if self.page:
+            self.page.update_margins()
+            self.page.report.update_layout()
+            self.page.report.update_sections_height()
+
+    ZOOM_DELTA = 0.1
+    ZOOM_MIN = 0.5
+    ZOOM_MAX = 5.0
+
+    def zoom_in(self):
+        """Zoom in self"""
+
+        if self.zoom + self.ZOOM_DELTA <= self.ZOOM_MAX:
+            self.zoom += self.ZOOM_DELTA
+        self.update_report()
+
+    def zoom_out(self):
+        """Zoom out self"""
+
+        if self.zoom - self.ZOOM_DELTA >= self.ZOOM_MIN:
+            self.zoom -= self.ZOOM_DELTA
+        self.update_report()
 
     def OnChildFocus(self, evt):
         """Do nothing on child focus to prevent autoscrolling"""

@@ -31,15 +31,15 @@ class EditorApplication(wx.PySimpleApp):
         self.last_focus = None
         return True
 
-    def set_focus(self, listener):
+    def focus_set(self, listener):
         """Unfocus last element, focus new, update properties in prop grid"""
 
-        self.remove_focus()
+        self.focus_remove()
         listener.highlight(True)
         self.frame.property_grid.setup_by_element(listener)
         self.last_focus = listener
 
-    def remove_focus(self):
+    def focus_remove(self):
         """Set focus to None, and clear property grid"""
 
         if not self.last_focus:
@@ -49,7 +49,7 @@ class EditorApplication(wx.PySimpleApp):
         self.frame.property_grid.unsetup()
         self.last_focus = None
 
-    def delete_focus(self):
+    def focus_delete(self):
         """Delete focused element if it has 'delete' method"""
 
         if not self.last_focus:
@@ -57,26 +57,13 @@ class EditorApplication(wx.PySimpleApp):
 
         if hasattr(self.last_focus, "delete"):
             _to_delete = self.last_focus
-            self.remove_focus()
+            self.focus_remove()
             _to_delete.delete()
-
-    def get_active_design_tool(self):
-        """Return active edit tool - selected from toolbar"""
-
-        return self.frame.visual_toolbar.get_selected_tool()
-
-    def toggle_double_buffering(self, enabled):
-        """Enable or disable double buffering for workspace. 
-        
-        Needed to fix ogl bug in double buffered containers
-        
-        """
-        self.frame.workspace.SetDoubleBuffered(enabled)
 
     def report_new(self):
         """Create new report on workspace"""
 
-        self.remove_focus()
+        self.focus_remove()
         self.frame.workspace.create_new_report()
 
     def report_open(self):
@@ -123,7 +110,39 @@ class EditorApplication(wx.PySimpleApp):
         except Exception, _ex:
             #TODO add user friendly error reporting here
             print "Error saving template file", _ex
-            return
+
+    def app_close(self):
+        """Close this application"""
+
+        self.frame.OnClose()
+
+    def zoom_get(self):
+        """Get zoom of workspace"""
+
+        return self.frame.workspace.zoom
+
+    def zoom_in(self):
+        """Zoom in workspace"""
+
+        self.frame.workspace.zoom_in()
+
+    def zoom_out(self):
+        """Zoom out workspace"""
+
+        self.frame.workspace.zoom_out()
+
+    def toggle_double_buffering(self, enabled):
+        """Enable or disable double buffering for workspace. 
+        
+        Needed to fix ogl bug in double buffered containers
+        
+        """
+        self.frame.workspace.SetDoubleBuffered(enabled)
+
+    def get_active_design_tool(self):
+        """Return active edit tool - selected from toolbar"""
+
+        return self.frame.visual_toolbar.get_selected_tool()
 
     def get_predefined_data(self, data_name):
         """Get data element from current report element. 
@@ -156,8 +175,3 @@ class EditorApplication(wx.PySimpleApp):
             return DEFAULT_DIR
         else:
             return _basedir
-
-    def app_close(self):
-        """Close this application"""
-
-        self.frame.OnClose()

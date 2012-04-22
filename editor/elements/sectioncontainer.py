@@ -86,6 +86,11 @@ class SectionPair(object):
         self.first.force_data_update()
         self.second.force_data_update()
 
+    def update_height(self):
+        """Update height for both sections"""
+        self.first.update_height()
+        self.second.update_height()
+
 
 ColumnHeaders = datatypes.Validator(tag="headers",
     attributes={
@@ -115,7 +120,7 @@ class Columns(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        wx.GetApp().set_focus(self)
+        wx.GetApp().focus_set(self)
 
     def count_width(self, width, number, gap):
         """Count columns width by columns number and gap"""
@@ -159,7 +164,7 @@ class Group(SectionPair, Element):
         self.report = report
 
     def OnButton(self, evt=None):
-        wx.GetApp().set_focus(self)
+        wx.GetApp().focus_set(self)
 
     def set_visible(self, visible):
         """Overrided from SectionPair"""

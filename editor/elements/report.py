@@ -56,7 +56,7 @@ class Report(Container, Element):
         self.update_layout()
 
     def OnFocus(self, evt=None):
-        wx.GetApp().set_focus(self)
+        wx.GetApp().focus_set(self)
 
     def create_sections(self):
         """Create general sections of the report
@@ -259,6 +259,16 @@ class Report(Container, Element):
             _group.force_data_update()
         self.header_footer.force_data_update()
         self.detail.force_data_update()
+
+    def update_sections_height(self):
+        """Update all sections height"""
+
+        self.title_summary.update_height()
+        self.columns.update_height()
+        for _group in self.groups:
+            _group.update_height()
+        self.header_footer.update_height()
+        self.detail.update_height()
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""

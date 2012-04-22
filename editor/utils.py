@@ -19,15 +19,13 @@ def setup():
     _in_to_pt = datatypes.Dimension("1in")
     PT_TO_PIX = _DPI / _in_to_pt
 
-SCREEN_SCALE = 1.5
-
 def dim_to_screen(dimension):
     """Convert PythonReports dimension into screen pixels"""
-    return round(dimension * PT_TO_PIX * SCREEN_SCALE)
+    return round(dimension * PT_TO_PIX * wx.GetApp().zoom_get())
 
 def screen_to_dim(pix):
     """Convert screen pixels into PythonReports dimenson"""
-    return datatypes.Dimension(pix / PT_TO_PIX / SCREEN_SCALE)
+    return datatypes.Dimension(pix / PT_TO_PIX / wx.GetApp().zoom_get())
 
 def get_or_create_by_id(elements_list, id, creation_function):
     """Get element with given id, or return result of creation function"""

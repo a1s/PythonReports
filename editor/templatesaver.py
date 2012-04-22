@@ -133,9 +133,10 @@ def save_one_of_pair(report_section, section_pair, xml_parent, xml_section_tag):
 def save_section(report_section, xml_section):
     """Save all data from report section to xml section element"""
 
-    _xml_box = xml.SubElement(xml_section, te.Box.tag)
-    _height = utils.screen_to_dim(report_section.get_height())
-    _xml_box.set("height", str(_height))
+    _height = report_section.get_value("box", "height")
+    if _height > -1:
+        _xml_box = xml.SubElement(xml_section, te.Box.tag)
+        _xml_box.set("height", str(_height))
 
     save_subreports(report_section, xml_section)
     save_list_validator(report_section, xml_section, te.Style)

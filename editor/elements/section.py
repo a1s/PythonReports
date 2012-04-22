@@ -5,6 +5,7 @@
 20-mar-2012 [kacah]    created
 
 """
+from PythonReports import datatypes
 import PythonReports.template as te
 import wx
 import wx.lib.resizewidget as wxrw
@@ -32,7 +33,7 @@ class Subreport(HeaderButton, Element):
         self.Bind(wx.EVT_BUTTON, self.OnFocus)
 
     def OnFocus(self, evt=None):
-        wx.GetApp().set_focus(self)
+        wx.GetApp().focus_set(self)
 
     def destroy(self):
         """Destroy self"""
@@ -60,8 +61,26 @@ class Subreport(HeaderButton, Element):
             self.update_name()
             self.section.synchronize_subreport(self)
 
-
+SectionBox = datatypes.Validator(tag="box",
+    attributes={
+        "height": (datatypes.Dimension, -1),
+    }, doc="Only height attribute is needed for sections"
+)
 UNRESTRICTED_VALIDATORS = [te.Eject, te.Style, te.Subreport]
+ONE_VALIDATORS = [SectionBox]
+
+class SectionResizer(wxrw.ResizeWidget):
+    """Visual resizer for section"""
+
+    def __init__(self, parent, section):
+        wxrw.ResizeWidget.__init__(self, parent)
+        self.section = section
+
+    def OnLeftUp(self, evt):
+        wxrw.ResizeWidget.OnLeftUp(self, evt)
+
+        self.section.synchronize_height()
+
 
 class Section(Container, Element):
     """Container for visual elements like fields, images, barcodes..."""
@@ -70,20 +89,22 @@ class Section(Container, Element):
 
     def __init__(self, parent, title, width):
         Container.__init__(self, parent, title, width)
-        Element.__init__(self, unrestricted_val=UNRESTRICTED_VALIDATORS)
+        Element.__init__(self, one_val=ONE_VALIDATORS,
+            unrestricted_val=UNRESTRICTED_VALIDATORS)
 
         self.GetButton().Bind(wx.EVT_BUTTON, self.OnFocus)
 
-        self.design_resizer = wxrw.ResizeWidget(self.GetPane())
-        self.design_place = DesignPlace(self.design_resizer, width)
+        self.design_resizer = SectionResizer(self.GetPane(), self)
+        self.design_place = DesignPlace(self.design_resizer, width, self)
         self.add_element(self.design_resizer, self.CHILD_LEFT_OFFSET)
 
         self.subreports = []
 
         self.Bind(wxrw.EVT_RW_LAYOUT_NEEDED, self.OnExpandedCollapsed)
+        self.synchronize_height()
 
     def OnFocus(self, evt=None):
-        wx.GetApp().set_focus(self)
+        wx.GetApp().focus_set(self)
 
     def set_height(self, height):
         """Set height of container element"""
@@ -162,15 +183,35 @@ class Section(Container, Element):
         """Get data from subreport to self"""
 
         _sub_value = self.get_value("lists", "subreport").get_by_id(sub.id)
-        _sub_value.synchronize_attributes(
-            "subreport", sub.get_category("subreport"))
+        _sub_value.synchronize_attributes("subreport",
+            sub.get_category("subreport"))
 
     def force_data_update(self):
         """Update all elements that are linked to report data"""
         self.design_place.force_data_update()
+
+    def update_height(self):
+        """Update section height from properties"""
+
+        _height = self.get_value("box", "height")
+
+        if _height < 0:
+            self.adjust_to_design_place()
+        else:
+            self.set_height(utils.dim_to_screen(_height))
+
+    def synchronize_height(self):
+        """Put current section height to properties"""
+
+        self.set_value("box", "height", utils.screen_to_dim(self.get_height()))
+
+        wx.GetApp().focus_set(self)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
 
         if (category == "lists") and (attribute == "subreport"):
             self.update_subreports()
+
+        if attribute == "height":
+            self.update_height()

@@ -50,6 +50,9 @@ class Report(Container, Element):
 
         self.page = page
 
+        #list of all property listeners in this report
+        self.listeners_list = []
+
         self.GetButton().Bind(wx.EVT_BUTTON, self.OnFocus)
 
         self.create_sections()
@@ -118,6 +121,7 @@ class Report(Container, Element):
         """Change size of work space, using properties['layout']"""
 
         self.detach_all()
+        self.listeners_list = []
 
         self.cur_width = utils.dim_to_screen(self.get_page_size()[0])
         (_top_m, _right_m, _bot_m, _left_m) = self.get_margins()
@@ -133,17 +137,20 @@ class Report(Container, Element):
         self._update_columns()
         self._update_groups()
         self._update_detail()
+        wx.GetApp().elemtree_update_report()
 
     def _insert_two_headers(self, first, second, has_first, has_second):
         """Insert two headers and set pointer on next element between them"""
 
         if has_first:
             self.insert_element(first, self.cur_pos)
+            self.listeners_list.insert(self.cur_pos, first)
             self.cur_pos += 1
         first.set_visible(has_first)
 
         if has_second:
             self.insert_element(second, self.cur_pos)
+            self.listeners_list.insert(self.cur_pos, second)
         second.set_visible(has_second)
 
     def _update_pair(self, pair, has_first=True, has_second=True):
@@ -154,6 +161,7 @@ class Report(Container, Element):
         LEFT_OFFSET = 3
 
         if pair.has_head():
+            self.listeners_list.insert(self.cur_pos, pair)
             self.insert_element(pair.get_head(), self.cur_pos, LEFT_OFFSET)
             self.cur_pos += 1
 
@@ -195,18 +203,16 @@ class Report(Container, Element):
         """Update columns if they are set in report"""
 
         if self.has_columns():
-            _col_count = self.get_value("columns", "count")
-            _col_gap = self.get_value("columns", "gap")
-            self.cur_width = self.columns.count_width(self.cur_width,
-                _col_count, _col_gap)
-
-            self.columns.set_visible(True)
             self.columns.synchronize_attributes("columns", \
                 self.get_category("columns"))
+
+            self.cur_width = self.columns.count_width(self.cur_width)
 
             self._update_pair(self.columns,
                 self.columns.get_value("headers", "header"),
                 self.columns.get_value("headers", "footer"))
+
+            self.columns.set_visible(True)
         else:
             self.columns.set_visible(False)
 
@@ -236,6 +242,7 @@ class Report(Container, Element):
 
         self.detail.set_width(self.cur_width)
         self.insert_element(self.detail, self.cur_pos)
+        self.listeners_list.insert(self.cur_pos, self.detail)
         self.cur_pos += 1
 
     def synchronize_columns(self):

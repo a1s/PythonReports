@@ -122,10 +122,21 @@ class Columns(SectionPair, Element):
     def OnButton(self, evt=None):
         wx.GetApp().focus_set(self)
 
-    def count_width(self, width, number, gap):
-        """Count columns width by columns number and gap"""
+    def count_width(self, width):
+        """Count columns width by initial width and values from properties"""
 
-        return width / number - (number - 1) * gap
+        _col_count = self.get_value("columns", "count")
+        _col_gap = self.get_value("columns", "gap")
+
+        if _col_count < 1:
+            _col_count = 1
+
+        return width / _col_count - (_col_count - 1) * _col_gap
+
+    def get_title(self):
+        """Get title of columns pair"""
+
+        return self.head_btn.get_title()
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""
@@ -171,6 +182,11 @@ class Group(SectionPair, Element):
 
         SectionPair.set_visible(self, visible)
         self.head_btn.set_visible(visible)
+
+    def get_title(self):
+        """Get title of group pair"""
+
+        return self.head_btn.get_title()
 
     def destroy(self):
         """Destroy Header and footer containers"""

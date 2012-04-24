@@ -1,6 +1,8 @@
 """Place for editing report"""
 """
-20-mar-2012 [kacah]   created
+21-apr-2012 [kacah]    Added zooming
+07-apr-2012 [kacah]    Added page
+20-mar-2012 [kacah]    created
 
 """
 import wx

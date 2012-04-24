@@ -50,10 +50,14 @@ def destroy_difference(old_list, new_list):
 def scale_bitmap(bitmap, width, height):
     """Scale given bitmap to a new dimensions"""
 
+    if width < 1:
+        width = 1
+    if height < 1:
+        height = 1
+
     _image = wx.ImageFromBitmap(bitmap)
     _image = _image.Scale(width, height, wx.IMAGE_QUALITY_HIGH)
     return wx.BitmapFromImage(_image)
-
 
 def rotate90_bitmap(bitmap, clockwise):
     """Rotate bitmap by 90 degrees on the given direction"""

@@ -8,6 +8,7 @@ import wx.lib.agw.aui as wxaui
 import wx.lib.ogl as wxogl
 import wx.py as wxpy
 
+from elementstree import ElementsTree
 from mainmenu import MainMenu
 from propertiesgrid import PropertiesGrid
 from toolbar import FileToolbar, VisualToolbar
@@ -57,16 +58,22 @@ class EditorForm(wx.Frame):
             wx.Size(200, 150), wx.NO_BORDER, introText=INTRO_TEXT)
         self.file_toolbar = FileToolbar(self)
         self.visual_toolbar = VisualToolbar(self)
+        self.elements_tree = ElementsTree(self)
 
         self.aui_mgr.AddPane(self.shell, wxaui.AuiPaneInfo()
             .Name("Shell").Caption("Shell").Bottom()
-            .CloseButton(True).MinimizeButton(True)
+            .CloseButton(False).MinimizeButton(True)
             .Icon(utils.get_icon("shell.png")))
 
         self.aui_mgr.AddPane(self.property_grid, wxaui.AuiPaneInfo()
             .Name("PropGrid").Caption("Properties").Right()
-            .CloseButton(True).MinimizeButton(True)
+            .CloseButton(False).MinimizeButton(True)
             .Icon(utils.get_icon("properties.png")))
+
+        self.aui_mgr.AddPane(self.elements_tree, wxaui.AuiPaneInfo()
+            .Name("ElemTree").Caption("Elements").Left()
+            .CloseButton(False).MinimizeButton(True)
+            .Icon(utils.get_icon("tree.png")))
 
         self.aui_mgr.AddPane(self.workspace, wx.CENTER)
         self.aui_mgr.AddPane(self.file_toolbar, wxaui.AuiPaneInfo().Name

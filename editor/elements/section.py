@@ -80,6 +80,7 @@ class SectionResizer(wxrw.ResizeWidget):
         wxrw.ResizeWidget.OnLeftUp(self, evt)
 
         self.section.synchronize_height()
+        wx.GetApp().focus_set(self.section)
 
 
 class Section(Container, Element):
@@ -95,7 +96,9 @@ class Section(Container, Element):
         self.GetButton().Bind(wx.EVT_BUTTON, self.OnFocus)
 
         self.design_resizer = SectionResizer(self.GetPane(), self)
-        self.design_place = DesignPlace(self.design_resizer, width, self)
+        self.design_place = DesignPlace(self.GetPane(), width, self)
+        self.design_resizer.SetManagedChild(self.design_place)
+
         self.add_element(self.design_resizer, self.CHILD_LEFT_OFFSET)
 
         self.subreports = []
@@ -204,8 +207,6 @@ class Section(Container, Element):
         """Put current section height to properties"""
 
         self.set_value("box", "height", utils.screen_to_dim(self.get_height()))
-
-        wx.GetApp().focus_set(self)
 
     def after_property_changed(self, category, attribute):
         """Overrided from PropertiesListener"""

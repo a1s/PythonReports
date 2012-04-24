@@ -11,7 +11,7 @@ from mainform import EditorForm
 import templateloader, templatesaver
 import utils
 
-class EditorApplication(wx.PySimpleApp):
+class EditorApplication(wx.App):
     """Main class, environment of editor"""
 
     def __init__(self):
@@ -31,15 +31,24 @@ class EditorApplication(wx.PySimpleApp):
         self.last_focus = None
         return True
 
-    def focus_set(self, listener):
+    def focus_get(self):
+        """Get focused element"""
+
+        return self.last_focus
+
+    def focus_set(self, listener, call_tree_update=True):
         """Unfocus last element, focus new, update properties in prop grid"""
 
-        self.focus_remove()
+        #do not add check listener == self.last_focus
+        #this function can also update focus, tree and property grid
+        self.focus_remove(False)
         listener.highlight(True)
         self.frame.property_grid.setup_by_element(listener)
         self.last_focus = listener
+        if call_tree_update:
+            self.elemtree_update_report()
 
-    def focus_remove(self):
+    def focus_remove(self, call_tree_update=True):
         """Set focus to None, and clear property grid"""
 
         if not self.last_focus:
@@ -48,6 +57,9 @@ class EditorApplication(wx.PySimpleApp):
         self.last_focus.highlight(False)
         self.frame.property_grid.unsetup()
         self.last_focus = None
+
+        if call_tree_update:
+            self.elemtree_update_report()
 
     def focus_delete(self):
         """Delete focused element if it has 'delete' method"""
@@ -60,11 +72,14 @@ class EditorApplication(wx.PySimpleApp):
             self.focus_remove()
             _to_delete.delete()
 
+        self.elemtree_update_report()
+
     def report_new(self):
         """Create new report on workspace"""
 
         self.focus_remove()
         self.frame.workspace.create_new_report()
+        self.focus_set(self.frame.workspace.get_report())
 
     def report_open(self):
         """Show dialog and open template in workspace"""
@@ -88,6 +103,7 @@ class EditorApplication(wx.PySimpleApp):
         self.report_new()
         _report = self.frame.workspace.get_report()
         templateloader.load_template(_template, _report)
+        self.focus_set(_report)
 
     def report_save(self):
         """Show dialog and save template from workspace"""
@@ -130,6 +146,12 @@ class EditorApplication(wx.PySimpleApp):
         """Zoom out workspace"""
 
         self.frame.workspace.zoom_out()
+
+    def elemtree_update_report(self):
+        """Update elements tree from tree root - report"""
+
+        self.frame.elements_tree.build_report_items(
+            self.frame.workspace.get_report())
 
     def toggle_double_buffering(self, enabled):
         """Enable or disable double buffering for workspace. 

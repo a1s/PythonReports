@@ -150,39 +150,42 @@ def load_subreports(xml_section, report_section):
         load_main_validator(_xml_subreport, _subreport)
         load_list_validator(_xml_subreport, _subreport, te.Arg)
 
-SHAPES_LINK = [
-    (te.Rectangle, ds.Rectangle), (te.Image, ds.Image),
-    (te.BarCode, ds.Barcode), (te.Line, ds.Line), (te.Field, ds.Field), ]
+SHAPES_LINK = {
+    te.Rectangle.tag: ds.Rectangle,
+    te.Image.tag: ds.Image,
+    te.BarCode.tag: ds.Barcode,
+    te.Line.tag: ds.Line,
+    te.Field.tag: ds.Field,
+}
 
 def load_shapes(xml_section, report_section):
     """Load Fields, Rectangles, Lines, Images and Barcodes to section"""
 
-    for _shape_type in SHAPES_LINK:
-        load_shape_type(xml_section, report_section, _shape_type)
+    for _section_child in xml_section:
+        if _section_child.tag in SHAPES_LINK.keys():
+            load_shape(_section_child, report_section,
+                SHAPES_LINK[_section_child.tag])
 
-def load_shape_type(xml_section, report_section, shape_type):
-    """Load one type of shapes to section"""
+def load_shape(xml_shape, report_section, shape_class):
+    """Load one shapes to section"""
 
-    _xml_shapes = xml_section.findall(shape_type[0].tag)
     _design_place = report_section.design_place
 
-    for _xml_shape in _xml_shapes:
-        _shape = shape_type[1](_design_place, 0, 0, False)
-        _design_place.add_element(_shape)
+    _shape = shape_class(_design_place, 0, 0, False)
+    _design_place.add_element(_shape)
 
-        load_main_validator(_xml_shape, _shape)
-        load_list_validator(_xml_shape, _shape, te.Style)
+    load_main_validator(xml_shape, _shape)
+    load_list_validator(xml_shape, _shape, te.Style)
 
-        _xml_box = _xml_shape.find(te.Box.tag)
-        _xml_data = _xml_shape.find(te.Data.tag)
-        if _xml_box is not None:
-            load_one_validator(_xml_box, _shape, te.Box)
+    _xml_box = xml_shape.find(te.Box.tag)
+    _xml_data = xml_shape.find(te.Data.tag)
+    if _xml_box is not None:
+        load_one_validator(_xml_box, _shape, te.Box)
 
-        if _xml_data is not None:
-            _shape.set_value(te.Data.tag, _shape.EXISTANCE_PROPERTY,
-                datatypes.Boolean(True))
-            load_one_validator(_xml_data, _shape, te.Data)
-
+    if _xml_data is not None:
+        _shape.set_value(te.Data.tag, _shape.EXISTANCE_PROPERTY,
+            datatypes.Boolean(True))
+        load_one_validator(_xml_data, _shape, te.Data)
 
 def load_main_validator(xml_elmnt, report_elmnt):
     """Load all attributes from tree to report that are in main validator"""

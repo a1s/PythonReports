@@ -49,6 +49,11 @@ class HeaderButton(wxpltbns.PlateButton):
 
         self.SetLabel(title)
 
+    def get_title(self):
+        """Get title of this button"""
+
+        return self.GetLabel()
+
     def set_visible(self, visible):
         """Set element visible or not"""
 
@@ -145,6 +150,11 @@ class Container(wxpcp.PyCollapsiblePane):
 
         self.SetLabel(title)
 
+    def get_title(self):
+        """Get title of this container"""
+
+        return self.GetLabel()
+
     def insert_element(self, element, position, left_gap=0):
         """Insert new element at position"""
 
@@ -168,6 +178,11 @@ class Container(wxpcp.PyCollapsiblePane):
 
         self.sizer.Remove(element)
         self.OnPaneChanged()
+
+    def get_all(self):
+        """Get all elements managed by container"""
+
+        return self.sizer.GetChildren()
 
     def detach_all(self):
         """Detach all elements from container (not destroying them)"""

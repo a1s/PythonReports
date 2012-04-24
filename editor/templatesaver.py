@@ -147,27 +147,25 @@ def save_section(report_section, xml_section):
 def save_shapes(report_section, xml_section):
     """Save all shapes from report section to xml section"""
 
-    from templateloader import SHAPES_LINK
-
-    for _shape_type in SHAPES_LINK:
-        save_shape_type(report_section, xml_section, _shape_type)
-
-def save_shape_type(report_section, xml_section, shape_type):
-    """Load one type of shapes from report to xml section"""
     _design_place = report_section.design_place
 
-    for _shape in _design_place.elements[shape_type[1]]:
-        _xml_shape = xml.SubElement(xml_section, shape_type[0].tag)
+    for _shape in _design_place.get_all_shapes():
+        save_shape(report_section, xml_section, _shape)
 
-        save_validator(_shape, _xml_shape, shape_type[0])
-        _xml_box = xml.SubElement(_xml_shape, te.Box.tag)
-        save_validator(_shape, _xml_box, te.Box)
-        save_list_validator(_shape, _xml_shape, te.Style)
+def save_shape(report_section, xml_section, shape):
+    """Load one type of shapes from report to xml section"""
 
-        if _shape.has_value(te.Data.tag, _shape.EXISTANCE_PROPERTY) and \
-        _shape.get_value(te.Data.tag, _shape.EXISTANCE_PROPERTY):
-            _xml_data = xml.SubElement(_xml_shape, te.Data.tag)
-            save_validator(_shape, _xml_data, te.Data)
+    _xml_shape = xml.SubElement(xml_section, shape.main_val.tag)
+
+    save_validator(shape, _xml_shape, shape.main_val)
+    _xml_box = xml.SubElement(_xml_shape, te.Box.tag)
+    save_validator(shape, _xml_box, te.Box)
+    save_list_validator(shape, _xml_shape, te.Style)
+
+    if shape.has_value(te.Data.tag, shape.EXISTANCE_PROPERTY) and \
+    shape.get_value(te.Data.tag, shape.EXISTANCE_PROPERTY):
+        _xml_data = xml.SubElement(_xml_shape, te.Data.tag)
+        save_validator(shape, _xml_data, te.Data)
 
 def save_subreports(report_section, xml_section):
     """Save all subreport data from section to xml"""

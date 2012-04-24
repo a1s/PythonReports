@@ -234,7 +234,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
 
 
     def __init__(self, parent):
-        wxpg.PropertyGrid.__init__(self, parent, size=wx.Size(250, 600),
+        wxpg.PropertyGrid.__init__(self, parent, size=wx.Size(250, -1),
             style=wxpg.PG_SPLITTER_AUTO_CENTER | wxpg.PG_AUTO_SORT)
 
         self.element = None
@@ -294,6 +294,7 @@ class PropertiesGrid(wxpg.PropertyGrid):
 
         _property = _attr_settings.creation_func(self, _field_class, name,
             _value, _param)
+
         #client data = if this property can be unspecified
         _property.SetClientData(_default_value is None)
         self.set_property_color(_property, _default_value)

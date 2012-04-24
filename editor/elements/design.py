@@ -18,7 +18,7 @@ from elements.element import Element
 import utils
 
 
-START_SIZE = 10
+START_SIZE = 50
 
 class DesignPlace(wxogl.ShapeCanvas):
     """Place for painting visual elements"""
@@ -41,16 +41,7 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.diagram.SetCanvas(self)
 
         self.lowest_point = 0
-
-        self.init_lists()
-
-    def init_lists(self):
-        """Setup lists for all types of elements"""
-
-        self.elements = {}
-        for (_name, _tool) in DESIGN_TOOLS.items():
-            if _tool.element_class is not None:
-                self.elements[_tool.element_class] = []
+        self.elements = []
 
     def set_height(self, height):
         """Set height of design place"""
@@ -64,25 +55,24 @@ class DesignPlace(wxogl.ShapeCanvas):
         return self.lowest_point
 
     def recount_lowest_point(self):
-        """Count lowest element and get it lowest point"""
+        """Count lowest shape and get it lowest point"""
 
         _old_lowest = self.lowest_point
         self.lowest_point = 0
 
-        for (_el_class, _el_list) in self.elements.items():
-            for _elem in _el_list:
-                self.recount_element_lowest(_elem)
+        for _shape in self.get_all_shapes():
+                self.recount_shape_lowest(_shape)
 
         #call section's update height to adjust it to lowest point update
         if self.lowest_point <> _old_lowest:
             self.section.update_height()
 
-    def recount_element_lowest(self, elem):
-        """Recount lowest point of one element"""
+    def recount_shape_lowest(self, shape):
+        """Recount lowest point of one shape"""
 
-        _elem_lowest = elem.get_lowest_point()
-        if _elem_lowest > self.lowest_point:
-            self.lowest_point = _elem_lowest
+        _shape_lowest = shape.get_lowest_point()
+        if _shape_lowest > self.lowest_point:
+            self.lowest_point = _shape_lowest
 
     def set_width(self, width):
         """Set min, max and actual width of design place"""
@@ -101,10 +91,15 @@ class DesignPlace(wxogl.ShapeCanvas):
         if _class_to_create:
             self.add_element(_class_to_create(self, x, y))
 
+    def get_all_shapes(self):
+        """Get list of all shapes"""
+
+        return self.elements
+
     def add_element(self, element):
         """Add new element to this DesignPlace"""
 
-        self.elements[element.__class__].append(element)
+        self.elements.append(element)
         self.app.focus_set(element)
         self.Refresh(False)
 
@@ -113,7 +108,7 @@ class DesignPlace(wxogl.ShapeCanvas):
     def delete_element(self, element):
         """Delete element from DesignPlace"""
 
-        self.elements[element.__class__].remove(element)
+        self.elements.remove(element)
         self.RemoveShape(element)
         self.Refresh(False)
 
@@ -122,17 +117,17 @@ class DesignPlace(wxogl.ShapeCanvas):
     def update_all_boxes(self):
         """Update boxes of all elements in design place"""
 
-        for (_el_class, _el_list) in self.elements.items():
-            for _elem in _el_list:
-                _elem.update_box()
+        for _shape in self.get_all_shapes():
+            _shape.update_box()
 
     def force_data_update(self):
         """Update all elements that are linked to report data"""
 
-        for _field in self.elements[Field]:
-            _field.update_text()
-        for _image in self.elements[Image]:
-            _image.update_picture()
+        for _shape in self.get_all_shapes():
+            if isinstance(_shape, Field):
+                _shape.update_text()
+            elif isinstance(_shape, Image):
+                _shape.update_picture()
 
 
 class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
@@ -157,10 +152,10 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
             self.OnLeftClick(x, y, keys, attach)
 
     def OnEndDragLeft(self, x, y, keys=0, attach=0):
-        self.GetPreviousHandler().OnEndDragLeft(x, y, keys, attach)
-
-        self.GetShape().synchronize_box()
         self.app.toggle_double_buffering(True)
+
+        self.GetPreviousHandler().OnEndDragLeft(x, y, keys, attach)
+        self.GetShape().synchronize_box()
 
     def OnSizingBeginDragLeft(self, pt, x, y, keys, attach):
         self.app.toggle_double_buffering(False)
@@ -168,10 +163,10 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
         self.GetPreviousHandler().OnSizingBeginDragLeft(pt, x, y, keys, attach)
 
     def OnSizingEndDragLeft(self, pt, x, y, keys, attach):
-        self.GetPreviousHandler().OnSizingEndDragLeft(pt, x, y, keys, attach)
-
-        self.GetShape().synchronize_box()
         self.app.toggle_double_buffering(True)
+
+        self.GetPreviousHandler().OnSizingEndDragLeft(pt, x, y, keys, attach)
+        self.GetShape().synchronize_box()
 
     def OnMovePost(self, dc, x, y, oldX, oldY, display):
         self.GetPreviousHandler().OnMovePost(dc, x, y, oldX, oldY, display)
@@ -205,7 +200,6 @@ class ShapeBase(Element):
         @param sync_box: if set to true shape params will be applied to box
         
         """
-
         self.SetDraggable(True, True)
         self.SetCanvas(parent_canvas)
         self.set_pos(x, y)

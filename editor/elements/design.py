@@ -12,6 +12,7 @@ import re
 import PythonReports.template as te
 import wx
 import wx.lib.ogl as wxogl
+from wx.lib.ogl._oglmisc import *
 import wx.lib.wordwrap as wxww
 
 from elements.element import Element
@@ -87,9 +88,10 @@ class DesignPlace(wxogl.ShapeCanvas):
         """Create new elements if needed"""
         self.app.focus_remove()
 
-        _class_to_create = self.app.get_active_design_tool().element_class
+        _class_to_create = self.app.design_tool_get().element_class
         if _class_to_create:
             self.add_element(_class_to_create(self, x, y))
+            self.app.design_tool_set(DESIGN_TOOLS["Select"])
 
     def get_all_shapes(self):
         """Get list of all shapes"""
@@ -139,16 +141,19 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
         self.app = wx.GetApp()
 
     def OnLeftClick(self, x, y, keys=0, attach=0):
-        shape = self.GetShape()
-        self.app.focus_set(shape)
+        _shape = self.GetShape()
+        if self.app.design_tool_get() == DESIGN_TOOLS["Select"]:
+            self.app.focus_set(_shape)
+        else:
+            _shape.GetCanvas().OnLeftClick(x, y, keys)
 
     def OnBeginDragLeft(self, x, y, keys, attach):
         self.app.toggle_double_buffering(False)
 
         self.GetPreviousHandler().OnBeginDragLeft(x, y, keys, attach)
 
-        shape = self.GetShape()
-        if not shape.Selected():
+        _shape = self.GetShape()
+        if not _shape.Selected():
             self.OnLeftClick(x, y, keys, attach)
 
     def OnEndDragLeft(self, x, y, keys=0, attach=0):
@@ -173,8 +178,8 @@ class AllShapesEvtHandler(wxogl.ShapeEvtHandler):
 
         #fix bug on MacOS
         if "wxMac" in wx.PlatformInfo:
-            shape = self.GetShape()
-            shape.GetCanvas().Refresh(False)
+            _shape = self.GetShape()
+            _shape.GetCanvas().Refresh(False)
 
 
 BOX_ONE = [te.Box]
@@ -193,6 +198,66 @@ class ShapeBase(Element):
 
         self.min_size = min_size
         self.app = wx.GetApp()
+
+    def get_control_point_offsets(self):
+        """Get offsets of control point from center of shape"""
+
+        _maxX, _maxY = self.GetBoundingBoxMax()
+        _minX, _minY = self.GetBoundingBoxMin()
+
+        _widthMin = _minX - CONTROL_POINT_SIZE + 2
+        _heightMin = _minY - CONTROL_POINT_SIZE + 2
+
+        # Offsets from main object
+        return (-_heightMin / 2.0, _heightMin / 2.0 + (_maxY - _minY),
+            - _widthMin / 2.0, _widthMin / 2.0 + (_maxX - _minX))
+
+    def MakeControlPoints(self):
+        """Override Shape's method
+        
+        @note: control points must be created inside object, not outside it
+        
+        """
+        _top, _bottom, _left, _right = self.get_control_point_offsets()
+
+        CONTROL_POINTS = [
+            (_left, _top, CONTROL_POINT_DIAGONAL),
+            (_right, _top, CONTROL_POINT_DIAGONAL),
+            (_left, _bottom, CONTROL_POINT_DIAGONAL),
+            (_right, _bottom, CONTROL_POINT_DIAGONAL),
+            (0, _top, CONTROL_POINT_VERTICAL),
+            (0, _bottom, CONTROL_POINT_VERTICAL),
+            (_right, 0, CONTROL_POINT_HORIZONTAL),
+            (_left, 0, CONTROL_POINT_HORIZONTAL),
+        ]
+
+        for _point_param in CONTROL_POINTS:
+            _point = wxogl.ControlPoint(self._canvas, self, CONTROL_POINT_SIZE,
+                _point_param[0], _point_param[1], _point_param[2])
+            self._canvas.AddShape(_point)
+            self._controlPoints.append(_point)
+
+    def ResetControlPoints(self):
+        """Override Shape's method
+        
+        @note: control points must be created inside object, not outside it
+        
+        """
+        self.ResetMandatoryControlPoints()
+
+        if len(self._controlPoints) == 0:
+            return
+
+        _top, _bottom, _left, _right = self.get_control_point_offsets()
+
+        POINT_OFFSETS = (
+            (_left, _top), (_right, _top), (_left, _bottom), (_right, _bottom),
+            (0, _top), (0, _bottom), (_right, 0), (_left, 0)
+        )
+
+        for _point_id in range(8):
+            self._controlPoints[_point_id]._xoffset = POINT_OFFSETS[_point_id][0]
+            self._controlPoints[_point_id]._yoffset = POINT_OFFSETS[_point_id][1]
 
     def init_shape(self, parent_canvas, x, y, sync_box):
         """Setup settings for shape
@@ -369,7 +434,7 @@ DEFAULT_TEXT = "[Empty Field]"
 NOT_FOUND_TEXT = "[Data not found]"
 EXPRESSION_TEXT = "%EX"
 
-class Field(wxogl.TextShape, ShapeBase):
+class Field(ShapeBase, wxogl.TextShape):
     """Visual field element"""
 
     def __init__(self, parent_canvas, x, y, sync_box=True):
@@ -461,7 +526,7 @@ class Field(wxogl.TextShape, ShapeBase):
 
 LINE_MAIN = te.Line
 
-class Line(wxogl.RectangleShape, ShapeBase):
+class Line(ShapeBase, wxogl.RectangleShape):
     """Visual image element"""
 
     def __init__(self, parent_canvas, x, y, sync_box=True):
@@ -492,7 +557,7 @@ class Line(wxogl.RectangleShape, ShapeBase):
 
 RECTANGLE_MAIN = te.Rectangle
 
-class Rectangle(wxogl.RectangleShape, ShapeBase):
+class Rectangle(ShapeBase, wxogl.RectangleShape):
     """Visual rectangle element"""
 
     def __init__(self, parent_canvas, x, y, sync_box=True):
@@ -601,7 +666,7 @@ DEFAULT_IMAGE = "res/image_default.bmp"
 ERROR_IMAGE = "res/image_error.bmp"
 IMAGE_MAIN = te.Image
 
-class Image(ResizableBitmapShape, ShapeBase):
+class Image(ShapeBase, ResizableBitmapShape):
     """Visual image element"""
 
     TYPES_LINK = {
@@ -649,7 +714,7 @@ class Image(ResizableBitmapShape, ShapeBase):
 BARCODE_IMAGE = "res/barcode_default.bmp"
 BARCODE_MAIN = te.BarCode
 
-class Barcode(ResizableBitmapShape, ShapeBase):
+class Barcode(ShapeBase, ResizableBitmapShape):
     """Visual barcode element"""
 
     BARCODE_WIDTH = 50

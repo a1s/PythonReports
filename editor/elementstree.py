@@ -28,12 +28,14 @@ class ElementsTree(wxctree.CustomTreeCtrl):
         self.Bind(wx.EVT_TREE_ITEM_COLLAPSED, self.OnItemCollapsed)
 
         self.update_in_process = False
+        self.has_selection = False
 
     def OnItemActivated(self, evt):
         if self.update_in_process:
             return
 
         _element = self.GetPyData(evt.GetItem())
+        self.has_selection = True
         wx.GetApp().focus_set(_element, False)
 
     def OnItemExpanded(self, evt):
@@ -61,11 +63,13 @@ class ElementsTree(wxctree.CustomTreeCtrl):
 
         if wx.GetApp().focus_get() is report_elem:
             self.SelectItem(tree_elem, True)
+            self.has_selection = True
 
     def build_report_items(self, report):
         """Build tree elements from report"""
 
         self.update_in_process = True
+        self.has_selection = False
 
         self.DeleteAllItems()
 

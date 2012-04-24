@@ -65,7 +65,7 @@ class VisualToolbar(wxaui.AuiToolBar):
 
         self.Realize()
 
-        self.ToggleTool(DESIGN_TOOLS["Select"].id, True)
+        self.set_selected_tool(DESIGN_TOOLS["Select"])
 
     def get_selected_tool(self):
         """Return selected tool id"""
@@ -73,3 +73,9 @@ class VisualToolbar(wxaui.AuiToolBar):
         for _tool in self.TOOLS:
             if self.GetToolToggled(_tool[0].id):
                 return _tool[0]
+
+    def set_selected_tool(self, design_tool):
+        """Set selected design tool"""
+
+        self.ToggleTool(design_tool.id, True)
+        self.Refresh()

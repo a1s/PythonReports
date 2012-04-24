@@ -161,10 +161,15 @@ class EditorApplication(wx.App):
         """
         self.frame.workspace.SetDoubleBuffered(enabled)
 
-    def get_active_design_tool(self):
+    def design_tool_get(self):
         """Return active edit tool - selected from toolbar"""
 
         return self.frame.visual_toolbar.get_selected_tool()
+
+    def design_tool_set(self, design_tool):
+        """Set active edit tool on toolbar"""
+
+        self.frame.visual_toolbar.set_selected_tool(design_tool)
 
     def get_predefined_data(self, data_name):
         """Get data element from current report element. 

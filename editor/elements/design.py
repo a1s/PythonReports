@@ -107,6 +107,32 @@ class DesignPlace(wxogl.ShapeCanvas):
 
         self.recount_lowest_point()
 
+    def move_shape(self, shape, pos, diag_pos):
+        """Move shape to given position in lists"""
+
+        self.elements.remove(shape)
+        self.diagram.RemoveShape(shape)
+
+        self.elements.insert(pos, shape)
+        self.diagram._shapeList.insert(diag_pos, shape)
+        self.Refresh(False)
+
+    def move_up_shape(self, shape):
+        """Move the shape up by z axis"""
+
+        _old_index_of_shape = self.elements.index(shape)
+        if _old_index_of_shape < len(self.elements) - 1:
+            _diag_pos = self.diagram._shapeList.index(shape) + 1
+            self.move_shape(shape, _old_index_of_shape + 1, _diag_pos)
+
+    def move_down_shape(self, shape):
+        """Move the shape down by z axis"""
+
+        _old_index_of_shape = self.elements.index(shape)
+        if _old_index_of_shape > 0:
+            _diag_pos = self.diagram._shapeList.index(shape) - 1
+            self.move_shape(shape, _old_index_of_shape - 1, _diag_pos)
+
     def delete_element(self, element):
         """Delete element from DesignPlace"""
 
@@ -296,6 +322,16 @@ class ShapeBase(Element):
         else:
             _canvas.active = None
         self.Select(need_hl, _dc)
+
+    def move_up(self):
+        """Move shape by z axis "up" from display"""
+
+        self.GetCanvas().move_up_shape(self)
+
+    def move_down(self):
+        """Move shape by z axis "down" into display"""
+
+        self.GetCanvas().move_down_shape(self)
 
     def delete(self):
         """Delete this element from Design place"""

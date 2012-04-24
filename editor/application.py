@@ -39,7 +39,7 @@ class EditorApplication(wx.App):
     def focus_set(self, listener, call_tree_update=True):
         """Unfocus last element, focus new, update properties in prop grid"""
 
-        #do not add check listener == self.last_focus
+        #do not add check 'listener == self.last_focus'
         #this function can also update focus, tree and property grid
         self.focus_remove(False)
         listener.highlight(True)
@@ -61,6 +61,26 @@ class EditorApplication(wx.App):
         if call_tree_update:
             self.elemtree_update_report()
 
+    def focus_move_up(self):
+        """Change element z index up if available"""
+
+        if not self.last_focus:
+            return
+
+        if hasattr(self.last_focus, "move_up"):
+            self.last_focus.move_up()
+            self.elemtree_update_report()
+
+    def focus_move_down(self):
+        """Change element z index down if available"""
+
+        if not self.last_focus:
+            return
+
+        if hasattr(self.last_focus, "move_down"):
+            self.last_focus.move_down()
+            self.elemtree_update_report()
+
     def focus_delete(self):
         """Delete focused element if it has 'delete' method"""
 
@@ -71,8 +91,7 @@ class EditorApplication(wx.App):
             _to_delete = self.last_focus
             self.focus_remove()
             _to_delete.delete()
-
-        self.elemtree_update_report()
+            self.elemtree_update_report()
 
     def report_new(self):
         """Create new report on workspace"""

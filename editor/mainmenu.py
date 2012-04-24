@@ -11,6 +11,8 @@ class MainMenu(wx.MenuBar):
     new_id = wx.NewId()
     open_id = wx.NewId()
     save_id = wx.NewId()
+    move_up_id = wx.NewId()
+    move_down_id = wx.NewId()
     delete_id = wx.NewId()
     zoom_in_id = wx.NewId()
     zoom_out_id = wx.NewId()
@@ -24,6 +26,9 @@ class MainMenu(wx.MenuBar):
             (wx.ID_EXIT, "Exit", "Exit the editor", "self.OnExit"),
         ]),
         ("&Edit", [
+            (move_up_id, "Move up", "Move shape up", "self.OnMoveUp"),
+            (move_down_id, "Move down", "Move shape down", "self.OnMoveDown"),
+            None,
             (delete_id, "Delete", "Delete current element", "self.OnDelete"),
         ]),
         ("&View", [
@@ -40,6 +45,8 @@ class MainMenu(wx.MenuBar):
         (wx.ACCEL_CTRL, ord('S'), save_id),
         (wx.ACCEL_CTRL, wx.WXK_NUMPAD_ADD, zoom_in_id),
         (wx.ACCEL_CTRL, wx.WXK_NUMPAD_SUBTRACT, zoom_out_id),
+        (wx.ACCEL_CTRL, wx.WXK_PAGEUP, move_up_id),
+        (wx.ACCEL_CTRL, wx.WXK_PAGEDOWN, move_down_id),
         (wx.ACCEL_NORMAL, wx.WXK_DELETE, delete_id),
     ])
 
@@ -96,3 +103,9 @@ class MainMenu(wx.MenuBar):
 
     def OnDelete(self, evt):
         self.app.focus_delete()
+
+    def OnMoveUp(self, evt):
+        self.app.focus_move_up()
+
+    def OnMoveDown(self, evt):
+        self.app.focus_move_down()

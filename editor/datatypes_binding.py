@@ -32,7 +32,7 @@ def c_enum(prop_grid, field_type, name, value, param):
 def c_colour(prop_grid, field_type, name, value, param={}):
     """Colour fields. 
     
-    @param params: dict of known colour constants binded with Hex colour value
+    @param param: dict of known colour constants binded with Hex colour value
     
     """
     def hex_to_color(hex_string):

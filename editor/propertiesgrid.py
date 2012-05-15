@@ -188,7 +188,7 @@ class PropertiesListener(object):
         @param create_func: function, create one object and return it
         @param for_each_func: function, what to do with each object in list
         
-        @return synchronized objects list
+        @return: synchronized objects list
         
         """
         _elements = self.get_value(self.LIST_CATEGORY, attr).get_all()

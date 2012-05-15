@@ -4,8 +4,6 @@
 
 """
 from application import EditorApplication
-from mainform import EditorForm
-import utils
 
 def main():
     _app = EditorApplication()

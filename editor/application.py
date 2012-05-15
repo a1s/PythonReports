@@ -193,7 +193,7 @@ class EditorApplication(wx.App):
     def get_predefined_data(self, data_name):
         """Get data element from current report element. 
         
-        @return Data element or None if report or data not found
+        @return: Data element or None if report or data not found
         
         """
         _report = self.frame.workspace.get_report()

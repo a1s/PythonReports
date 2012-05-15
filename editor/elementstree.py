@@ -23,7 +23,7 @@ class ElementsTree(wxctree.CustomTreeCtrl):
         self.SetHilightFocusColour(SELECTION_COLOR)
         self.SetHilightNonFocusColour(SELECTION_COLOR)
 
-        self.Bind(wx.wx.EVT_TREE_SEL_CHANGED, self.OnItemActivated)
+        self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnItemActivated)
         self.Bind(wx.EVT_TREE_ITEM_EXPANDED, self.OnItemExpanded)
         self.Bind(wx.EVT_TREE_ITEM_COLLAPSED, self.OnItemCollapsed)
 

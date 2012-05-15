@@ -195,7 +195,7 @@ def load_main_validator(xml_elmnt, report_elmnt):
 def fix_element_changed(element, elem_type):
     """Fix elements that in editor are represented with other type.
     
-    @note For example PenType changed to PenTypeExtended
+    @note: For example PenType changed to PenTypeExtended
     
     """
     CHANGE_TABLE = {

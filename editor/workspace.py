@@ -124,7 +124,7 @@ class Workspace(wxscrolled.ScrolledPanel):
             self.page.report.update_layout()
             self.page.report.update_sections_height()
 
-    ZOOM_DELTA = 0.1
+    ZOOM_DELTA = 0.25
     ZOOM_MIN = 0.5
     ZOOM_MAX = 5.0
 

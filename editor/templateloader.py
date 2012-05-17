@@ -55,11 +55,14 @@ def load_main_headers(xml_layout, report):
     for _header in HEADERS_LINK:
         _xml_section = xml_layout.find(_header[0])
 
-        load_one_of_pair(_xml_section, report, eval(_header[1]))
+        if _xml_section is not None:
+            load_one_of_pair(_xml_section, report, eval(_header[1]))
 
-        if (_xml_section is not None) and _header[2]:
-            report.set_value("headers", _header[2],
-                datatypes.Boolean(_xml_section.get(_header[2])))
+            if  _header[2]:
+                report.set_value("headers", _header[2],
+                    datatypes.Boolean(_xml_section.get(_header[2])))
+        else:
+            report.set_value("headers", _header[0], datatypes.Boolean(False))
 
 def load_columns(xml_layout, report):
     """Load data from xml_layout to columns element"""
@@ -203,7 +206,7 @@ def fix_element_changed(element, elem_type):
     }
 
     if CHANGE_TABLE.has_key(elem_type):
-        return CHANGE_TABLE[elem_type](str(element))
+        return CHANGE_TABLE[elem_type](unicode(element))
     else:
         return element
 

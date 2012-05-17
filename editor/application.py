@@ -96,6 +96,17 @@ class EditorApplication(wx.App):
     def report_new(self):
         """Create new report on workspace"""
 
+        if self.frame.workspace.get_report():
+            _dlg = wx.MessageDialog(self.frame,
+            "You will loose your current template. Do you want to create new one?",
+            "Confirm new report", wx.OK | wx.CANCEL | wx.ICON_WARNING)
+
+            _dlg_result = _dlg.ShowModal()
+            _dlg.Destroy()
+
+            if _dlg_result != wx.ID_OK:
+                return
+
         self.focus_remove()
         self.frame.workspace.create_new_report()
         self.focus_set(self.frame.workspace.get_report())
@@ -119,7 +130,8 @@ class EditorApplication(wx.App):
             print "Invalid template file"
             return
 
-        self.report_new()
+        self.focus_remove()
+        self.frame.workspace.create_new_report()
         _report = self.frame.workspace.get_report()
         templateloader.load_template(_template, _report)
         self.focus_set(_report)

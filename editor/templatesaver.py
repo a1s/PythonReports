@@ -37,7 +37,7 @@ def save_template_file(report, file_name):
     _pretty_string = parseString(_simple_string).toprettyxml()
 
     with open(file_name, "w") as _file:
-        _file.write(_pretty_string)
+        _file.write(_pretty_string.encode(FILE_ENCODING))
 
 def create_xml_template(report):
     """Return full xml tree created from given report element"""
@@ -136,7 +136,7 @@ def save_section(report_section, xml_section):
     _height = report_section.get_value("box", "height")
     if _height > -1:
         _xml_box = xml.SubElement(xml_section, te.Box.tag)
-        _xml_box.set("height", str(_height))
+        _xml_box.set("height", unicode(_height))
 
     save_subreports(report_section, xml_section)
     save_list_validator(report_section, xml_section, te.Style)
@@ -193,7 +193,7 @@ def save_validator(report_elmnt, xml_elmnt, validator):
         _value = report_elmnt.get_value(validator.tag, _attr_name)
         #if value is not default value - don't need to save defaults
         if not _value == _attr_params[1]:
-            xml_elmnt.set(_attr_name, str(_value))
+            xml_elmnt.set(_attr_name, unicode(_value))
 
     if validator.tag in ELEMENTS_WITH_BODY:
         xml_elmnt.text = report_elmnt.get_value(validator.tag,

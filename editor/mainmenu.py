@@ -19,21 +19,25 @@ class MainMenu(wx.MenuBar):
 
     MENUS = [
         ("&File", [
-            (new_id, "New", "Create new report", "self.OnNew"),
-            (open_id, "Open", "Open existing report", "self.OnOpen"),
-            (save_id, "Save", "Save current report", "self.OnSave"),
+            (new_id, "&New\tCtrl+N", "Create new report", "self.OnNew"),
+            (open_id, "&Open\tCtrl+O", "Open existing report", "self.OnOpen"),
+            (save_id, "&Save\tCtrl+S", "Save current report", "self.OnSave"),
             None,
-            (wx.ID_EXIT, "Exit", "Exit the editor", "self.OnExit"),
+            (wx.ID_EXIT, "&Exit", "Exit the editor", "self.OnExit"),
         ]),
         ("&Edit", [
-            (move_up_id, "Move up", "Move shape up", "self.OnMoveUp"),
-            (move_down_id, "Move down", "Move shape down", "self.OnMoveDown"),
+            (move_up_id, "Move up\tCtrl+PgUp", "Move shape up", "self.OnMoveUp"),
+            (move_down_id, "Move down\tCtrl+PgDown", "Move shape down", \
+                "self.OnMoveDown"),
             None,
-            (delete_id, "Delete", "Delete current element", "self.OnDelete"),
+            (delete_id, "&Delete\tDelete", "Delete current element", \
+                "self.OnDelete"),
         ]),
         ("&View", [
-            (zoom_in_id, "Zoom In", "Zoom in workspace", "self.OnZoomIn"),
-            (zoom_out_id, "Zoom Out", "Zoom out workspace", "self.OnZoomOut"),
+            (zoom_in_id, "Zoom &In\tCtrl+Num +", "Zoom in workspace", \
+                "self.OnZoomIn"),
+            (zoom_out_id, "Zoom &Out\tCtrl+Num -", "Zoom out workspace", \
+                "self.OnZoomOut"),
         ]),
         ("&Help", [
             (wx.ID_ABOUT, "About", "About the editor", "self.OnAbout"),
@@ -42,6 +46,7 @@ class MainMenu(wx.MenuBar):
 
     shortcuts = wx.AcceleratorTable([
         (wx.ACCEL_CTRL, ord('N'), new_id),
+        (wx.ACCEL_CTRL, ord('O'), open_id),
         (wx.ACCEL_CTRL, ord('S'), save_id),
         (wx.ACCEL_CTRL, wx.WXK_NUMPAD_ADD, zoom_in_id),
         (wx.ACCEL_CTRL, wx.WXK_NUMPAD_SUBTRACT, zoom_out_id),

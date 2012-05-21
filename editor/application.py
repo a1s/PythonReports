@@ -111,24 +111,25 @@ class EditorApplication(wx.App):
         self.frame.workspace.create_new_report()
         self.focus_set(self.frame.workspace.get_report())
 
-    def report_open(self):
+    def report_open(self, filename=None):
         """Show dialog and open template in workspace"""
 
-        _dlg = wx.FileDialog(self.frame, "Choose a template file", os.getcwd(),
-            "", "*.*", wx.OPEN)
-        if _dlg.ShowModal() == wx.ID_OK:
-            _file_name = _dlg.GetPath()
-            _dlg.Destroy()
-        else:
-            _dlg.Destroy()
-            return
+        if not filename:
+            _dlg = wx.FileDialog(self.frame, "Choose a template file",
+                os.getcwd(), "", "*.*", wx.OPEN)
+            if _dlg.ShowModal() == wx.ID_OK:
+                filename = _dlg.GetPath()
+                _dlg.Destroy()
+            else:
+                _dlg.Destroy()
+                return
 
         try:
-            _template = templateloader.load_template_file(_file_name)
+            _template = templateloader.load_template_file(filename)
         except Exception, _ex:
             #TODO add user friendly error reporting here
             print "Invalid template file"
-            return
+            raise
 
         self.focus_remove()
         self.frame.workspace.create_new_report()
@@ -136,27 +137,29 @@ class EditorApplication(wx.App):
         templateloader.load_template(_template, _report)
         self.focus_set(_report)
 
-    def report_save(self):
+    def report_save(self, filename=None):
         """Show dialog and save template from workspace"""
 
         _report = self.frame.workspace.get_report()
         if not _report:
             return
 
-        _dlg = wx.FileDialog(self.frame, "Choose a template file", os.getcwd(),
-            "", "*.*", wx.SAVE)
-        if _dlg.ShowModal() == wx.ID_OK:
-            _file_name = _dlg.GetPath()
-            _dlg.Destroy()
-        else:
-            _dlg.Destroy()
-            return
+        if not filename:
+            _dlg = wx.FileDialog(self.frame, "Choose a template file",
+                os.getcwd(), "", "*.*", wx.SAVE)
+            if _dlg.ShowModal() == wx.ID_OK:
+                filename = _dlg.GetPath()
+                _dlg.Destroy()
+            else:
+                _dlg.Destroy()
+                return
 
         try:
-            templatesaver.save_template_file(_report, _file_name)
+            templatesaver.save_template_file(_report, filename)
         except Exception, _ex:
             #TODO add user friendly error reporting here
             print "Error saving template file", _ex
+            raise
 
     def app_close(self):
         """Close this application"""
@@ -233,3 +236,8 @@ class EditorApplication(wx.App):
             return DEFAULT_DIR
         else:
             return _basedir
+
+    def get_main_frame(self):
+        """Return main frame of editor"""
+
+        return self.frame

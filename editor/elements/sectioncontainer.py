@@ -198,7 +198,7 @@ class Group(SectionPair, Element):
         """Update group name from properties"""
 
         _name = self.get_value("group", "name")
-        _name = "Group '%s' " % _name
+        _name = "Group '%s'" % _name
         _titles = self.build_titles(_name, PAIR_TITLE_SUMMARY)
         self.first.set_title(_titles[0])
         self.second.set_title(_titles[1])

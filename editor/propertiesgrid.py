@@ -578,7 +578,7 @@ class ListProperty(wxpg.PyLongStringProperty):
         return False
 
     def OnButtonClick(self, prop_grid, value):
-        _dlg = ListPropertyDialog(None, self.GetValue())
+        _dlg = ListPropertyDialog(wx.GetApp().get_main_frame(), self.GetValue())
         _dlg.ShowModal()
         _dlg.Destroy()
         return True

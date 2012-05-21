@@ -1,7 +1,7 @@
 """Saver for PythonReports xml template from editor"""
 """
-18-apr-2012 [kacah]    fixed minidom's method writexml
-17-apr-2012 [kacah]    fixed bug with unicode in String type
+18-may-2012 [kacah]    fixed minidom's method writexml
+17-may-2012 [kacah]    fixed bug with unicode in String type
 20-apr-2012 [kacah]    created
 
 """
@@ -73,8 +73,11 @@ def save_template_file(report, file_name):
 
     _simple_string = xmllib.tostring(_xml_template,
         encoding=FILE_ENCODING)
-    minidom.parseString(_simple_string).writexml(open(file_name, "w"),
-        "", "    ", "\n", FILE_ENCODING)
+
+    _pretty_string = minidom.parseString(_simple_string).toprettyxml()
+
+    with open(file_name, "w") as _file:
+        _file.write(_pretty_string.encode(FILE_ENCODING))
 
 def create_xml_template(report):
     """Return full xml tree created from given report element"""

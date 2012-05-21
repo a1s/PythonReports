@@ -1,0 +1,241 @@
+﻿<report name="Sakila test report.īīīī">
+ <!-- candidate for parameters example:
+  ask for start/end dates and suppress payments out of date range
+ -->
+ <import path="datetime.datetime" />
+ <variable name="customer_amount" expr="float(amount)" calc="sum"
+  reset="group" resetgrp="customer"
+ />
+ <variable name="column_amount" expr="float(amount)" calc="sum" reset="column" />
+ <variable name="page_amount" expr="float(amount)" calc="sum" reset="page" />
+ <variable name="total_amount" expr="float(amount)" calc="sum" />
+ <!-- FIXME: report_timestamp is unused -->
+ <variable name="report_timestamp" expr="datetime.now()"
+  calc="first" iter="report"
+ />
+ <font name="title" typeface="Times New Roman" size="14" bold="true" />
+ <font name="pagetitle" typeface="Arial" size="12" />
+ <font name="body" typeface="Arial" size="8" />
+ <font name="bold" typeface="Arial" size="8" bold="true" />
+ <data name="TheLarch" encoding="base64">
+/9j/4AAQSkZJRgABAQEASABIAAD/4QAWRXhpZgAATU0AKgAAAAgAAAAAAAD/2wBDABsSFBcUERsX
+FhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/
+2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSk
+pKSkpKSkpKSkpKT/wAARCAC0ANMDASIAAhEBAxEB/8QAGQAAAwEBAQAAAAAAAAAAAAAAAAECAwQF
+/8QAKhAAAgICAgEDBAMAAwEAAAAAAAECEQMhEjFBBFFhEyJxkRQygUKhsWL/xAAXAQEBAQEAAAAA
+AAAAAAAAAAAAAQID/8QAFhEBAQEAAAAAAAAAAAAAAAAAABEB/9oADAMBAAIRAxEAPwDxkikJIpI6
+uRoYJDSAEXVokpBRQxTlXjQQdoCqAYyhJDGgIEIqhNAJhQwooVAOgRAFx2SkXGJNXFUFFJDoy0ig
+ouhMghoTRTFQEUAwA41EZTVMKOjARVAkOgEikgSHWgJbXTJVqQSjrfY4xVASpPkzRy0Jwp2J0/IV
+qnoaMbtdlKTVEo1oKCLtDKJEXQqAQUVQcSBI0grJo0xqiaqqCiqAy0ihNFiaCM2iWaNEtAQA9ABh
+SaFRdaFRvGSSHQJBJNbQQPSshZN7NFUkH0VTYVlLJbVIn6ntYPFLvwarElDooIzXHZnJ7suEEhTW
+9EVKeh22EY+5cUkyBwcqNYsjlT+A510UaWgXZMZWbQhYoSiUsZqojozVjLgUo0XQ6IsSIqgCJaJZ
+ZLAhkstiYGYFABzp6AuOPe+i3jXg1UjNDorg/Yai34FSMMicdr9CjldbTs61hXb7EsD9kK1HEslu
+nZosj6adGsvTy5XGkTLFlkvua0SkYylT0gk2/BWSDj4ondCheBwlsFoF7gVabLgk3TJhT35LUXyu
+qKjaGM3hGjPF1vbNU9kVVBQcl0MilQUPwDAkGDEwhCYxMCWSymJgQAAAkUiHY4ZF09MK1SHQkEpU
+BTfFC+tD3Mp5YvTZlKEZK4sDWedKWra+Cck1Vp/4c7qPyS+tsB5Zy7fkWJva0mVr6XJ0VDhS6T+W
+ERkpLvZMHS3svI4y9l7mXX4KNoySXRrBqrZhG/CLalXSQG6zcXV6LWVP3/JxqNvbv4NsfaT0gOmM
+o1q2UpvlTRClGMdESk5ST6IOpAyMeo9lhUsRTQgiRMpksCWJlMlgSAwAik+x8Uo6QIp7QViss4p3
+tGc8kp7a4jyPiraZzvI2vcIOa5W3bGsik62jGTSE6b+3sDoTSW3YNcu+vkyx6f3KzdNOFq1+SCVj
+dalaD6T7ZONytm6/wKw47+DRQdaNJK12kzSP2w8bLgzx4XKKcWHGS09hJSim4uviyVKSXj5Ki4ut
+1orlW15FjcZRrlRThT0yCoTdf1v5NOLk7aaJguNWtHQnBOr2Bmoyvtmy6GkOgqSS2iGEJiGxMCWJ
+jYmBNAAAQh6XYkPtBXNllzlS2Y5FJLik/wDDvWNewSSirSthHlPFkS+6NI2h6OTjd8flnTKUopuT
+jT8NGH1uEqe4sBw9G93LoItY/scr/BSySnpLV+OhTxqL509eQJi1PJJp8V7Fp1rlsnFGOSUm2viz
+Z4IOK+5WgMptrGpctji+UKcyfUvjStV+C8cYZMdt/cgp4oOXVNlLC1fJI0hjjBXF2XPJJ49RSYGH
+FV/Wq8oIN/IKTyNRSo6sWPjuSQRjykl/aSGoZJ01Lr3Oz7WugqLXQVniuKpuzVST6IeP5dFRioqk
+ENksYmBEmZQTUm2+zWSJoAJbobFLoCQAAM70JTkl0hoH+CghnbdOI5OLt9GeRqEbfZlcskG/tRBn
+lyScq20RCPPXX+G0opYklp/Jn9d43VWkUU28FRi20/8A03xYZZknPk/h9GCywy/3k4LwkjaHrJY4
+cZRl7KVdkBH01zlT4xT6SKjCUZcb1+DX085fStxtscU223SCuP1OOa049GuHFmniTjijXht0R6yV
+SSi7VHX6By+nUpX7fBUYP+Thq46f+lRU5v73fx0dzipKpEThzj0uSIrCUuDX2G8cjkuqOOWeUXxy
+Y9IHmV/Y3+AOznyfwW5UjmxR57bo1TUdOr8AXHIurLshcUvCGmn00EMTBiYCZLGSwEyWMl2AgEBQ
+lozyZ4wRm5OXkSwxbtsgKlm+7pGsI44xuKtlxcYqkilOD0UcuSObNWlFEQhxdSfR1ZZv/gc2RuFO
+278Adnp4QcKcV82g9TX0qq1fZOLIpV3oj1uRuCSXkGOnFGKxxa8IbxqX3IyxzlHGqQnmy1Wl+CDD
+K3zaaVXR0Sl9NJK78Ujjnaqdtu+jrxTbhTTT+SjWEpTfJyv4JyPJCScNr2Kxpp37msIJPkuyBJLN
+D7lT/Bi/Qx5XbOvwTHI+XFr/AEKiPpoKNPsH6eLW1fybWFhHO8C5aWvcuOPizWxMCaQmh2S2AmSy
+myGUJkspkyCJsBAByplchWkF6uwFkyOMdd+B4U+Ny7Zk5fUml4RvHSQF8klshL6j3HRVcvJS15Cq
+jS8GPqafHxs2T+Tn9Sm5x3SRB0YrrbsnNFyX2yr8GcJyyLpUatJxr/wDhX9km/J6MP6KnejzpLTb
+N/TZIqCt7+Sjpc5RWlaRpD1KVaMOMW7uyJR4ytEHoRzRl8GiR5scsr3Gjphmkl8AdQjKOaPkvkn0
+wpibGJhCYhgBJDNGSwM3ZLTNCWWoimBQCq4f9M8r43TdvwaJBwT7CFiTUVaVmqafwTTS6BFiNF8b
+Hb9iF+RqclptMkUPJW7MZScpKTejVx5NWtEzVUugNcaUVovVa/6Mr+0FPRFcs5/c47qxp3qLVGcn
+90l8m+NOS8LXZUaYYTb2+jdwtGOOM4vu0atsipeml2VFUtMiKp2ylXnQF78hzlH+ok/ZjA3xZXLU
+uzSzlKjklHT2gNwIjkjJ6ZQAyQYmANkvobJbAAFYAeLHNkjX3Gq9ROvAAaQL1ORKtfoX8jJ8foAC
+F/JyfH6D+Tl91+gAKF6rL7r9BL1OR9tfoAJoS9TkqrB+py+6/QAQZ/Uk23Za9RkSpNV+AAC16rKv
++X/Qfysvuv0AAH8rL7r9DXqcnuv0AANeqyfH6KXqsnx+gADReqyf/P6H/Im34ACilml8GsPU5NdA
+BFarLJ+ENZG/YAAqxNgACAAKP//Z
+ </data>
+ <layout pagesize="A4" leftmargin="2.5cm" rightmargin="1.5cm"
+  topmargin="1.5cm" bottommargin="1.5cm">
+  <style font="body" color="0" bgcolor="white" />
+  <title swapheader="true">
+   <barcode type="Code128">
+    <data>Code 128</data>
+   </barcode>
+   <barcode type="Code39">
+    <data>CODE 39</data>
+    <box y=".4in" />
+   </barcode>
+   <barcode type="2of5i" module="7.5" vertical="true"
+    expr="PAGE_COUNT" evaltime="page"
+   >
+    <data>100</data>
+    <box x="5cm" />
+   </barcode>
+   <field align="right">
+    <box x="8cm" width="9cm" height="1cm" valign="top" />
+    <style font="title" />
+    <data>DVD rental payments</data>
+   </field>
+   <field align="justified" stretch="true" evaltime="report"
+    expr="(DATA_COUNT, total_amount)"
+    format="There are %s payments on this report with total amount of %s">
+    <box x="2.5in" width="1in" />
+   </field>
+  </title>
+  <summary>
+   <style bgcolor="#F3EDE7" />
+   <rectangle pen="1" />
+   <image type="jpeg" scale="fill" data="TheLarch">
+    <box width="5cm" />
+   </image>
+   <field align="center">
+    <box x="6cm" width="11cm" height="1cm" />
+    <style font="title" />
+    <data>And now for something completely different...</data>
+   </field>
+   <field stretch="true">
+    <box x="6cm" y="2cm" width="11cm" height="2cm" valign="center" />
+    <data>Are there any other trees that any of you think you could recognize from quite a long way away?</data>
+   </field>
+  </summary>
+  <header>
+   <box height="2cm" />
+   <rectangle pen="1" radius="5mm">
+    <box x="1mm" height="-1mm" />
+   </rectangle>
+   <field>
+    <box halign="center" valign="center" />
+    <style font="pagetitle" />
+    <data>Sakila payment list</data>
+   </field>
+  </header>
+  <footer>
+   <style font="pagetitle" />
+   <box height="1cm" />
+   <rectangle pen="1" >
+    <box x="1mm" height="-1mm" />
+   </rectangle>
+   <field expr="PAGE_COUNT" align="left" format="Count: %i">
+    <box x="3mm" width="3cm" height="-3mm" />
+   </field>
+   <field expr="PAGE_NUMBER" align="right" format="%i /">
+    <box x="5.5cm" width="3cm" height="-3mm" />
+   </field>
+   <field expr="PAGE_NUMBER" evaltime="report" align="left">
+    <box x="8.6cm" width="3cm" height="-3mm" />
+   </field>
+   <field expr="page_amount" align="right" format="Total: %.2f ">
+    <box x="12cm" width="5cm" height="-3mm" />
+   </field>
+  </footer>
+  <columns count="2" gap="1cm">
+   <header>
+    <style font="bold" color="#F3EDE7" bgcolor="0,9,0" />
+    <box height="20" />
+    <rectangle pen="0" >
+     <box y="2" height="-2" />
+    </rectangle>
+    <field>
+     <box y="4" width="35mm" height="-4" valign="center" />
+     <data> Film title</data>
+    </field>
+    <field align="center">
+     <box x="35mm" y="4" width="15mm" height="-4" valign="center" />
+     <data>Rental</data>
+    </field>
+    <field align="center">
+     <box x="50mm" y="4" width="15mm" height="-4" valign="center" />
+     <data>Return</data>
+    </field>
+    <field align="center">
+     <box x="65mm" y="4" width="15mm" height="-4" valign="center" />
+     <data>Payment</data>
+    </field>
+   </header>
+   <footer>
+    <style font="bold" color="#F3EDE7" bgcolor="0,.0353,0" />
+    <box height="20" />
+    <rectangle pen="0" >
+     <box y="2" height="-2" />
+    </rectangle>
+    <field expr="COLUMN_COUNT" format=" Count: %i">
+     <box y="4" width="35mm" height="-4" valign="center" />
+    </field>
+    <field expr="column_amount" format="Total: %.2f" align="right">
+     <box x="45mm" y="4" width="35mm" height="-4" valign="center" />
+    </field>
+   </footer>
+  </columns>
+  <group name="customer" expr="customer_id">
+   <title>
+    <box height="14" />
+    <style font="bold" color="#000900" />
+    <field expr="(customer['last_name'], customer['first_name'])"
+     format="%s, %s" stretch="true">
+     <box x="5mm" width="55mm" />
+    </field>
+    <field expr="customer_COUNT" format="Count: %i " align="right"
+     evaltime="customer" stretch="true">
+     <box x="60mm" width="20mm" />
+    </field>
+    <line pen="2">
+     <box y="-2" height="0" />
+    </line>
+   </title>
+   <summary>
+    <box height="16" />
+    <style font="bold" color="#000900" />
+    <line pen="2">
+     <box height="0" />
+    </line>
+    <field
+     expr="(customer['last_name'], customer['first_name'], customer_amount)"
+     format="Total for %s, %s: %.2f" align="right" stretch="true">
+     <box y="4" />
+    </field>
+   </summary>
+   <detail>
+    <box height="12" />
+    <style bgcolor="#F3EDE7" when="PAGE_COUNT % 2" />
+    <rectangle pen="0">
+     <style printwhen="PAGE_COUNT % 2" />
+    </rectangle>
+    <!--
+     Note: color setting style and rectangle may be combined like this:
+
+      <rectangle pen="0">
+       <style bgcolor="#F3EDE7" printwhen="PAGE_COUNT % 2" />
+      </rectangle>
+
+     They are left separate to run through different branches of processing.
+    -->
+    <field expr="film['title']" stretch="true">
+     <box height="10" width="35mm" />
+    </field>
+    <field expr="rental_date.strftime('%d.%m.%Y')" align="center">
+     <box x="35mm" height="10" width="15mm" />
+     <style printwhen="rental_date" />
+    </field>
+    <field expr="return_date.strftime('%d.%m.%Y')" align="center">
+     <box x="50mm" height="10" width="15mm" />
+     <style printwhen="return_date" />
+    </field>
+    <field expr="amount" align="right">
+     <box x="65mm" height="10" width="15mm" />
+    </field>
+    <line pen="dot">
+     <box y="-1" />
+    </line>
+   </detail>
+  </group>
+ </layout>
+</report>
+<!-- vim: set et ft=xml sw=1 : -->

@@ -170,7 +170,7 @@ def load_shapes(xml_section, report_section):
                 SHAPES_LINK[_section_child.tag])
 
 def load_shape(xml_shape, report_section, shape_class):
-    """Load one shapes to section"""
+    """Load one shape from xml to section"""
 
     _design_place = report_section.design_place
 

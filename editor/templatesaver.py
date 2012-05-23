@@ -62,8 +62,8 @@ def writexml_patch(self, writer, indent="", addindent="", newl=""):
     else:
         writer.write("/>%s" % (newl))
 
-# MonkeyPatch: replace minidom's function with fixed
-# TODO: implement normal ElementTree saving, our use another library
+#MonkeyPatch: replace minidom's function with fixed
+#TODO: implement normal ElementTree saving, or use another library
 minidom.Element.writexml = writexml_patch
 
 def save_template_file(report, file_name):

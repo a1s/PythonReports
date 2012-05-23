@@ -485,10 +485,12 @@ class Field(ShapeBase, wxogl.TextShape):
 
     def OnDraw(self, dc):
         """Draw formated text and align it"""
+
         (_x, _y) = self.get_pos()
         (_width, _height) = self.get_size()
         _shape_rect = wx.Rect(_x, _y, _width, _height)
 
+        #TODO: Apply font from active style
         _font = wx.Font(DEFAULT_FONT_SIZE * self.app.zoom_get(),
             wx.NORMAL, wx.NORMAL, wx.NORMAL)
         dc.SetFont(_font)

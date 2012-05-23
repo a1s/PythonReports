@@ -127,7 +127,7 @@ class EditorApplication(wx.App):
         try:
             _template = templateloader.load_template_file(filename)
         except Exception, _ex:
-            #TODO add user friendly error reporting here
+            #TODO: add user friendly error reporting here
             print "Invalid template file"
             raise
 
@@ -157,7 +157,7 @@ class EditorApplication(wx.App):
         try:
             templatesaver.save_template_file(_report, filename)
         except Exception, _ex:
-            #TODO add user friendly error reporting here
+            #TODO: add user friendly error reporting here
             print "Error saving template file", _ex
             raise
 

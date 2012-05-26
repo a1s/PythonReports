@@ -1,8 +1,9 @@
 """Additional tools for editor"""
 """
-30-mar-2012 [kacah]   created
-
+26-may-2012 [als]   compute ICONS_DIR path from the module file path
+30-mar-2012 [kacah] created
 """
+
 import os
 
 import PythonReports.datatypes as datatypes
@@ -66,13 +67,13 @@ def rotate90_bitmap(bitmap, clockwise):
     _image = _image.Rotate90(clockwise)
     return wx.BitmapFromImage(_image)
 
-ICONS_DIR = "res"
+ICONS_DIR = os.path.join(os.path.dirname(__file__), "res")
 
 def get_icon(icon_name):
     """Get icon as bitmap by given filename
-    
+
     @raise Exception: if not found or unknown file format
-    
+
     """
     _file = os.path.join(ICONS_DIR, icon_name)
     return wx.Image(_file, wx.BITMAP_TYPE_PNG).ConvertToBitmap()

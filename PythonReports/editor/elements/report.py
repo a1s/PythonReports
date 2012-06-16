@@ -8,11 +8,11 @@ import PythonReports.template as te
 from PythonReports import datatypes
 import wx
 
-from elements import sectioncontainer as seccon
-from elements.container import Container
-from elements.element import Element
-from elements.section import Section
-import utils
+import sectioncontainer as seccon
+from container import Container
+from element import Element
+from section import Section
+from .. import utils
 
 
 Headers = datatypes.Validator(tag="headers",
@@ -63,13 +63,13 @@ class Report(Container, Element):
 
     def create_sections(self):
         """Create general sections of the report
-        
+
         * Create pair for title/summary
         * Create Columns
         * Create empty groups list
         * Create pair for header/footer
         * Create detail section
-        
+
         """
         self.title_summary = seccon.SectionPair(self.GetPane(),
             DEFAULT_WIDTH, seccon.PAIR_TITLE_SUMMARY, REPORT_PREFIX)

@@ -9,7 +9,7 @@ from PythonReports import datatypes
 import wx
 
 from container import HeaderButton
-from elements.element import Element
+from element import Element
 from section import Section
 
 
@@ -22,10 +22,10 @@ class SectionPair(object):
 
     def __init__(self, parent, width, p_id, prefix="", has_head=False):
         """Create two section elements
-        
+
         @param p_id: 0 - title, summary | 1 - header, footer
         @param prefix: string, prefix of titles
-        
+
         """
         _titles = self.build_titles(prefix, p_id)
 

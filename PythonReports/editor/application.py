@@ -1,8 +1,9 @@
 """Contain global application objects and data. Link objects."""
 """
-04-apr-2012 [kacah]    created
-
+26-may-2012 [als]   pass .__init__() arguments to wx.App
+04-apr-2012 [kacah] created
 """
+
 import os
 
 import wx
@@ -14,8 +15,8 @@ import utils
 class EditorApplication(wx.App):
     """Main class, environment of editor"""
 
-    def __init__(self):
-        wx.App.__init__(self)
+    def __init__(self, *args, **kwargs):
+        wx.App.__init__(self, *args, **kwargs)
 
         #disable logs to prevent automatic error windows
         wx.Log.EnableLogging(False)
@@ -188,10 +189,10 @@ class EditorApplication(wx.App):
             self.frame.workspace.get_report())
 
     def toggle_double_buffering(self, enabled):
-        """Enable or disable double buffering for workspace. 
-        
+        """Enable or disable double buffering for workspace.
+
         Needed to fix ogl bug in double buffered containers
-        
+
         """
         self.frame.workspace.SetDoubleBuffered(enabled)
 
@@ -206,10 +207,10 @@ class EditorApplication(wx.App):
         self.frame.visual_toolbar.set_selected_tool(design_tool)
 
     def get_predefined_data(self, data_name):
-        """Get data element from current report element. 
-        
+        """Get data element from current report element.
+
         @return: Data element or None if report or data not found
-        
+
         """
         _report = self.frame.workspace.get_report()
         if not _report:

@@ -5,20 +5,20 @@
 """
 from copy import copy
 
-from propertiesgrid import PropertiesListener
+from ..propertiesgrid import PropertiesListener
 from PythonReports import datatypes
 
-"""...This is the only element in PythonReports templates 
+"""...This is the only element in PythonReports templates
 that has significant body text; (PythonReports Doc - Data)
 
 """
 ELEMENTS_WITH_BODY = ["data"]
 
 class XmlBody(datatypes.String):
-    """Body of xml tag is also string. 
-    
+    """Body of xml tag is also string.
+
     @note: is needed to identify class in datatypes_binding.py
-    
+
     """
 
 

@@ -1,0 +1,8 @@
+#! /usr/bin/env python
+#
+# PythonReports Template Editor launcher
+
+from PythonReports.editor import editor
+editor.main()
+
+# vim: set et sts=4 sw=4 :

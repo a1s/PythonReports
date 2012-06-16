@@ -1,5 +1,6 @@
 """Contain global application objects and data. Link objects."""
 """
+16-jun-2012 [als]   remember last used directory for open/save
 26-may-2012 [als]   pass .__init__() arguments to wx.App
 04-apr-2012 [kacah] created
 """
@@ -14,6 +15,8 @@ import utils
 
 class EditorApplication(wx.App):
     """Main class, environment of editor"""
+
+    last_directory = None
 
     def __init__(self, *args, **kwargs):
         wx.App.__init__(self, *args, **kwargs)
@@ -117,14 +120,14 @@ class EditorApplication(wx.App):
 
         if not filename:
             _dlg = wx.FileDialog(self.frame, "Choose a template file",
-                os.getcwd(), "", "*.*", wx.OPEN)
+                self.last_directory or os.getcwd(), "", "*.*", wx.OPEN)
             if _dlg.ShowModal() == wx.ID_OK:
                 filename = _dlg.GetPath()
                 _dlg.Destroy()
             else:
                 _dlg.Destroy()
                 return
-
+        self.last_directory = os.path.abspath(os.path.dirname(filename))
         try:
             _template = templateloader.load_template_file(filename)
         except Exception, _ex:
@@ -147,7 +150,7 @@ class EditorApplication(wx.App):
 
         if not filename:
             _dlg = wx.FileDialog(self.frame, "Choose a template file",
-                os.getcwd(), "", "*.*", wx.SAVE)
+                self.last_directory or os.getcwd(), "", "*.*", wx.SAVE)
             if _dlg.ShowModal() == wx.ID_OK:
                 filename = _dlg.GetPath()
                 _dlg.Destroy()
@@ -161,6 +164,7 @@ class EditorApplication(wx.App):
             #TODO: add user friendly error reporting here
             print "Error saving template file", _ex
             raise
+        self.last_directory = os.path.abspath(os.path.dirname(filename))
 
     def app_close(self):
         """Close this application"""
@@ -242,3 +246,5 @@ class EditorApplication(wx.App):
         """Return main frame of editor"""
 
         return self.frame
+
+# vim: set et sts=4 sw=4 :

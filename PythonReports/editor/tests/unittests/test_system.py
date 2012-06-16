@@ -1,8 +1,9 @@
 """System methods tests"""
 """
+16-jun-2012 [als]   Fix resource paths
 19-may-2012 [kacah] created
-
 """
+
 import unittest
 
 import PythonReports.datatypes as datatypes
@@ -18,19 +19,19 @@ KNOWN_DPI = [72.0, 96.0]
 
 class TestUtils(unittest.TestCase):
     """Test utils module"""
-    
+
     def setUp(self):
         self.app = application.EditorApplication()
 
     def tearDown(self):
         wx.CallAfter(self.app.Exit)
         self.app.MainLoop()
-    
+
     def test_1_starting(self):
         """Test if application can be started
-        
+
         @note: is setUp() witout error - test passed
-        
+
         """
         pass
 
@@ -45,7 +46,8 @@ class TestUtils(unittest.TestCase):
     def test_3_convertion(self):
         """Test conversion between pixels and PythonReports dimension"""
 
-        FAIL_MESSAGE = "Conversion between PythonReport dimension and pixels doesn't work"
+        FAIL_MESSAGE = "Conversion between PythonReport dimension" \
+            " and pixels doesn't work"
 
         _dim = datatypes.Dimension("10")
         _px = utils.dim_to_screen(_dim)
@@ -58,7 +60,9 @@ class TestUtils(unittest.TestCase):
 
         FAIL_MESSAGE = "Bitmap scaling doesn't work"
 
-        _bitmap = wx.Image("res/test_image.jpg", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+        _bitmap = wx.Image(
+             os.path.join(utils.get_resource_dir(), "test_image.jpg"),
+             wx.BITMAP_TYPE_ANY).ConvertToBitmap()
         _scaled_bitmap = utils.scale_bitmap(_bitmap, 20, 30)
         self.assertEqual(_scaled_bitmap.GetWidth(), 20, FAIL_MESSAGE)
         self.assertEqual(_scaled_bitmap.GetHeight(), 30, FAIL_MESSAGE)
@@ -68,13 +72,17 @@ class TestUtils(unittest.TestCase):
 
         FAIL_MESSAGE = "Bitmap rotating doesn't work"
 
-        _bitmap = wx.Image("res/test_image.jpg", wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+        _bitmap = wx.Image(
+            os.path.join(utils.get_resource_dir(), "test_image.jpg"),
+            wx.BITMAP_TYPE_ANY).ConvertToBitmap()
         _width_before = _bitmap.GetWidth()
         _height_before = _bitmap.GetHeight()
 
         _rotated_bitmap = utils.rotate90_bitmap(_bitmap, True)
-        self.assertEqual(_rotated_bitmap.GetWidth(), _height_before, FAIL_MESSAGE)
-        self.assertEqual(_rotated_bitmap.GetHeight(), _width_before, FAIL_MESSAGE)
+        self.assertEqual(_rotated_bitmap.GetWidth(),
+            _height_before, FAIL_MESSAGE)
+        self.assertEqual(_rotated_bitmap.GetHeight(),
+            _width_before, FAIL_MESSAGE)
 
 
 class TestTemplates(unittest.TestCase):
@@ -86,7 +94,7 @@ class TestTemplates(unittest.TestCase):
     def tearDown(self):
         wx.CallAfter(self.app.Exit)
         self.app.MainLoop()
-    
+
     def test_1_template_new(self):
         """Test creating new template"""
 
@@ -113,3 +121,5 @@ class TestTemplates(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# vim: set et sts=4 sw=4 :

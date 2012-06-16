@@ -1,11 +1,12 @@
 """Visual design elements, that can be placed in section"""
 """
-13-apr-2012 [kacah]    Added Line, Rectangle, Image, Barcode
-11-apr-2012 [kacah]    Subreport moved to section.py, added EventsHandler,
-                       added DesignPlace, added Field
-03-apr-2012 [kacah]    created, added Subreport
-
+16-jun-2012 [als]   Fix resource paths
+13-apr-2012 [kacah] Added Line, Rectangle, Image, Barcode
+11-apr-2012 [kacah] Subreport moved to section.py, added EventsHandler,
+                    added DesignPlace, added Field
+03-apr-2012 [kacah] created, added Subreport
 """
+
 import os
 import re
 
@@ -700,8 +701,8 @@ class ResizableBitmapShape(wxogl.BitmapShape):
             self.resize_bitmap()
 
 
-DEFAULT_IMAGE = "res/image_default.bmp"
-ERROR_IMAGE = "res/image_error.bmp"
+DEFAULT_IMAGE = os.path.join(utils.get_resource_dir(), "image_default.bmp")
+ERROR_IMAGE = os.path.join(utils.get_resource_dir(), "image_error.bmp")
 IMAGE_MAIN = te.Image
 
 class Image(ShapeBase, ResizableBitmapShape):
@@ -749,7 +750,7 @@ class Image(ShapeBase, ResizableBitmapShape):
             self.update_picture()
 
 
-BARCODE_IMAGE = "res/barcode_default.bmp"
+BARCODE_IMAGE = os.path.join(utils.get_resource_dir(), "barcode_default.bmp")
 BARCODE_MAIN = te.BarCode
 
 class Barcode(ShapeBase, ResizableBitmapShape):
@@ -804,3 +805,5 @@ DESIGN_TOOLS = {
     "Image" : DESIGN_TOOL(5, Image),
     "Barcode" : DESIGN_TOOL(6, Barcode)
 }
+
+# vim: set et sts=4 sw=4 :

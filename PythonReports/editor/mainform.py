@@ -1,8 +1,11 @@
 """Main frame of editor"""
 """
+17-jun-2012 [als]   Add frame icon
 16-jun-2012 [als]   New pane icons based on Glyphicons
 20-mar-2012 [kacah] created
 """
+
+import os
 
 import wx
 import wx.lib.agw.aui as wxaui
@@ -26,6 +29,10 @@ class EditorForm(wx.Frame):
         wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=FORM_TITLE,
             pos=wx.DefaultPosition, size=wx.Size(800, 600),
             style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
+        _icon = wx.IconBundle()
+        _icon.AddIconFromFile(os.path.join(utils.get_resource_dir(),
+            "pythonreports.ico"), wx.BITMAP_TYPE_ANY)
+        self.SetIcons(_icon)
 
         wxogl.OGLInitialize()
 

@@ -1,8 +1,9 @@
 """Toolbars for editor"""
 """
-04-apr-2012 [kacah]    created
-
+16-jun-2012 [als]   use Glyphicons
+04-apr-2012 [kacah] created
 """
+
 import wx
 import wx.lib.agw.aui as wxaui
 
@@ -13,9 +14,11 @@ class FileToolbar(wxaui.AuiToolBar):
     """ToolBar for file operations - Open, Save, New"""
 
     TOOLS = [
-        (1, "New", "new.png", "New template", "self.OnNew"),
-        (2, "Open", "open.png", "Open template", "self.OnOpen"),
-        (3, "Save", "save.png", "Save template", "self.OnSave"),
+        (1, "New", "glyphicons_036_file.png", "New template", "self.OnNew"),
+        (2, "Open", "glyphicons_359_file_export.png", "Open template",
+            "self.OnOpen"),
+        (3, "Save", "glyphicons_358_file_import.png", "Save template",
+            "self.OnSave"),
     ]
 
     def __init__(self, parent):
@@ -46,12 +49,18 @@ class VisualToolbar(wxaui.AuiToolBar):
     """ToolBar for new visual elements creation"""
 
     TOOLS = [
-        (DESIGN_TOOLS["Select"], "arrow", "arrow.png", "Select elements"),
-        (DESIGN_TOOLS["Field"], "field", "field.png", "Create field"),
-        (DESIGN_TOOLS["Line"], "Line", "line.png", "Create line"),
-        (DESIGN_TOOLS["Rectangle"], "Rectangle", "rect.png", "Create rectangle"),
-        (DESIGN_TOOLS["Image"], "Image", "image.png", "Create image"),
-        (DESIGN_TOOLS["Barcode"], "Barcode", "barcode.png", "Create barcode"),
+        (DESIGN_TOOLS["Select"], "Select",
+            "glyphicons_099_vector_path_all.png", "Select elements"),
+        (DESIGN_TOOLS["Field"], "Field",
+            "glyphicons_104_text.png", "Create field"),
+        (DESIGN_TOOLS["Line"], "Line",
+            "glyphicons_097_vector_path_line.png", "Create line"),
+        (DESIGN_TOOLS["Rectangle"], "Rectangle",
+            "glyphicons_094_vector_path_square.png", "Create rectangle"),
+        (DESIGN_TOOLS["Image"], "Image",
+            "glyphicons_159_picture.png", "Create image"),
+        (DESIGN_TOOLS["Barcode"], "Barcode",
+            "glyphicons_259_barcode.png", "Create barcode"),
     ]
 
     def __init__(self, parent):
@@ -79,3 +88,5 @@ class VisualToolbar(wxaui.AuiToolBar):
 
         self.ToggleTool(design_tool.id, True)
         self.Refresh()
+
+# vim: set et sts=4 sw=4 :

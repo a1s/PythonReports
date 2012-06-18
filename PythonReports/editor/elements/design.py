@@ -1,11 +1,12 @@
 """Visual design elements, that can be placed in section"""
 """
-13-apr-2012 [kacah]    Added Line, Rectangle, Image, Barcode
-11-apr-2012 [kacah]    Subreport moved to section.py, added EventsHandler,
-                       added DesignPlace, added Field
-03-apr-2012 [kacah]    created, added Subreport
-
+16-jun-2012 [als]   Fix resource paths
+13-apr-2012 [kacah] Added Line, Rectangle, Image, Barcode
+11-apr-2012 [kacah] Subreport moved to section.py, added EventsHandler,
+                    added DesignPlace, added Field
+03-apr-2012 [kacah] created, added Subreport
 """
+
 import os
 import re
 
@@ -15,8 +16,8 @@ import wx.lib.ogl as wxogl
 from wx.lib.ogl._oglmisc import *
 import wx.lib.wordwrap as wxww
 
-from elements.element import Element
-import utils
+from element import Element
+from .. import utils
 
 
 START_SIZE = 50
@@ -31,8 +32,8 @@ class DesignPlace(wxogl.ShapeCanvas):
         self.section = parent_section
 
         self.SetSize((width, START_SIZE))
-        #be careful here with min height. 
-        #It seems like bug in wx, if it is set SetSize donesn't work, 
+        #be careful here with min height.
+        #It seems like bug in wx, if it is set SetSize donesn't work,
         #and size is MinSize until events in App are Yielded
         self.SetMinSize((width, -1))
         self.SetMaxSize((width, -1))
@@ -240,9 +241,9 @@ class ShapeBase(Element):
 
     def MakeControlPoints(self):
         """Override Shape's method
-        
+
         @note: control points must be created inside object, not outside it
-        
+
         """
         _top, _bottom, _left, _right = self.get_control_point_offsets()
 
@@ -265,9 +266,9 @@ class ShapeBase(Element):
 
     def ResetControlPoints(self):
         """Override Shape's method
-        
+
         @note: control points must be created inside object, not outside it
-        
+
         """
         self.ResetMandatoryControlPoints()
 
@@ -287,9 +288,9 @@ class ShapeBase(Element):
 
     def init_shape(self, parent_canvas, x, y, sync_box):
         """Setup settings for shape
-        
+
         @param sync_box: if set to true shape params will be applied to box
-        
+
         """
         self.SetDraggable(True, True)
         self.SetCanvas(parent_canvas)
@@ -700,8 +701,8 @@ class ResizableBitmapShape(wxogl.BitmapShape):
             self.resize_bitmap()
 
 
-DEFAULT_IMAGE = "res/image_default.bmp"
-ERROR_IMAGE = "res/image_error.bmp"
+DEFAULT_IMAGE = os.path.join(utils.get_resource_dir(), "image_default.bmp")
+ERROR_IMAGE = os.path.join(utils.get_resource_dir(), "image_error.bmp")
 IMAGE_MAIN = te.Image
 
 class Image(ShapeBase, ResizableBitmapShape):
@@ -749,7 +750,7 @@ class Image(ShapeBase, ResizableBitmapShape):
             self.update_picture()
 
 
-BARCODE_IMAGE = "res/barcode_default.bmp"
+BARCODE_IMAGE = os.path.join(utils.get_resource_dir(), "barcode_default.bmp")
 BARCODE_MAIN = te.BarCode
 
 class Barcode(ShapeBase, ResizableBitmapShape):
@@ -804,3 +805,5 @@ DESIGN_TOOLS = {
     "Image" : DESIGN_TOOL(5, Image),
     "Barcode" : DESIGN_TOOL(6, Barcode)
 }
+
+# vim: set et sts=4 sw=4 :

@@ -1,8 +1,10 @@
 """Additional tools for editor"""
 """
-30-mar-2012 [kacah]   created
-
+16-jun-2012 [als]   Add function get_resource_dir
+26-may-2012 [als]   compute ICONS_DIR path from the module file path
+30-mar-2012 [kacah] created
 """
+
 import os
 
 import PythonReports.datatypes as datatypes
@@ -66,13 +68,18 @@ def rotate90_bitmap(bitmap, clockwise):
     _image = _image.Rotate90(clockwise)
     return wx.BitmapFromImage(_image)
 
-ICONS_DIR = "res"
+def get_resource_dir():
+    return os.path.join(os.path.dirname(__file__), "res")
+
+ICONS_DIR = get_resource_dir()
 
 def get_icon(icon_name):
     """Get icon as bitmap by given filename
-    
+
     @raise Exception: if not found or unknown file format
-    
+
     """
     _file = os.path.join(ICONS_DIR, icon_name)
     return wx.Image(_file, wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+
+# vim: set et sts=4 sw=4 :

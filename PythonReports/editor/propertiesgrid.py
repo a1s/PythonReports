@@ -1,13 +1,14 @@
 """Elements for working with Property Grid"""
 """
-02-apr-2012 [kacah]    Added property synchronization
-29-mar-2012 [kacah]    Added Colors for None, REQUIRED properties
-27-mar-2012 [kacah]    Added list properties dialog
-26-mar-2012 [kacah]    Added list properties
-23-mar-2012 [kacah]    Added empty properties
-20-mar-2012 [kacah]    created
-
+16-jun-2012 [als]   Change highlight colors for required and default values
+02-apr-2012 [kacah] Added property synchronization
+29-mar-2012 [kacah] Added Colors for None, REQUIRED properties
+27-mar-2012 [kacah] Added list properties dialog
+26-mar-2012 [kacah] Added list properties
+23-mar-2012 [kacah] Added empty properties
+20-mar-2012 [kacah] created
 """
+
 import PythonReports.datatypes as datatypes
 import wx
 import wx.propgrid as wxpg
@@ -23,21 +24,21 @@ class PropertiesListener(object):
         self.properties = {}
 
     def after_property_changed(self, category, prop_name):
-        """Do something after property was changed. 
-        
+        """Do something after property was changed.
+
         @param category: name of property's category
-        @param prop_name: name of property  
-        
-        @note: Override this in child classes if necessary 
-        
+        @param prop_name: name of property
+
+        @note: Override this in child classes if necessary
+
         """
         pass
 
     def update_property(self, changed_property):
         """Update property in dictionary by property grid's Property
-         
+
         @note: Parent = category
-        
+
         """
         _cat = changed_property.GetParent().GetName()
         _attr = changed_property.GetName()
@@ -59,10 +60,10 @@ class PropertiesListener(object):
 
     def add_attr_ONE(self, tag, attributes):
         """Add attributes that always exist
-        
+
         @param tag: category name
         @param attributes: tuple (ValueType, default_value/None/REQUIRED)
-        
+
         """
 
         self.properties[tag] = {}
@@ -105,9 +106,9 @@ class PropertiesListener(object):
 
     def add_attributes(self, tag, attributes, attr_type):
         """Add all attributes with values to properties dictionary
-        
+
         @param attr_type: ONE, ZERO_OR_ONE or UNRESTRICTED
-        
+
         """
         if attr_type == datatypes.Validator.ONE:
             self.add_attr_ONE(tag, attributes)
@@ -165,10 +166,10 @@ class PropertiesListener(object):
 
     def synchronize_attributes(self, tag, attributes):
         """Add values from another dictionary, do not create new attributes
-        
+
         @param tag: category name
         @param attributes: dictionary of attributes, value is property tuple
-        
+
         """
         if not self.has_category(tag):
             return
@@ -181,15 +182,15 @@ class PropertiesListener(object):
     def synchronize_list_category(self, attr, obj_list, create_func,
         for_each_func):
         """Synchronize list category by list of objects
-        
+
         @param attr: name of list category
         @param obj_list: objects' list for synchronization.
             Each must have 'id' attribute and must be PropertiesListener
         @param create_func: function, create one object and return it
         @param for_each_func: function, what to do with each object in list
-        
+
         @return: synchronized objects list
-        
+
         """
         _elements = self.get_value(self.LIST_CATEGORY, attr).get_all()
         _new_list = []
@@ -266,8 +267,8 @@ class PropertiesGrid(wxpg.PropertyGrid):
         self.element = None
         self.Unbind(wxpg.EVT_PG_CHANGED)
 
-    NONE_COLOR = wx.Color(253, 159, 173)
-    REQUIRED_COLOR = wx.Color(69, 186, 111)
+    NONE_COLOR = wx.Color(160, 255, 160)
+    REQUIRED_COLOR = wx.Color(255, 192, 208)
 
     def set_property_color(self, prop, prop_type):
         """Set color of property, by given type (None, REQUIRED, else)"""
@@ -472,12 +473,12 @@ class ListPropertyValue(object):
 
     def __init__(self, values, tag, attributes, parent_lister=None):
         """New list property
-        
+
         @param values: list of ListElements
         @param tag: string, name of listed elements
         @param attributes: dictionary of attributes of listed elements
         @param parent_lister: PropertyListener, this value is attached to
-                
+
         """
         self.parent_lister = parent_lister
         self.values = values
@@ -582,3 +583,5 @@ class ListProperty(wxpg.PyLongStringProperty):
         _dlg.ShowModal()
         _dlg.Destroy()
         return True
+
+# vim: set et sts=4 sw=4 :

@@ -11,9 +11,9 @@ import wx
 import wx.lib.resizewidget as wxrw
 
 from container import Container, HeaderButton
-from elements.design import DesignPlace
-from elements.element import Element
-import utils
+from design import DesignPlace
+from element import Element
+from .. import utils
 
 
 SUBREPORT_MAIN = te.Subreport

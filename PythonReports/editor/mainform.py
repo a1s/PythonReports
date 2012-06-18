@@ -1,8 +1,12 @@
 """Main frame of editor"""
 """
-20-mar-2012 [kacah]   created
-
+17-jun-2012 [als]   Add frame icon
+16-jun-2012 [als]   New pane icons based on Glyphicons
+20-mar-2012 [kacah] created
 """
+
+import os
+
 import wx
 import wx.lib.agw.aui as wxaui
 import wx.lib.ogl as wxogl
@@ -15,8 +19,8 @@ from toolbar import FileToolbar, VisualToolbar
 import utils
 from workspace import Workspace
 
-FORM_TITLE = "PythonReports editor"
-INTRO_TEXT = "Welcome to PythonReports editor"
+FORM_TITLE = "PythonReports Template Editor"
+INTRO_TEXT = "Welcome to PythonReports Template Editor"
 
 class EditorForm(wx.Frame):
     """Main frame of editor"""
@@ -25,6 +29,10 @@ class EditorForm(wx.Frame):
         wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=FORM_TITLE,
             pos=wx.DefaultPosition, size=wx.Size(800, 600),
             style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
+        _icon = wx.IconBundle()
+        _icon.AddIconFromFile(os.path.join(utils.get_resource_dir(),
+            "pythonreports.ico"), wx.BITMAP_TYPE_ANY)
+        self.SetIcons(_icon)
 
         wxogl.OGLInitialize()
 
@@ -63,7 +71,7 @@ class EditorForm(wx.Frame):
         self.aui_mgr.AddPane(self.shell, wxaui.AuiPaneInfo()
             .Name("Shell").Caption("Shell").Bottom()
             .CloseButton(False).MinimizeButton(True)
-            .Icon(utils.get_icon("shell.png")))
+            .Icon(utils.get_icon("137_computer_service.png")))
 
         self.aui_mgr.AddPane(self.property_grid, wxaui.AuiPaneInfo()
             .Name("PropGrid").Caption("Properties").Right()
@@ -73,7 +81,7 @@ class EditorForm(wx.Frame):
         self.aui_mgr.AddPane(self.elements_tree, wxaui.AuiPaneInfo()
             .Name("ElemTree").Caption("Elements").Left()
             .CloseButton(False).MinimizeButton(True)
-            .Icon(utils.get_icon("tree.png")))
+            .Icon(utils.get_icon("114_list.png")))
 
         self.aui_mgr.AddPane(self.workspace, wx.CENTER)
         self.aui_mgr.AddPane(self.file_toolbar, wxaui.AuiPaneInfo().Name
@@ -97,3 +105,5 @@ class EditorForm(wx.Frame):
             self.aui_mgr.UnInit()
             wxogl.OGLCleanUp()
             self.Destroy()
+
+# vim: set et sts=4 sw=4 :

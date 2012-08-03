@@ -69,7 +69,7 @@ def rotate90_bitmap(bitmap, clockwise):
     return wx.BitmapFromImage(_image)
 
 def get_resource_dir():
-    return os.path.join(os.getcwd(), "res")
+    return os.path.join(os.path.dirname(__file__), "res")
 
 ICONS_DIR = get_resource_dir()
 

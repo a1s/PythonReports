@@ -1,34 +1,4 @@
 """PythonReports Template (PRT) structures"""
-"""History (most recent first):
-25-nov-2011 [luch]  explicitly set Report.filename
-19-dec-2006 [als]   fix: Arg value is expression
-15-dec-2006 [als]   added Arg and Subreport
-15-dec-2006 [als]   Eject type defaults to "page"
-15-dec-2006 [als]   allow empty detail section;
-                    fix Layout: require either pagesize or width and height
-15-dec-2006 [als]   group header an footer renamed to title and summary
-07-dec-2006 [als]   added Rectangle.opaque
-07-dec-2006 [als]   removed "transparent" attribute of the "box" element
-05-dec-2006 [als]   style: imports come after version, date and exports;
-                    sweep pylint warnings
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-22-sep-2006 [als]   BarCode: X dimension is a number of mills
-06-sep-2006 [als]   Box sizes default to -1
-29-aug-2006 [als]   fix Variable: default value for "reset" is "report"
-26-jul-2006 [als]   Group: add self reference to .child_validators
-25-jul-2006 [als]   Report: create report-level collections in prevalidator
-21-jul-2006 [als]   Element classes changed to element validators;
-                    export "Data" and "Font" definitions (from datatypes)
-17-jul-2006 [als]   add missing "eject" child to section elements
-14-jul-2006 [als]   fix Eject.when: default was False (contrary to docs),
-                    use None to skip unneded evaluations
-12-jul-2006 [als]   Style: "printwhen" defaults to unset value
-10-jul-2006 [als]   BarCode: added "vertical" attribute
-06-jul-2006 [als]   added export declaration
-04-jul-2006 [als]   created
-"""
-__version__ = "$Revision: 1.10 $"[11:-2]
-__date__ = "$Date: 2011/11/25 10:06:46 $"[7:-2]
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
@@ -386,7 +356,10 @@ def Report(tree, element, path):
     tree.variables = {}
     tree.groups = {}
     tree.fonts = {}
-    tree.filename = None
+    # Keep the filename if present
+    # (repeated validation after the template is loaded)
+    if not hasattr(tree, "filename"):
+        tree.filename = None
     # don't create datablocks here - will be done in Layout prevalidator
 
 Report = Validator(tag="report", prevalidate=Report,

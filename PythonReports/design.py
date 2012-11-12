@@ -710,6 +710,8 @@ class TreeNodeData(list):
             if _when:
                 _attrs.append("(%s)" % _when)
             _rv = " ".join(_attrs)
+        elif self.tag == "subreport":
+            _rv += " %s" % self.element.get("template", "")
         return _rv
 
     @property

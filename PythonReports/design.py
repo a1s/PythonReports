@@ -3,58 +3,6 @@
 # R0901: Too many ancestors in all classes derived from Tix widgets
 # R0904: ditto, Too many public methods
 """PythonReports Template Designer"""
-"""History (most recent first):
-29-apr-2009 [als]   compatibility fix for python 2.5/2.6
-24-jun-2007 [als]   update window title after save (filename may change)
-08-dec-2006 [als]   invalidate .current_node when new file is loaded;
-                    ditto, when selected node is being deleted;
-                    fix node deletion when parent node had a hidden
-                    child elements (e.g. box sub-element);
-                    when last child is deleted, remove open/close indicator;
-                    fix Insert key handler: obtain current insertion menu
-07-dec-2006 [als]   CodeSelection: always have an empty value in the list;
-                    edit data block contents
-07-dec-2006 [als]   write printouts
-06-dec-2006 [als]   rebuild insertion menu each time selected node tag changes:
-                    prebuilt menu reuse didn't work reliably
-06-dec-2006 [als]   fix: box attributes not updated
-05-dec-2006 [als]   fix errors and some warnings reported by pylint
-07-Nov-2006 [phd]   Added shebang.
-04-nov-2006 [als]   added About dialog
-04-nov-2006 [als]   capture report preview errors;
-                    print traceback on the console when showing error message;
-                    use Tk backend for report building
-03-nov-2006 [als]   fix IntegerSelection: mega widget has no .select_range()
-03-nov-2006 [als]   disable drawing canvas;
-                    force fixed font for the shell
-03-nov-2006 [als]   handle file loading errors;
-                    prompt to save changes on open file/new file/exit
-03-nov-2006 [als]   fix ColorSelection: hide indicator when color is unset,
-                        bell when invalid value entered,
-                        pass rgb string to askcolor(),
-                        retake focus after askcolor
-03-nov-2006 [als]   pop up the tree menu on Shift+F10;
-                    added element reordering commands "move up" and "move down"
-02-nov-2006 [als]   create automatic hotkeys in insertion menus
-02-nov-2006 [als]   pop up menus on right-click and insert key in the list
-31-oct-2006 [als]   boolean property checkbuttons have grey background;
-                    fix: ElementTree not updated on element deletion;
-                    shift group/detail on group insertion
-31-oct-2006 [als]   X windows portability fixes;
-                    disable "delete element" in menu for fixed ones;
-                    fix insertNode: addToTree ignored argument "before"
-30-oct-2006 [als]   added insertion and deletion of the tree nodes
-27-oct-2006 [als]   update/validate all attributes before preview or save
-27-oct-2006 [als]   shell: close designer window when command is "quit";
-                    designer: added some menu items, implemented preview
-26-oct-2006 [als]   shell: make sure the prompt always starts from a new line;
-                    removed references to Python legal stuff from the shell
-                    greeting (might be misunderstood as designer own notices)
-26-oct-2006 [als]   added shell frame
-13-oct-2006 [als]   created
-"""
-__version__ = "$Revision: 1.19 $"[11:-2]
-__date__ = "$Date: 2009/04/29 07:25:07 $"[7:-2]
 
 from code import InteractiveInterpreter
 from cStringIO import StringIO
@@ -104,7 +52,7 @@ else:
     # /usr/local/bin/w3m etc and see which one is executable.
     URL_HANDLER_COMMAND = "/usr/local/bin/url_handler.sh %s"
 
-COPYRIGHT_YEAR = 2006
+COPYRIGHT_YEAR = "2006-2012"
 
 ### shell
 
@@ -731,6 +679,37 @@ class TreeNodeData(list):
         _name = self.element.get("name", "")
         if _name:
             _rv += " %s" % _name
+        elif self.tag in ("field", "barcode"):
+            _expr = self.element.get("expr", "")
+            if not _expr:
+                _data = self.element.find("data")
+                if (_data is not None) \
+                and not _data.get("pickle", "") \
+                and not _data.get("compress", "") \
+                and not _data.get("encoding", ""):
+                    _expr = _data.text
+            if _expr:
+                if "'" in _expr:
+                    _quote = "\""
+                else:
+                    _quote = "'"
+                _rv += " %s%s%s" % (_quote,
+                    _expr.replace(_quote, "\\" + _quote), _quote)
+        elif self.tag == "import":
+            _rv += " %s" % self.element.get("path", "")
+        elif self.tag == "style":
+            _attrs = [_rv]
+            _font = self.element.get("font", "")
+            if _font:
+                _attrs.append(_font)
+            _fg = self.element.get("color", "")
+            _bg = self.element.get("bgcolor", "")
+            if _fg or _bg:
+                _attrs.append("%s/%s" % (_fg, _bg))
+            _when = self.element.get("printwhen", "")
+            if _when:
+                _attrs.append("(%s)" % _when)
+            _rv = " ".join(_attrs)
         return _rv
 
     @property

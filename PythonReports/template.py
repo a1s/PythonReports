@@ -410,7 +410,7 @@ def load(source):
     """Load template file, return ElementTree"""
     _et = ElementTree(Report)
     _et.parse(source)
-    if os.path.exists(source):
+    if isinstance(source, basestring) and os.path.exists(source):
         # XXX bad heuristics
         _et.filename = source
     return _et

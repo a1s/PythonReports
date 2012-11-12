@@ -1100,6 +1100,8 @@ class Designer(Toplevel):
         _popup = self._build_menu_item(_menu, ''"_File", item_type="cascade")
         self._build_menu_item(_popup, ''"_New", command=self.OnMenuFileNew)
         self._build_menu_item(_popup, ''"_Open", command=self.OnMenuFileOpen)
+        self._build_menu_item(_popup, ''"_Reload",
+            command=self.OnMenuFileReload)
         self._build_menu_item(_popup, ''"_Save",
             command=lambda: self.saveFile(self.filename))
         self._build_menu_item(_popup, ''"Save _As...",
@@ -1255,6 +1257,11 @@ class Designer(Toplevel):
         _filename = tkFileDialog.askopenfilename(**self.fileoptions)
         if _filename:
             self.loadFile(_filename)
+
+    def OnMenuFileReload(self):
+        """Re-read currently loaded template file"""
+        if (self.filename and self.checkUpdate()):
+            self.loadFile(self.filename)
 
     def OnMenuQuit(self):
         """Exit the application"""
@@ -1617,6 +1624,7 @@ class Designer(Toplevel):
         self.filename = filename
         self.filedir = os.path.dirname(os.path.abspath(filename))
         self.updateTitle()
+        self.select("report")
         self.loadTreeContents()
 
     def makeReport(self):

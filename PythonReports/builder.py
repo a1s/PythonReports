@@ -1,76 +1,5 @@
 """PythonReports builder"""
 # FIXME: column-based variables are not intelligible
-"""History (most recent first):
-28-feb-2011 [luch]  negative-height items do not affect section height
-26-jan-2011 [luch]  added floating boxes processing
-18-jan-2011 [luch]  removed extra empty horizontal pixel line between sections
-07-jan-2011 [als]   fix py2.7 FutureWarnings for "if section"
-19-dec-2006 [als]   straighten "if not/else" logic in Builder.run_subreport();
-                    build_section: refetch context after subreports build
-18-dec-2006 [als]   Builder: added .get_page_dimensions();
-                    update self.context before building the detail section
-15-dec-2006 [als]   build subreports;
-                    added .set_page_position()
-15-dec-2006 [als]   group header an footer renamed to title and summary
-07-dec-2006 [als]   support rectangle opacity
-05-dec-2006 [als]   fix errors and some warnings reported by pylint
-04-nov-2006 [als]   Builder: delay text_drivers initialization until run,
-                        added backend selection parameters for __init__
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-20-oct-2006 [als]   Structure moved to datatypes
-09-oct-2006 [als]   round section height to integer points after stretching
-05-oct-2006 [als]   get_driver() moved to the drivers module
-03-oct-2006 [als]   support images
-29-sep-2006 [als]   Builder: added .filepath()
-27-sep-2006 [als]   advance 1pt after each section;
-                    never eject when building footer sections;
-                    resize positive sized sections if contents are stretchable
-26-sep-2006 [als]   printout.Text does not use bgcolor
-25-sep-2006 [als]   fix bar code placement errors
-22-sep-2006 [als]   Bar Code API changed
-13-sep-2006 [als]   support bar codes
-11-sep-2006 [als]   fix: reset all *_COUNT variables where appropriate;
-                    fix processing page dimensions if set by width/height
-08-sep-2006 [als]   fix: report summary and final footers evaluated
-                    in context of next to last data object
-08-sep-2006 [als]   fix: first data item not printed out
-08-sep-2006 [als]   eject if filled section does not fit in frame
-08-sep-2006 [als]   don't print fields when expression value is None;
-                    fix calculations in Frame.make_child;
-                    fix page header and footer put in reduced frame;
-                    keep references to frames made for columns elements;
-                    fix: outer sections were placed right after short 2nd col;
-                    added Frame repr()
-06-sep-2006 [als]   Section: fill/refill procedures redesigned
-04-sep-2006 [als]   text drivers became stateful - instantiate
-                    drivers for all report fonts in Builder.__init__
-01-sep-2006 [als]   fix: printable page size calculation
-                    didn't take in account left and top margins;
-                    fix: static texts not printed
-30-aug-2006 [als]   Box moved to datatypes
-30-aug-2006 [als]   fix end_group: build footers in old context;
-                    fix column ejection (ejected one frame less than needed)
-29-aug-2006 [als]   Variable: always return None if no values accumulated;
-                    Section: register deferred evaluations;
-                    fix Builder.resolve_eval: sections are not hashable
-29-aug-2006 [als]   Builder: load text/image drivers;
-                    fix Variable.sum failing when no values collected;
-                    fix Section.compose_style: styles argument ignored;
-                    Section: don't build output elements if suppressed
-                    by printwhen (may get errors in expressions);
-                    enabled simple output of text fields
-27-jul-2006 [als]   defaults for all method parameters made immutable
-26-jul-2006 [als]   Section: use Box objects for layout operations,
-                    fix section height if <=0 in template;
-                    fix Builder.fill_title: printable title section
-                    with no contents was not output
-25-jul-2006 [als]   refactored to work with ElementTrees
-17-jul-2006 [als]   first draft: main building procedures are in place,
-                    fields and images are unsupported yet
-11-jul-2006 [als]   created
-"""
-__version__ = "$Revision: 1.13 $"[11:-2]
-__date__ = "$Date: 2011/09/26 16:43:19 $"[7:-2]
 
 __all__ = ["Builder"]
 
@@ -2163,6 +2092,27 @@ class Builder(object):
             (_width, _height) = (_height, _width)
         return (_width, _height)
 
+    def collect_fonts(self):
+        """Collect font elements from self and all processed subreports
+
+        Return dictionary where keys are font names
+        and values are tree elements.
+
+        """
+        _all_fonts = dict((_item.get("name"), _item)
+            for _item in self.template.findall("font"))
+        for (_element, _builder) in self.subreports.iteritems():
+            for (_name, _font) in _builder.collect_fonts().iteritems():
+                _own_font = _all_fonts.get(_name, None)
+                if _own_font is None:
+                    _all_fonts[_name] = _font
+                elif _font.attrib != _own_font.attrib:
+                    raise XmlValidationError("Conflicting font definition"
+                        " \"%s\" in template \"%s\""
+                        % (_name, _element.get("template")),
+                        element=_element)
+        return _all_fonts
+
     def build_printout(self):
         """Create and return Printout object for built report"""
         _template = self.template.getroot()
@@ -2170,8 +2120,9 @@ class Builder(object):
             (set(prt.Report.attributes) & set(prp.Printout.attributes))])
         # TODO: _attrs["built"] = datetime.utcnow()
         _root = Element(prp.Printout.tag, _attrs)
-        for _item in _template.findall("font"):
-            SubElement(_root, "font", _item.attrib)
+        _fonts = self.collect_fonts()
+        for _name in sorted(_fonts):
+            SubElement(_root, "font", _fonts[_name].attrib)
         # output data blocks that were not used by the builder
         # (images will be processed separately)
         _data_names = set(self.images_named)

@@ -1,17 +1,6 @@
 #! /usr/bin/env python
 """Test report building"""
 
-"""History (most recent first):
-01-nov-2006 [als]   initialize wx.App (may be needed for wx backend);
-                    add wx-based progress indicator;
-                    limit the number of processed rows
-25-jul-2006 [als]   file output adjusted for ElementTree-based API
-17-jul-2006 [als]   created
-"""
-
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/11/02 11:30:19 $"[7:-2]
-
 import sys
 
 try:
@@ -96,6 +85,11 @@ def run():
     _out = file("sakila.prp", "w")
     _printout.write(_out)
     _out.close()
+    # if a PDF is requested, write that too
+    if "pdf" in sys.argv[1:]:
+        from PythonReports.pdf import write
+        _printout.validate()
+        write(_printout, "sakila.pdf")
 
 if __name__ == "__main__":
     run()

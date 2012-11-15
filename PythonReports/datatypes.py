@@ -1,41 +1,4 @@
 """Data types and element primitives, common for templates and printouts"""
-"""History:
-20-dec-2010 [luch]  fix XML entity escaping
-08-dec-2007 [als]   _DataBlock.make_element: escape cdata
-23-jun-2007 [als]   fix Validator.writexml: since we encode the attributes,
-                    don't convert output data back to unicode (that would
-                    fail) and don't require unicode-aware writer
-07-dec-2006 [als]   fix: qp-encoded data was accumulating spaces at the end
-07-dec-2006 [als]   fix decoding of qp-encoded data
-05-dec-2006 [als]   sweep pylint warnings
-03-nov-2006 [als]   ElementTree: string conversion returns full XML text
-20-oct-2006 [als]   added Structure
-29-sep-2006 [als]   ElementTree: keep filename after .parse()
-25-sep-2006 [als]   Color: added .rgbf
-25-sep-2006 [als]   Dimension: use round() instead of int() for stringification
-22-sep-2006 [als]   added Numeric values;
-                    added Box.rescale()
-12-sep-2006 [als]   Box: round dimensions after placement
-06-sep-2006 [als]   Box: added alignment support,
-                    allow separate vertical or horizontal placement/alignment
-30-aug-2006 [als]   added Box (moved from builder.py)
-29-aug-2006 [als]   fix Data.make_element: attribute values are in attrib dict
-27-jul-2006 [als]   Validator.init arguments default made immutable
-26-jul-2006 [als]   Validator.writexml: preserve document order for children
-25-jul-2006 [als]   faster construction of Dimension and Boolean objects
-25-jul-2006 [als]   sort element attributes alphabetically in .writexml;
-                    fix .writexml: encoding argument was missing;
-                    fix output for "data" elements if raw data is None
-24-jul-2006 [als]   export Element factories
-21-jul-2006 [als]   fix EjectType definition (was function instead of class)
-20-jul-2006 [als]   refactored to use ElementTree - got ~55% speedup
-17-jul-2006 [als]   Element, RootElement: constructor argument 'attrib'
-                    defaults to empty dictionary;
-                    Color.encode: support Color objects
-30-jun-2006 [als]   created
-"""
-__version__ = "$Revision: 1.9 $"[11:-2]
-__date__ = "$Date: 2011/01/26 13:36:24 $"[7:-2]
 
 import binascii
 import bz2
@@ -69,6 +32,41 @@ Element = ET.Element
 SubElement = ET.SubElement
 
 ### Exceptions
+
+class XmlValidationWarning(UserWarning):
+
+    """Base class for warnings issued by XML element validators"""
+
+    # FIXME: class code is identical for XmlValidationWarning
+    # and XmlValidationError.  Needs refactoring.
+
+    # encoding used for string representation of the warning
+    encoding = "utf-8"
+
+    def __init__(self, message, element=None, path=None):
+        """Create exception
+
+        Parameters:
+            message: error message
+            element: XML tree element causing the exception
+            path: element path in the tree
+
+        """
+        UserWarning.__init__(self, message)
+        self.message = message
+        self.path = path
+        self.element = element
+
+    def __unicode__(self):
+        _rv = self.message
+        if self.path:
+            _rv += " in " + self.path
+        elif self.element is not None:
+            _rv += " for element '%s'" % self.element.tag
+        return _rv
+
+    def __str__(self):
+        return unicode(self).encode(self.encoding)
 
 class InvalidLiteral(ValueError):
 
@@ -117,7 +115,7 @@ class XmlValidationError(RuntimeError):
         _rv = self.message
         if self.path:
             _rv += " in " + self.path
-        elif self.element:
+        elif self.element is not None:
             _rv += " for element '%s'" % self.element.tag
         return _rv
 
@@ -1230,6 +1228,11 @@ class ElementTree(ET.ElementTree):
             self.root_validator = validator
         ET.ElementTree.__init__(self, element=element, file=file)
 
+    def validate(self):
+        """Prepare the tree for use in processing programs"""
+        _root = self.getroot()
+        self.root_validator(self, _root, "/" + _root.tag)
+
     def parse(self, source, parser=None):
         """Parse source file and validate loaded tree"""
         _root = ET.ElementTree.parse(self, source, parser)
@@ -1237,7 +1240,9 @@ class ElementTree(ET.ElementTree):
             self.filename = source
         else:
             self.filename = None
-        self.root_validator(self, _root, "/" + _root.tag)
+        # Guess the reason for loading a tree is to use it.
+        # Make sure the tree is usable.
+        self.validate()
         return _root
 
     def write(self, file, encoding="utf-8"):

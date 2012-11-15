@@ -76,7 +76,7 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
    <barcode type="2of5i" module="7.5" vertical="true"
     expr="PAGE_COUNT" evaltime="page"
    >
-    <data>100</data>
+    <data>90</data>
     <box x="5cm" />
    </barcode>
    <field align="right">

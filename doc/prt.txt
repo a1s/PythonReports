@@ -530,14 +530,10 @@ Subreports must not be placed inside columns.
 ``inline``         O    boolean   If set to True, the subreport is
                                   formatted as an integral part of the
                                   main report, without page eject before
-                                  or after it, and with page header and
-                                  footer inherited from the main report.
+                                  or after it. [#inlined]_
 
                                   If False (default), the subreport is
                                   printed on separate pages.
-
-                                  Subreports with different paper size
-                                  or page orientation cannot be inlined.
 ``ownpageno``      O    boolean   If set to True, pages in the subreport
                                   are numbered as in standalone report.
                                   If False (default), page numbers in
@@ -545,6 +541,25 @@ Subreports must not be placed inside columns.
                                   the main report page numbers.  Cannot
                                   be set to True for inline subreports.
 ================= ===== ========= ======================================
+
+.. [#inlined] Inline reports start at current page position.
+              When inline report ends, containing report continues
+              from current page position.
+
+              Inline reports may define page `header`_ and `footer`_.
+              The first header for inline report is printed where
+              the report starts; following pages will have it printed
+              below page header inherited from containing report.
+              The last footer for inline report is printed where
+              the report ends; other footers will appear above
+              page footer inherited from containing report.
+
+              Subreports with different paper size or page orientation
+              cannot be inlined.
+
+              Page margins of an inline report must match margins
+              of the containing report; if they don't, a warning
+              is issued and inline report margins are overwritten.
 
 ``title``
 ---------

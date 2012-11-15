@@ -314,7 +314,21 @@ class ReportElement(Structure):
     # otext: output text, wrapped to box width
 
     # make pylint happy
-    section = style = printable = tbox = bbox = obox = text = otext = None
+    section = template = style = printable = None
+    tbox = bbox = obox = text = otext = None
+
+    def __repr__(self):
+        for _box in (self.obox, self.bbox, self.tbox):
+            if _box is not None:
+                break
+        if (_box is None) or (self.template is None):
+            _rv = "<%s@%X>" % (
+                self.__class__.__name__, id(self))
+        else:
+            _rv = "<%s@%X(%.1f, %.1f, %.1f, %.1f): %s>" % (
+                self.__class__.__name__, id(self),
+                _box.x, _box.y, _box.width, _box.height, self.template.tag)
+        return _rv
 
 class Section(list):
 
@@ -584,7 +598,7 @@ class Section(list):
             _data = _template.find("data")
         _expr = _template.get("expr")
         if _expr:
-            if _template.get("evaltime") and _data:
+            if _template.get("evaltime") and (_data is not None):
                 _value = Data.get_data(_data)
             else:
                 _value = context.eval(_expr)
@@ -940,6 +954,35 @@ class Section(list):
                     Data.make_element(_prp_element, data=_image.getdata(),
                         attrib={"name": _image.name, "encoding": "base64"})
 
+    @staticmethod
+    def estimate_height(template):
+        """Return estimated printout height for a section template"""
+        # If the section height is explicit, return it.
+        _box = template.find("box")
+        if _box is None:
+            _rv = 0
+        else:
+            _rv = Box.from_element(_box).height
+        if _rv > 0:
+            return _rv
+        # No luck.  Find the largest vertical space
+        # occupied by an inner element.
+        _rv = 0
+        for _element in template:
+            _box = _element.find("box")
+            if _box is None:
+                continue
+            _box = Box.from_element(_box)
+            if _box.y > 0:
+                _bottom = _box.y
+            else:
+                _bottom = 0
+            if _box.height > 0:
+                _bottom += _box.height
+            if _bottom > _rv:
+                _rv = _bottom
+        return _rv
+
 class Frame(Structure):
 
     """An area on the page with optional header and footer
@@ -1006,7 +1049,9 @@ class Frame(Structure):
             _col = ""
         return "<%s@%X%s: %.1f, %.1f, %.1f, %.1f>" % (
             self.__class__.__name__, id(self), _col,
-            self.x, self.top, self.width, self.height)
+            self.x, self.top, self.x+self.width, self.bottom)
+            # Margin positions seem to be more useful than dimensions...
+            #self.x, self.top, self.width, self.height)
 
     @property
     def height(self):
@@ -1028,9 +1073,9 @@ class Frame(Structure):
         _args = {"parent": self, "width": self.width,
             "top": self.top, "bottom": self.bottom}
         if self.header is not None:
-            _args["top"] += Box.from_element(self.header.find("box")).height
+            _args["top"] += Section.estimate_height(self.header)
         if self.footer is not None:
-            _args["bottom"] -= Box.from_element(self.footer.find("box")).height
+            _args["bottom"] -= Section.estimate_height(self.footer)
         _args.update(kwargs)
         self.child = self.__class__(**_args)
         return self.child
@@ -1064,10 +1109,10 @@ class Builder(object):
     eval_later = {}
     # report section frames
     section_frames = {}
+    # for inlined reports, builders responsible for external headers/footers
+    section_builders = {}
     # parent elements for report sections
     layout_parents = {}
-    # set to parent builder for inline subreport build
-    inlined = None
 
     def __init__(self, template, data=(), parameters=None,
         item_callback=None, text_backend=None, image_backend=None,
@@ -1124,11 +1169,10 @@ class Builder(object):
         self.images_loaded = {}
         #
         _layout = self.template.find("layout")
-        self.template_pagefooter = _layout.find("footer")
         # list of group templates
         self.groups = []
         _group = _layout.find("group")
-        while _group:
+        while _group is not None:
             self.groups.append(_group)
             _group = _group.find("group")
         # detail template
@@ -1242,19 +1286,23 @@ class Builder(object):
         _page_frame.bottom -= _layout.get("bottommargin")
         # keep the outermost frame under well-known key
         self.section_frames[None] = _page_frame
-        # add header and footer
-        _page_frame.header = _layout.find("header")
-        _page_frame.footer = _layout.find("footer")
-        if (_page_frame.header is None) and (_page_frame.footer is None):
-            # use whole page for contents
-            _frame = _page_frame
-        else:
-            # either header or footer may be None but we don't care -
-            # section_frames[None] is _page_frame anyway.
-            self.section_frames[_page_frame.header] = _page_frame
-            self.section_frames[_page_frame.footer] = _page_frame
-            # contents go to child frame with smaller area
-            _frame = _page_frame.make_child()
+        # create inner frames for each header/footer pair
+        _frame = _page_frame
+        _headers = _layout.findall("header")
+        _footers = _layout.findall("footer")
+        _footers.reverse()
+        if len(_headers) > len(_footers):
+            _footers.extend((None,) * (len(_headers) - len(_footers)))
+        elif len(_footers) > len(_headers):
+            _headers.extend((None,) * (len(_footers) - len(_headers)))
+        for (_header, _footer) in zip(_headers, _footers):
+            _frame.header = _header
+            _frame.footer = _footer
+            if _header is not None:
+                self.section_frames[_header] = _frame
+            if _footer is not None:
+                self.section_frames[_footer] = _frame
+            _frame = _frame.make_child()
         # add title and summary
         # if swapped, they use page frame, otherwise inner frame
         _section = _layout.find("title")
@@ -1295,7 +1343,7 @@ class Builder(object):
 
         """
         _columns = group.find("columns")
-        if not _columns:
+        if _columns is None:
             return parent_frame
         _colcount = _columns.get("count")
         _colgap = _columns.get("gap")
@@ -1305,7 +1353,7 @@ class Builder(object):
         self.section_frames[_columns] = _frame
         _header = _columns.find("header")
         _footer = _columns.find("footer")
-        if (_header or _footer) is not None:
+        if not ((_header is None) and (_footer is None)):
             if _header is not None:
                 self.section_frames[_header] = _frame
                 _frame.header = _header
@@ -1495,26 +1543,25 @@ class Builder(object):
         """
         _layout = self.template.find("layout")
         _layout_title = _layout.find("title")
-        if self.inlined:
-            # no page header at start
-            _layout_header = None
+        if _layout_title is None:
+            self.fill_initial_headers()
         else:
-            _layout_header = _layout.find("header")
-        if _layout_title is not None:
             if _layout_title.get("swapheader"):
                 _section = self.build_section(_layout_title)
                 if _section is not None:
                     self.add_section(_section)
                     self.check_eject(_layout_title, ignoresize=True)
-                self.add_section(self.build_section(_layout_header))
+                # XXX Not good.
+                # If a page is ejected by .fill_initial_headers(),
+                # we get overlapping content in self.pages
+                # and in containing builder.
+                self.fill_initial_headers()
             else:
-                self.add_section(self.build_section(_layout_header))
+                self.fill_initial_headers()
                 _section = self.build_section(_layout_title)
                 if _section is not None:
                     self.add_section(_section)
-                    self.check_eject(_layout_title)
-        else:
-            self.add_section(self.build_section(_layout_header))
+                    self.check_eject(_layout_title, ignoresize=True)
         self.add_section(self.build_section(_layout.find("columns/header")))
         for _group in self.groups:
             self.start_group(_group)
@@ -1576,25 +1623,118 @@ class Builder(object):
             if _max_y > self.cur_y:
                 self.cur_y = _max_y
         _summary = _layout.find("summary")
-        if self.inlined:
-            # no terminating page footer
-            _footer = None
+        # will build footers from own template only
+        _inline = bool(self.section_builders)
+        _layout_footers = tuple(_section
+            for _section in _layout.findall("footer")
+            if not (_inline and (_section in self.section_builders)))
+        if _summary is None:
+            # Note: if this report is inlined, we build only own footers;
+            # master page footer will be built by containing template
+            # builder, and would be placed at the bottom of page.
+            self.fill_footers(_layout_footers, _inline)
         else:
-            _footer = _layout.find("footer")
-        if _summary is not None:
             self.check_eject(_summary)
             if _summary.get("swapfooter") and (_footer is not None):
-                _footer = self.build_section(_footer)
-                # reposition at current y
-                _footer.refill(self.cur_y)
-                self.add_section(_footer)
+                self.fill_footers(_layout_footers, _inline)
                 self.add_section(self.build_section(_summary))
             else:
                 self.add_section(self.build_section(_summary))
-                if _footer is not None:
-                    self.add_section(self.build_section(_footer))
-        elif _footer is not None:
-            self.add_section(self.build_section(_footer))
+                self.fill_footers(_layout_footers, _inline)
+
+    def fill_footers(self, templates, inline=False, context=None):
+        """Fill a sequence of column/page footers
+
+        Build footer sections from passed template list,
+        reposition them if needed, and add new sections
+        to the printout.
+
+        At the end of the report a footer may be repositioned
+        immediately after the report contents (rather than being
+        printed at the bottom of the page) in two cases:
+
+            * There is report summary with "swapfooter" flag.
+
+            * This report is inlined (containing report will
+              continue on the same page).
+
+        If inline argument evaluates to boolean True, the sections
+        are placed at current page position (reposition not needed).
+
+        Otherwise the sections are repositioned at the bottom
+        of the outermost frame, immediately above one another.
+
+        """
+        _footers = []
+        _page_footers = []
+        _column_footers = []
+        for _footer in templates:
+            _section = self.build_section(_footer, context)
+            if _section:
+                _frame = self.section_frames[_footer]
+                _footers.append((_section, _frame))
+                if _frame.colcount == 1:
+                    _page_footers.append(_section)
+                else:
+                    _column_footers.append(_section)
+        # move page footers to the bottom of the page unless inlined
+        if _page_footers and not inline:
+            _bottom = _footers[-1][1].bottom
+            _cur_y = max(
+                sum((_footer.box.height for _footer in _column_footers),
+                    self.cur_y),
+                _bottom - sum(_footer.box.height for _footer in _page_footers))
+            for _footer in _page_footers:
+                _footer.refill(_cur_y)
+                _cur_y += _footer.box.height
+        for (_footer, _frame) in _footers:
+            if _footer.box.y < _frame.bottom:
+                self.add_section(_footer)
+                # Adjust maximum used column length for containing frame.
+                _frame = self.section_frames[_footer.template]
+                if _footer.box.bottom > _frame.max_y:
+                    _frame.max_y = _footer.box.bottom
+
+    def fill_initial_headers(self):
+        """Create all page headers at the start of report
+
+        If there is not enough space to fit all headers
+        up to the detail section on current page,
+        eject on the innermost containing builder.
+
+        """
+        _headers = []
+        _hsize = Section.estimate_height(self.detail)
+        for _template in self.template.findall("layout/header"):
+            if _template not in self.section_builders:
+                _section = self.build_section(_template)
+                _headers.append((_template, _section))
+                _hsize += _section.box.height
+        _avail = self.section_frames[self.detail].bottom - self.cur_y
+        if _hsize < _avail:
+            # All built headers would fit here - put them in and return
+            for (_template, _section) in _headers:
+                self.add_section(_section)
+            return
+        # Find innermost containing frame
+        _top = -1
+        _bottom = 1e6
+        _eject_frame = None
+        for _section in self.section_builders:
+            _frame = self.section_frames[_section]
+            if _frame.top > _top:
+                _top = _frame.top
+                _eject_frame = _frame
+            elif _frame.bottom < _bottom:
+                _bottom = _frame.bottom
+                _eject_frame = _frame
+        if _eject_frame is None:
+            # No containing frame found
+            self.start_page()
+        else:
+            self.eject(_eject_frame, newpage=True)
+        for (_template, _junk) in _headers:
+            self.add_section(self.build_section(_template))
 
     def start_page(self):
         """Create new output page
@@ -1719,34 +1859,41 @@ class Builder(object):
                     raise XmlValidationError(
                         "Page size does not match for inlined report \"%s\""
                         % _prt_name, element=element)
-                # replace page header and footer
-                # actual rendering will be done by this builder,
+                _layout = _prt.find("layout")
+                assert _layout is not None # _prt is verified
+                _this_layout = self.template.find("layout")
+                _MARGIN_ATTRS = ("leftmargin", "topmargin",
+                    "rightmargin", "bottommargin")
+                _margins = tuple(tuple(_section.get(_margin, 0)
+                    for _margin in _MARGIN_ATTRS)
+                    for _section in (_layout, _this_layout))
+                if _margins[0] != _margins[1]:
+                    warn(XmlValidationWarning("Overriding page margins"
+                        " for subreport %s: (%s) => (%s)" % ((_prt_name,)
+                        + tuple(", ".join(map(str, _margin))
+                            for _margin in _margins)),
+                        element=_layout))
+                    for (_name, _value) in zip(_MARGIN_ATTRS, _margins[1]):
+                        _layout.set(_name, _value)
+                # Insert page headers and footers from own template.
+                # Actual rendering will be done by responsible builders,
                 # but subreport builder will need to know sizes
                 # to shrink page contents frame appropriately.
                 _page_frame = self.section_frames[None]
-                _layout = _prt.find("layout")
-                assert _layout is not None # _prt is verified
-                _section = _layout.find("header")
-                if _section is not None:
-                    warn("Replacing non-empty page header"
-                        " for inlined report \"%s\"" % _prt_name)
-                    _layout.remove(_section)
-                if _page_frame.header is not None:
-                    _layout.append(_page_frame.header)
-                _section = _layout.find("footer")
-                if _section is not None:
-                    warn("Replacing non-empty page footer"
-                        " for inlined report \"%s\"" % _prt_name)
-                    _layout.remove(_section)
-                if _page_frame.footer is not None:
-                    _layout.append(_page_frame.footer)
+                _outer_sections = _this_layout.findall("footer")
+                _layout.extend(_outer_sections)
+                for _section in _this_layout.findall("header"):
+                    _layout.insert(0, _section)
+                    _outer_sections.append(_section)
                 # create subreport builder
                 _builder = Builder(_prt)
-                # let it delegate page header/footer formatting to self
-                _builder.inlined = self
+                # copied sections must be built by outer builders
+                if _outer_sections:
+                    _builder.section_builders = dict(
+                        (_section, self.section_builders.get(_section, self))
+                        for _section in _outer_sections)
             else:
                 _builder = Builder(_prt)
-                _builder.inlined = None
             self.subreports[element] = _builder
         # collect subreport arguments
         # Note: this is done before any new section is built
@@ -1833,18 +1980,16 @@ class Builder(object):
             _context = self.context
         else:
             _context = context
-        # if this report is inlined, page header and footer
-        # are built by the main report builder
-        _builder = self.inlined
+        # if this report is inlined, some headers and footers
+        # may be built by containing report builder
+        _builder = self.section_builders.get(template, None)
         if _builder:
-            _frame = self.section_frames[None] # page frame
-            if template in (_frame.header, _frame.footer):
-                _builder.context["PAGE_NUMBER"] = _context["PAGE_NUMBER"]
-                _builder.set_page_position(self.cur_y)
-                _rv = _builder.build_section(template)
-                self.set_page_position(_builder.cur_y)
-                # page number should not change
-                return _rv
+            _builder.context["PAGE_NUMBER"] = _context["PAGE_NUMBER"]
+            _builder.set_page_position(self.cur_y)
+            _rv = _builder.build_section(template)
+            self.set_page_position(_builder.cur_y)
+            # page number should not change
+            return _rv
         _frame = self.section_frames[template]
         _context["COLUMN_NUMBER"] = _frame.column + 1
         _section = Section(self, template, _context)
@@ -1860,11 +2005,8 @@ class Builder(object):
                 # oops!
                 return None
         _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
-        # align page footers to the bottom of page
-        if (template is self.template_pagefooter):
-            _section.refill(_frame.bottom - _section.box.height)
-        elif ((_section.box.y + _section.box.height) > _frame.bottom) \
-        and (_section.template.tag != "footer"):
+        if ((_section.box.y + _section.box.height) > _frame.bottom) \
+        and (_section.template.tag not in ("header", "footer")):
             self.eject(_frame)
             _context["COLUMN_NUMBER"] = _frame.column + 1
             _section.build(_context)
@@ -1998,11 +2140,9 @@ class Builder(object):
         # headers/footers printed by this eject
         _eject_frames = self._get_eject_frames(current_frame, newpage)
         # print all footers
-        for _frame in _eject_frames:
-            self.add_section(self.build_section(_frame.footer,
-                context=self.old_context))
-            if self.cur_y > _frame.max_y:
-                _frame.max_y = self.cur_y
+        self.fill_footers(tuple(_frame.footer
+            for _frame in _eject_frames
+            if _frame.footer is not None), context=self.old_context)
         # headers will go in reverse order: first for the last footer printed
         _eject_frames.reverse()
         # if last ejected was page footer, start new page

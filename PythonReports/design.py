@@ -1063,7 +1063,6 @@ class Designer(Toplevel):
         Return value: toplevel widget
 
         """
-        _release_date = datetime.date(*map(int, version.__date__.split("-")))
         _dlg = Toplevel(self)
         _dlg.title(self._("About PythonReports Designer"))
         _body = Frame(_dlg)
@@ -1073,7 +1072,7 @@ class Designer(Toplevel):
             "Copyright %(year)s alexander smishlajev"
         ) % {
             "version": version.__version__,
-            "date": _release_date.strftime(self._("%d-%b-%Y")),
+            "date": version.__date__.strftime(self._("%d-%b-%Y")),
             "year": COPYRIGHT_YEAR,
         }).pack(side=TOP, padx=10)
         Url(_body, text=PYTHONREPORTS_URL).pack(side=TOP, padx=10)

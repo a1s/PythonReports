@@ -1,6 +1,17 @@
 PythonReports release history
 =============================
 
+version 0.6.0 (16-nov-2012)
+---------------------------
+
+Add visual editor for report templates, created by KACAH.
+
+Allow page header and footer for inline subreports.
+
+Fix running subreports from Tk-based template designer.
+
+Fix various layout errors.
+
 version 0.5.0 (26-sep-2011)
 ---------------------------
 

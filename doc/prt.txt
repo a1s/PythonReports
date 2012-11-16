@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.5.0
-:Date: 19-apr-2012
+:Version: 0.6.0
+:Date: 16-nov-2012
 
 .. TODO: variables iterated at start of section
 
@@ -505,7 +505,7 @@ and thus require a totally different layout for their parts.
 
 `subreport`_ element may contain a set of `arg`_ elements.
 
-Subreports must not be placed inside columns.
+Subreports **must not** be placed inside columns.
 
 ================= ===== ========= ======================================
   Name            Req     Type      Description

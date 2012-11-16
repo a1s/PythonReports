@@ -109,7 +109,9 @@ def run():
         # registration.
         license="MIT License",
         platforms=["OS Independent"],
-        packages=["PythonReports"],
+        packages=["PythonReports",
+            "PythonReports.editor", "PythonReports.editor.elements"],
+        package_data={"PythonReports.editor": ["res/*"]},
         scripts=SCRIPTS,
         data_files=[(DOC_DIR, ["README", "LICENSE", "CHANGES"]
             + glob.glob("doc/*.txt") + glob.glob("doc/*.html"))],

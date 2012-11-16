@@ -6,6 +6,7 @@ __all__ = ["Builder"]
 import itertools
 import math
 import os
+import sys
 import time
 from warnings import warn
 
@@ -45,6 +46,13 @@ class Variable(object):
         # R0903: Too few public methods
         def append(self, value):
             """Add a value to the accumulated sequence"""
+
+    class AccumulateChain(_Accumulator, list):
+        """Accumulator forcing all values to be float"""
+        def append(self, value):
+            """Add a sequence to the accumulated sequence"""
+            if value:
+                self.extend(value)
 
     class AccumulateDistinct(_Accumulator, set):
         """Distinct values accumulator"""
@@ -140,6 +148,9 @@ class Variable(object):
             None: (self.UseCurrent, self.first),
             "first": (self.KeepFirst, self.first),
             "count": (self.AccumulateDistinct, self.count),
+            "list": (list, None),
+            "set": (self.AccumulateDistinct, None),
+            "chain": (self.AccumulateChain, list),
             "sum": (list, self.sum),
             "avg": (self.AccumulateFloat, self.avg),
             "min": (list, self.min),
@@ -186,10 +197,12 @@ class Variable(object):
     @property
     def value(self):
         """Variable evaluation result"""
-        if self.values:
+        if not self.values:
+            return None
+        elif self._compute:
             return self._compute(self.values)
         else:
-            return None
+            return self.values
 
     def __repr__(self):
         return "<%s@%X \"%s\" %r>" % (self.__class__.__name__, id(self),

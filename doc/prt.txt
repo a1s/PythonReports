@@ -2,7 +2,7 @@
 PythonReports Templates
 =======================
 
-:Version: 0.6.0
+:Version: 0.6.1
 :Date: 16-nov-2012
 
 .. TODO: variables iterated at start of section
@@ -275,6 +275,11 @@ Name      Meaning
 ``count`` Count distinct values.
           Hint: for iteration counter, use ``sum``
           with ``expression="1"`` or one of the `predefined variables`_.
+``list``  A list containing all values.
+``set``   A set containing distinct values.
+``chain`` Similar to `itertools.chain`_, a list composed of elements
+          of sequences produced by ``expr``. [#chain]_
+          The ``expr`` must evaluate to an iterable or ``None``.
 ``sum``   Sum of all values.
 ``avg``   Average value. [#float_value]_
 ``min``   Lowest value.
@@ -285,6 +290,10 @@ Name      Meaning
 ========= ==============================================================
 
 .. [#float_value]  The expression must be compatible with float type.
+
+.. [#chain] Note: this is a shortcut.  Same result would be produced
+            by ``init="[]" calc="sum"`` and ``expr`` evaluating
+            to list.
 
 ``import``
 ----------
@@ -820,5 +829,7 @@ Attributes:
 
 .. _Printout:
 .. _PRP file: prp.html
+
+.. _itertools.chain: http://docs.python.org/2/library/itertools.html#itertools.chain
 
 .. vim: set et ft=rst sts=2 sw=2 :

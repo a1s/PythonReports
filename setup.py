@@ -1,21 +1,6 @@
 """PythonReports setup script"""
 
 # FIXME! generate_docs() must be reimplemented as a distutils command
-"""History:
-26-sep-2011 [als]   update URL for the downloads page
-22-jul-2010 [als]   development status set to Beta
-07-nov-2006 [als]   data_files include source (*.txt) documents
-07-nov-2006 [als]   fix: rst2html failed when there is no target file
-04-nov-2006 [als]   added maintainer_email and download_url;
-                    name the license and platform in addition to classifiers
-03-nov-2006 [als]   read version number from the package sources;
-                    generate htmls automatically (skip if no docutils);
-                    added docs, scripts and package metadata
-03-oct-2006 [als]   created
-"""
-
-__version__ = "$Revision: 1.7 $"[11:-2]
-__date__ = "$Date: 2011/09/26 17:48:52 $"[7:-2]
 
 from distutils.core import setup
 import glob
@@ -28,10 +13,11 @@ except ImportError:
 
 if os.name == "nt":
     DOC_DIR = "Lib\\site-packages\\PythonReports\\doc"
-    SCRIPTS=["scripts/prd", "scripts/prd.bat"]
+    SCRIPTS=["scripts/prd", "scripts/prd.bat",
+        "scripts/prtedit", "scripts/prtedit.bat"]
 else:
     DOC_DIR = "share/PythonReports/doc"
-    SCRIPTS=["scripts/prd"]
+    SCRIPTS=["scripts/prd", "scripts/prtedit"]
 
 DESCRIPTION = """\
 PythonReports is a toolkit aimed to build database reports

@@ -1,25 +1,29 @@
 """Additional tools for editor"""
-"""
-16-jun-2012 [als]   Add function get_resource_dir
-26-may-2012 [als]   compute ICONS_DIR path from the module file path
-30-mar-2012 [kacah] created
-"""
 
 import os
+import sys
+
+import wx
 
 import PythonReports.datatypes as datatypes
-import wx
 
 PT_TO_PIX = 0
 
 def setup():
-    """Get screen PDI and setup conversion from points to pixels factor"""
+    """Initialize editor environment
+
+    Get screen PDI and setup conversion from points to pixels factor.
+
+    Add current directory to the module path.
+
+    """
     global PT_TO_PIX
-
     _DPI = wx.ScreenDC().GetPPI()[0]
-
     _in_to_pt = datatypes.Dimension("1in")
     PT_TO_PIX = _DPI / _in_to_pt
+
+    if "." not in sys.path:
+        sys.path.insert(0, ".")
 
 def dim_to_screen(dimension):
     """Convert PythonReports dimension into screen pixels"""

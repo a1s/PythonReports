@@ -1,11 +1,7 @@
-"""Contain global application objects and data. Link objects."""
-"""
-16-jun-2012 [als]   remember last used directory for open/save
-26-may-2012 [als]   pass .__init__() arguments to wx.App
-04-apr-2012 [kacah] created
-"""
+"""PythonReports Template Editor application"""
 
 import os
+import sys
 
 import wx
 
@@ -102,8 +98,9 @@ class EditorApplication(wx.App):
 
         if self.frame.workspace.get_report():
             _dlg = wx.MessageDialog(self.frame,
-            "You will loose your current template. Do you want to create new one?",
-            "Confirm new report", wx.OK | wx.CANCEL | wx.ICON_WARNING)
+                "You will loose your current template."
+                " Do you want to create new one?",
+                "Confirm new report", wx.OK | wx.CANCEL | wx.ICON_WARNING)
 
             _dlg_result = _dlg.ShowModal()
             _dlg.Destroy()

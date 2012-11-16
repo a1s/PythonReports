@@ -79,6 +79,8 @@ class Interpreter(InteractiveInterpreter):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
+        if "." not in sys.path:
+            sys.path.insert(0, ".")
 
     def runcode(self, code):
         """Execute a code object"""

@@ -1894,7 +1894,12 @@ class Builder(object):
                 # to shrink page contents frame appropriately.
                 _page_frame = self.section_frames[None]
                 _outer_sections = _this_layout.findall("footer")
-                _layout.extend(_outer_sections)
+                if sys.version_info[:2] < (2, 7):
+                    # _ElementInterface instance has no attribute 'extend'
+                    for _section in _outer_sections:
+                        _layout.append(_section)
+                else:
+                    _layout.extend(_outer_sections)
                 for _section in _this_layout.findall("header"):
                     _layout.insert(0, _section)
                     _outer_sections.append(_section)

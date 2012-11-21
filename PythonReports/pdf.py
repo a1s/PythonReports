@@ -359,11 +359,6 @@ class PdfWriter(object):
         # to the text height as the builder can get.
         # center the text (ascent) vertically in the box.
         _y -= (_height - _leading * _content.count("\n") - _ascent) / 2
-        if _align in ("center", "right"):
-            # we're going to .moveCursor() for each line
-            # set starting point up one line
-            # to avoid first line check inside the line loop
-            _y += _leading
         _tobj.setTextOrigin(_x, _y)
         # reset word spacing unless we do justified text
         if _align != "justified":
@@ -375,10 +370,10 @@ class PdfWriter(object):
                 _pad = _width - pdfmetrics.stringWidth(_line,
                     _fontname, _fontsize)
             if _align == "right":
-                _tobj.moveCursor(_pad - _offset, _leading)
+                _tobj.moveCursor(_pad - _offset, 0)
                 _offset = _pad
             elif _align == "center":
-                _tobj.moveCursor((_pad / 2.0) - _offset, _leading)
+                _tobj.moveCursor((_pad / 2.0) - _offset, 0)
                 _offset = _pad / 2.0
             elif _align == "justified":
                 self.setWordSpace(_pad / _line.count(" "))

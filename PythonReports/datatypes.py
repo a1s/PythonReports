@@ -31,6 +31,50 @@ except ImportError:
 Element = ET.Element
 SubElement = ET.SubElement
 
+# XXX This is not the best place for such function.
+# It's more about report templates, but the template module
+# does not seem proper, either.
+def element_label(element):
+    """Return string label for an element reference"""
+    _rv = _tag = element.tag
+    _name = element.get("name", "")
+    if _name:
+        _rv += " '%s'" % _name
+    elif _tag in ("field", "barcode"):
+        _expr = element.get("expr", "")
+        if not _expr:
+            _data = element.find("data")
+            if (_data is not None) \
+            and not _data.get("pickle", "") \
+            and not _data.get("compress", "") \
+            and not _data.get("encoding", ""):
+                _expr = _data.text
+        if _expr:
+            if "'" in _expr:
+                _quote = "\""
+            else:
+                _quote = "'"
+            _rv += " %s%s%s" % (_quote,
+                _expr.replace(_quote, "\\" + _quote), _quote)
+    elif _tag == "import":
+        _rv += " %s" % element.get("path", "")
+    elif _tag == "style":
+        _attrs = [_rv]
+        _font = element.get("font", "")
+        if _font:
+            _attrs.append(_font)
+        _fg = element.get("color", "")
+        _bg = element.get("bgcolor", "")
+        if _fg or _bg:
+            _attrs.append("%s/%s" % (_fg, _bg))
+        _when = element.get("printwhen", "")
+        if _when:
+            _attrs.append("(%s)" % _when)
+        _rv = " ".join(_attrs)
+    elif _tag == "subreport":
+        _rv += " %s" % element.get("template", "")
+    return _rv
+
 ### Exceptions
 
 class XmlValidationWarning(UserWarning):
@@ -694,7 +738,8 @@ class Calculation(_Codes):
     # pylint: disable-msg=R0904
     # R0904: Too many public methods - same as in the base class
 
-    VALUES = ("count", "sum", "avg", "min", "max", "std", "var", "first")
+    VALUES = ("count", "list", "set", "chain",
+        "sum", "avg", "min", "max", "std", "var", "first")
 
 class Compress(_Codes):
 

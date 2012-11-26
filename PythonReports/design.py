@@ -677,44 +677,7 @@ class TreeNodeData(list):
     @property
     def treelabel(self):
         """Return text string for the tree entry"""
-        _rv = self.tag
-        _name = self.element.get("name", "")
-        if _name:
-            _rv += " %s" % _name
-        elif self.tag in ("field", "barcode"):
-            _expr = self.element.get("expr", "")
-            if not _expr:
-                _data = self.element.find("data")
-                if (_data is not None) \
-                and not _data.get("pickle", "") \
-                and not _data.get("compress", "") \
-                and not _data.get("encoding", ""):
-                    _expr = _data.text
-            if _expr:
-                if "'" in _expr:
-                    _quote = "\""
-                else:
-                    _quote = "'"
-                _rv += " %s%s%s" % (_quote,
-                    _expr.replace(_quote, "\\" + _quote), _quote)
-        elif self.tag == "import":
-            _rv += " %s" % self.element.get("path", "")
-        elif self.tag == "style":
-            _attrs = [_rv]
-            _font = self.element.get("font", "")
-            if _font:
-                _attrs.append(_font)
-            _fg = self.element.get("color", "")
-            _bg = self.element.get("bgcolor", "")
-            if _fg or _bg:
-                _attrs.append("%s/%s" % (_fg, _bg))
-            _when = self.element.get("printwhen", "")
-            if _when:
-                _attrs.append("(%s)" % _when)
-            _rv = " ".join(_attrs)
-        elif self.tag == "subreport":
-            _rv += " %s" % self.element.get("template", "")
-        return _rv
+        return datatypes.element_label(self.element)
 
     @property
     def path(self):

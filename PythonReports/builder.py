@@ -16,6 +16,39 @@ from PythonReports import printout as prp
 from PythonReports import segment_layout
 from PythonReports.datatypes import *
 
+class ExpressionError(RuntimeError):
+
+    """A wrapper for errors raised by expression evaluation
+
+    @ivar error: the original exception
+
+    @ivar expr: the expression string
+
+    @ivar template: template element containing the expression
+
+    """
+
+    def __init__(self, error, expr, template=None):
+        self.error = error
+        self.expr = expr
+        self.template = template
+
+    def __unicode__(self):
+        if self.template is None:
+            _where = None
+        elif isinstance(self.template, Element):
+            _where = element_label(self.template)
+        else:
+            _where = repr(self.template)
+        if _where:
+            _rv = "%s evaluating %r in %s" % (self.error, self.expr, _where)
+        else:
+            _rv = "%s evaluating %r" % (self.error, self.expr)
+        return _rv
+
+    def __str__(self):
+        return unicode(self).encode("utf-8")
+
 class Variable(object):
 
     """Report variable
@@ -35,6 +68,7 @@ class Variable(object):
     itergrp = None
     reset = "report"
     resetgrp = None
+    template = None
 
     # Most variables use builtin list to accumulate values
     # these helper classes are used in special cases
@@ -139,6 +173,7 @@ class Variable(object):
 
         """
         super(Variable, self).__init__()
+        self.template = template
         for _name in prt.Variable.attributes:
             setattr(self, _name, template.get(_name))
         # FIXME? accumulator class and computing function for
@@ -171,7 +206,7 @@ class Variable(object):
 
         """
         if self.init:
-            _init = [context.eval(self.init)]
+            _init = [context.eval(self.init, self.template)]
         else:
             _init = []
         self.values = self._accumulator(_init)
@@ -183,7 +218,7 @@ class Variable(object):
             context: expression evaluation context
 
         """
-        self.values.append(context.eval(self.expr))
+        self.values.append(context.eval(self.expr, self.template))
 
     def rollback(self):
         """Undo last iteration"""
@@ -263,9 +298,24 @@ class Context(object):
     def __setitem__(self, name, value):
         self.sysvars[name] = value
 
-    def eval(self, expression):
-        """Evaluate expression in this context"""
-        return eval(expression, {}, self)
+    def eval(self, expression, template=None):
+        """Evaluate expression in this context
+
+        @param expression: Python expression to evaluate.
+
+
+        @param template: template element containing the expression.
+
+            Used in error reporting.
+
+        @return: expression evaluation result.
+
+        """
+        try:
+            return eval(expression, {}, self)
+        except Exception, _err:
+            raise ExpressionError(_err, expression, template), \
+                None, sys.exc_info()[2]
 
     # utilities
 
@@ -548,12 +598,13 @@ class Section(list):
             return list(itertools.islice(seq, N))
         _printwhen = _ifirst(_style.get("printwhen")
             for _style in self.iter_styles()
-            if context.eval(_style.get("when")) and _style.get("printwhen"))
-        self.printable = (not _printwhen) or context.eval(_printwhen[0])
+            if context.eval(_style.get("when"), self.template)
+                and _style.get("printwhen"))
+        self.printable = (not _printwhen) \
+            or context.eval(_printwhen[0], self.template)
         return bool(self.printable)
 
-    @staticmethod
-    def compose_style(context, need_attrs, styles):
+    def compose_style(self, context, need_attrs, styles):
         """Return style attributes collected from a style sequence
 
         Parameters:
@@ -572,7 +623,7 @@ class Section(list):
         _count = len(need_attrs)
         for _style in styles:
             _when = _style.get("when", None)
-            if (_when is None) or context.eval(_when):
+            if (_when is None) or context.eval(_when, self.template):
                 for _name in need_attrs:
                     if _name in _attrs:
                         continue
@@ -614,7 +665,7 @@ class Section(list):
             if _template.get("evaltime") and (_data is not None):
                 _value = Data.get_data(_data)
             else:
-                _value = context.eval(_expr)
+                _value = context.eval(_expr, self.template)
         elif _data is not None:
             _value = Data.get_data(_data)
         else:
@@ -662,7 +713,7 @@ class Section(list):
         for _item in _elements:
             if _item.tag == "subreport":
                 _when = _item.get("when")
-                if (not _when) or context.eval(_when):
+                if (not _when) or context.eval(_when, _item):
                     _subreports.append((_item.get("seq"), _item))
                 continue
             if not self.is_body_element(_item):
@@ -673,7 +724,8 @@ class Section(list):
                 ("printwhen", "font", "color", "bgcolor"),
                 _item.findall("style") + _default_element_style)
             _printwhen = _element.style.get("printwhen")
-            _element.printable = not _printwhen or context.eval(_printwhen)
+            _element.printable = not _printwhen \
+                or context.eval(_printwhen, _item)
             # must not evaluate expressions for suspended elements.
             # skip elements that are not printable.
             if not _element.printable:
@@ -1483,7 +1535,7 @@ class Builder(object):
             _parameters.update(parameters)
         for (_name, _parm) in _template.parameters.iteritems():
             if _name not in _parameters:
-                _value = _context.eval(_parm.get("default"))
+                _value = _context.eval(_parm.get("default"), _parm)
                 if _parm.prompt:
                     # TODO? parameter input with wx or Tkinter GUI
                     _input = raw_input("%s [%s]: " % (_name, _value))
@@ -1506,7 +1558,7 @@ class Builder(object):
         # initialize group expressions
         for _item in self.groups:
             self.group_values[_item.get("name")] = _context.eval(
-                _item.get("expr"))
+                _item.get("expr"), _item)
         # create the first page
         self.start_page()
         return _data_iter
@@ -1533,7 +1585,7 @@ class Builder(object):
         _groups_changed = []
         for (_idx, _group) in enumerate(self.groups):
             _group_name = _group.get("name")
-            _value = _context.eval(_group.get("expr"))
+            _value = _context.eval(_group.get("expr"), _group)
             if not (_value == self.group_values[_group_name]):
                 # group change implies change of all inner groups
                 _groups_changed = self.groups[_idx:]
@@ -1541,7 +1593,7 @@ class Builder(object):
                 self.group_values[_group_name] = _value
                 for _group in _groups_changed[1:]:
                     self.group_values[_group.get("name")] = _context.eval(
-                        _group.get("expr"))
+                        _group.get("expr"), _group)
                 break
         for _group in reversed(_groups_changed):
             self.end_group(_group)
@@ -1852,10 +1904,10 @@ class Builder(object):
         _context = self.context
         # return early if subreport is skipped
         _when = element.get("when")
-        if _when and not _context.eval(_when):
+        if _when and not _context.eval(_when, element):
             return
         # return early if there are no data items for the subreport
-        _data = _context.eval(element.get("data"))
+        _data = _context.eval(element.get("data"), element)
         if len(_data) < 1:
             return
         _inline = element.get("inline")
@@ -1919,7 +1971,7 @@ class Builder(object):
         #       our local short-cut (_context variable) is still valid.
         _args = {}
         for _item in element.findall("arg"):
-            _args[_item.get("name")] = _context.eval(_item.get("value"))
+            _args[_item.get("name")] = _context.eval(_item.get("value"), _item)
         # check if we need to eject page
         if _inline or (eject_frame is None):
             _rv = eject_frame
@@ -2092,7 +2144,7 @@ class Builder(object):
         _eject = None
         for _item in section.findall("eject"):
             _when = _item.get("when")
-            if _when and not self.context.eval(_when):
+            if _when and not self.context.eval(_when, _item):
                 # disabled
                 continue
             _when = _item.get("require")
@@ -2224,7 +2276,8 @@ class Builder(object):
         for _key in args:
             for _element in self.eval_later[_key]:
                 _template = _element.template
-                _value = self.old_context.eval(_template.get("expr"))
+                _value = self.old_context.eval(
+                    _template.get("expr"), _template)
                 _element.text = _template.get("format", u"%s") % _value
                 _refill[id(_element.section)] = _element.section
             self.eval_later[_key] = []

@@ -1,22 +1,5 @@
 #! /usr/bin/env python
 """PDF output for PythonReports"""
-"""History (most recent first):
-25-oct-2011 [luch]  priority to embedded images instead of external files
-11-oct-2011 [luch]  adapted to PIL 1.1.7
-07-dec-2006 [als]   fix: diagonal lines were offset down by the box height
-05-dec-2006 [als]   sweep pylint warnings;
-                    remove pdf autostart (can be easily done in command line)
-07-Nov-2006 [phd]   Added shebang.
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-03-oct-2006 [als]   support images
-27-sep-2006 [als]   fix: borderless rectangles toggled off dashed lines
-26-sep-2006 [als]   remove textcolor - fillcolor is common for text and grapics
-26-sep-2006 [als]   draw bar codes;
-                    center texts vertically within their bounding boxes
-25-sep-2006 [als]   created
-"""
-__version__ = "$Revision: 1.6 $"[11:-2]
-__date__ = "$Date: 2011/11/25 10:14:10 $"[7:-2]
 
 __all__ = ["PdfWriter", "write"]
 
@@ -112,7 +95,7 @@ class PdfWriter(object):
             _fonts[_name] = (_facename, _size, _size * 1.2)
         self.fonts = _fonts
 
-    def write(self, filepath=None, compression=False):
+    def write(self, filepath=None, compression=False, encrypt=None):
         """Write the report to PDF file
 
         Parameters:
@@ -120,10 +103,13 @@ class PdfWriter(object):
             compression: if True, turn on compression of the PDF
                 operations stream for each page.  Compressed documents
                 will be smaller, but slower to generate.
+            encrypt: password string
+                or reportlab.lib.pdfencrypt.StandardEncryption object
+                used to protect the document contents.
 
         """
         self.canvas = canvas.Canvas(filepath, pageCompression=compression,
-            pagesize=self.pagesize)
+            pagesize=self.pagesize, encrypt=encrypt)
         for _page in self.report.findall("page"):
             self.setPageSize(_page.get("width"), _page.get("height"))
             # draw elements
@@ -404,15 +390,21 @@ class PdfWriter(object):
                     _canvas.rect(_cur_x, _y, _stripe, _height, False, True)
                 _cur_x += _stripe
 
-def write(report, filepath):
+def write(report, filepath, compression=None, encrypt=None):
     """Create PDF document from PythonReports printout
 
     Parameters:
         report: PRP file name or ElementTree with loaded report printout
         filepath: output file path.
+        compression: if True, turn on compression of the PDF
+            operations stream for each page.  Compressed documents
+            will be smaller, but slower to generate.
+        encrypt: password string
+            or reportlab.lib.pdfencrypt.StandardEncryption object
+            used to protect the document contents.
 
     """
-    PdfWriter(report).write(filepath)
+    PdfWriter(report).write(filepath, compression, encrypt)
 
 def run(argv=sys.argv):
     """Command line executable"""

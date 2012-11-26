@@ -95,12 +95,12 @@ class PdfWriter(object):
             _fonts[_name] = (_facename, _size, _size * 1.2)
         self.fonts = _fonts
 
-    def write(self, filepath=None, compression=False, encrypt=None):
+    def write(self, filepath=None, compression=True, encrypt=None):
         """Write the report to PDF file
 
         Parameters:
             filepath: output filepath.
-            compression: if True, turn on compression of the PDF
+            compression: if False, turn off compression of the PDF
                 operations stream for each page.  Compressed documents
                 will be smaller, but slower to generate.
             encrypt: password string
@@ -390,13 +390,13 @@ class PdfWriter(object):
                     _canvas.rect(_cur_x, _y, _stripe, _height, False, True)
                 _cur_x += _stripe
 
-def write(report, filepath, compression=None, encrypt=None):
+def write(report, filepath, compression=True, encrypt=None):
     """Create PDF document from PythonReports printout
 
     Parameters:
         report: PRP file name or ElementTree with loaded report printout
         filepath: output file path.
-        compression: if True, turn on compression of the PDF
+        compression: if False, turn off compression of the PDF
             operations stream for each page.  Compressed documents
             will be smaller, but slower to generate.
         encrypt: password string

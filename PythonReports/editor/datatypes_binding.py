@@ -1,8 +1,4 @@
 """Bind datatypes to property grid"""
-"""
-20-mar-2012 [kacah]   created
-
-"""
 #----------------------------Property Creation Methods-------------------------
 def setup_value(prop, value):
     """Check value and add it to property"""
@@ -30,10 +26,10 @@ def c_enum(prop_grid, field_type, name, value, param):
     return _prop
 
 def c_colour(prop_grid, field_type, name, value, param={}):
-    """Colour fields. 
-    
+    """Colour fields.
+
     @param param: dict of known colour constants binded with Hex colour value
-    
+
     """
     def hex_to_color(hex_string):
         """Convert '#AABBCC' to wx.Color"""
@@ -41,7 +37,7 @@ def c_colour(prop_grid, field_type, name, value, param={}):
         _no_sharp = hex_string.__str__()[1:]
         import struct
         (_r, _g, _b) = struct.unpack('BBB', _no_sharp.decode('hex'))
-        return wx.Color(_r, _g, _b)
+        return wx.Colour(_r, _g, _b)
 
     _prop = prop_grid.Append(field_type(name))
     if value is None:

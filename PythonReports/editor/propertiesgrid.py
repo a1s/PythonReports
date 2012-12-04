@@ -1,13 +1,4 @@
 """Elements for working with Property Grid"""
-"""
-16-jun-2012 [als]   Change highlight colors for required and default values
-02-apr-2012 [kacah] Added property synchronization
-29-mar-2012 [kacah] Added Colors for None, REQUIRED properties
-27-mar-2012 [kacah] Added list properties dialog
-26-mar-2012 [kacah] Added list properties
-23-mar-2012 [kacah] Added empty properties
-20-mar-2012 [kacah] created
-"""
 
 import PythonReports.datatypes as datatypes
 import wx
@@ -267,8 +258,8 @@ class PropertiesGrid(wxpg.PropertyGrid):
         self.element = None
         self.Unbind(wxpg.EVT_PG_CHANGED)
 
-    NONE_COLOR = wx.Color(160, 255, 160)
-    REQUIRED_COLOR = wx.Color(255, 192, 208)
+    NONE_COLOR = wx.Colour(160, 255, 160)
+    REQUIRED_COLOR = wx.Colour(255, 192, 208)
 
     def set_property_color(self, prop, prop_type):
         """Set color of property, by given type (None, REQUIRED, else)"""

@@ -31,8 +31,8 @@ class PropertiesListener(object):
         @note: Parent = category
 
         """
-        _cat = changed_property.GetParent().GetName()
-        _attr = changed_property.GetName()
+        (_cat, _attr) = \
+            datatypes_binding.unpack_prop_name(changed_property.GetName())
 
         (_value, _type, _default_value) = self.properties[_cat][_attr]
 
@@ -284,8 +284,8 @@ class PropertiesGrid(wxpg.PropertyGrid):
         if _attr_settings.param:
             _param = getattr(_type, _attr_settings.param)
 
-        _property = _attr_settings.creation_func(self, _field_class, name,
-            _value, _param)
+        _property = _attr_settings.creation_func(self, _field_class, tag,
+            name, _value, _param)
 
         #client data = if this property can be unspecified
         _property.SetClientData(_default_value is None)

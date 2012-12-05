@@ -7,25 +7,40 @@ def setup_value(prop, value):
     else:
         prop.SetValue(value)
 
-def c_simple(prop_grid, field_type, name, value, param):
+def pack_prop_name(tag, label):
+    """Return property wxpg name by label and tag"""
+    return str((tag, label))
+
+def unpack_prop_name(name):
+    """Return tuple (tag and category of property by it's name"""
+    _res = eval(name)
+    if not isinstance(_res, tuple):
+        raise ValueError("Invalid property name '%s'" % name)
+    return _res
+
+def c_simple(prop_grid, field_type, tag, label, value, param):
     """Create simple property field, for example int, float..."""
-    _prop = prop_grid.Append(field_type(name))
+    _prop = prop_grid.Append(
+        field_type(label, pack_prop_name(tag, label))
+    )
     setup_value(_prop, value)
     return _prop
 
-def c_bool(prop_grid, field_type, name, value, param):
+def c_bool(prop_grid, field_type, tag, label, value, param):
     """Create bool field. Additional checkbox element"""
-    _prop = c_simple(prop_grid, field_type, name, value, param)
-    prop_grid.SetPropertyAttribute(name, "UseCheckbox", True)
+    _prop = c_simple(prop_grid, field_type, tag, label, value, param)
+    _prop.SetAttribute("UseCheckbox", True)
     return _prop
 
-def c_enum(prop_grid, field_type, name, value, param):
+def c_enum(prop_grid, field_type, tag, label, value, param):
     """Enum fields. params is list of elements in enum"""
-    _prop = prop_grid.Append(field_type(name, name, labels=param))
+    _prop = prop_grid.Append(
+        field_type(label, pack_prop_name(tag, label), labels=param)
+    )
     setup_value(_prop, value)
     return _prop
 
-def c_colour(prop_grid, field_type, name, value, param={}):
+def c_colour(prop_grid, field_type, tag, label, value, param={}):
     """Colour fields.
 
     @param param: dict of known colour constants binded with Hex colour value
@@ -36,10 +51,12 @@ def c_colour(prop_grid, field_type, name, value, param={}):
         import wx
         _no_sharp = hex_string.__str__()[1:]
         import struct
-        (_r, _g, _b) = struct.unpack('BBB', _no_sharp.decode('hex'))
+        (_r, _g, _b) = struct.unpack("BBB", _no_sharp.decode("hex"))
         return wx.Colour(_r, _g, _b)
 
-    _prop = prop_grid.Append(field_type(name))
+    _prop = prop_grid.Append(
+        field_type(label, pack_prop_name(tag, label))
+    )
     if value is None:
         _prop.SetValueToUnspecified()
     elif param.get(value):
@@ -49,9 +66,11 @@ def c_colour(prop_grid, field_type, name, value, param={}):
         _prop.SetValue(hex_to_color(value))
     return _prop
 
-def c_list(prop_grid, field_type, name, value, param={}):
+def c_list(prop_grid, field_type, tag, label, value, param={}):
     """List of properties"""
-    return prop_grid.Append(field_type(value, prop_grid, name))
+    return prop_grid.Append(
+        field_type(value, prop_grid, label, pack_prop_name(tag, label))
+    )
 
 #----------------------------Back Conversion Functions-------------------------
 def by_val(prop, res_type):

@@ -558,6 +558,10 @@ class ListProperty(wxpg.PyLongStringProperty):
         self.SetValue(value)
         self.prop_grid = prop_grid
 
+    def GetEditor(self):
+        # Set editor to have button
+        return "TextCtrlAndButton"
+
     def GetClassName(self):
         return self.__class__.__name__
 

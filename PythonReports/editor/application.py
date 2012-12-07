@@ -1,5 +1,6 @@
 """PythonReports Template Editor application"""
 
+from cStringIO import StringIO
 import os
 import sys
 
@@ -9,10 +10,28 @@ from mainform import EditorForm
 import templateloader, templatesaver
 import utils
 
+NEW_REPORT_TEMPLATE = """<report>
+ <font name="body" typeface="Arial" size="8" />
+ <layout pagesize="A4" leftmargin="2.5cm" rightmargin="1.5cm"
+  topmargin="1.5cm" bottommargin="1.5cm">
+  <style font="body" color="0" bgcolor="white" />
+  <header><box height="20" /></header>
+  <footer><box height="20" /></footer>
+  <title><box height="20" /></title>
+  <summary><box height="20" /></summary>
+  <detail><box height="20" /></detail>
+ </layout>
+</report>
+"""
+
 class EditorApplication(wx.App):
     """Main class, environment of editor"""
 
+    # Wildcards for File Open and Save As dialogs
+    FILE_WILDCARDS = "Template files (*.prt)|*.prt|All files|*.*"
+
     last_directory = None
+    filename = None
 
     def __init__(self, *args, **kwargs):
         wx.App.__init__(self, *args, **kwargs)
@@ -108,16 +127,22 @@ class EditorApplication(wx.App):
             if _dlg_result != wx.ID_OK:
                 return
 
+        self.filename = None
         self.focus_remove()
         self.frame.workspace.create_new_report()
-        self.focus_set(self.frame.workspace.get_report())
+        _report = self.frame.workspace.get_report()
+        _template = templateloader.load_template_file(
+            StringIO(NEW_REPORT_TEMPLATE))
+        templateloader.load_template(_template, _report)
+        self.focus_set(_report)
 
     def report_open(self, filename=None):
         """Show dialog and open template in workspace"""
 
         if not filename:
             _dlg = wx.FileDialog(self.frame, "Choose a template file",
-                self.last_directory or os.getcwd(), "", "*.*", wx.OPEN)
+                self.last_directory or os.getcwd(), "",
+                self.FILE_WILDCARDS, wx.OPEN)
             if _dlg.ShowModal() == wx.ID_OK:
                 filename = _dlg.GetPath()
                 _dlg.Destroy()
@@ -137,9 +162,15 @@ class EditorApplication(wx.App):
         _report = self.frame.workspace.get_report()
         templateloader.load_template(_template, _report)
         self.focus_set(_report)
+        self.filename = filename
 
-    def report_save(self, filename=None):
-        """Show dialog and save template from workspace"""
+    def report_save_file(self, filename=None):
+        """Save template from the workspace
+
+        If output file name is omitted or empty,
+        open "Save As..." file selection dialog.
+
+        """
 
         _report = self.frame.workspace.get_report()
         if not _report:
@@ -147,7 +178,8 @@ class EditorApplication(wx.App):
 
         if not filename:
             _dlg = wx.FileDialog(self.frame, "Choose a template file",
-                self.last_directory or os.getcwd(), "", "*.*", wx.SAVE)
+                self.last_directory or os.getcwd(), self.filename or "",
+                self.FILE_WILDCARDS, wx.SAVE)
             if _dlg.ShowModal() == wx.ID_OK:
                 filename = _dlg.GetPath()
                 _dlg.Destroy()
@@ -157,11 +189,17 @@ class EditorApplication(wx.App):
 
         try:
             templatesaver.save_template_file(_report, filename)
+            self.filename = filename
         except Exception, _ex:
+            self.filename = None
             #TODO: add user friendly error reporting here
             print "Error saving template file", _ex
             raise
         self.last_directory = os.path.abspath(os.path.dirname(filename))
+
+    def report_save(self):
+        """Save template from workspace"""
+        self.report_save_file(self.filename)
 
     def app_close(self):
         """Close this application"""

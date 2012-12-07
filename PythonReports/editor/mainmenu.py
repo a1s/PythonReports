@@ -1,8 +1,5 @@
 """Main menu of editor"""
-"""
-18-apr-2012 [kacah]   created
 
-"""
 import wx
 
 class MainMenu(wx.MenuBar):
@@ -11,6 +8,7 @@ class MainMenu(wx.MenuBar):
     new_id = wx.NewId()
     open_id = wx.NewId()
     save_id = wx.NewId()
+    save_as_id = wx.NewId()
     move_up_id = wx.NewId()
     move_down_id = wx.NewId()
     delete_id = wx.NewId()
@@ -22,11 +20,14 @@ class MainMenu(wx.MenuBar):
             (new_id, "&New\tCtrl+N", "Create new report", "self.OnNew"),
             (open_id, "&Open\tCtrl+O", "Open existing report", "self.OnOpen"),
             (save_id, "&Save\tCtrl+S", "Save current report", "self.OnSave"),
+            (save_as_id, "Save &As...", "Save current report under a new name",
+                "self.OnSaveAs"),
             None,
             (wx.ID_EXIT, "&Exit", "Exit the editor", "self.OnExit"),
         ]),
         ("&Edit", [
-            (move_up_id, "Move up\tCtrl+PgUp", "Move shape up", "self.OnMoveUp"),
+            (move_up_id, "Move up\tCtrl+PgUp", "Move shape up",
+                "self.OnMoveUp"),
             (move_down_id, "Move down\tCtrl+PgDown", "Move shape down", \
                 "self.OnMoveDown"),
             None,
@@ -105,6 +106,9 @@ class MainMenu(wx.MenuBar):
 
     def OnSave(self, evt):
         self.app.report_save()
+
+    def OnSaveAs(self, evt):
+        self.app.report_save_file()
 
     def OnDelete(self, evt):
         self.app.focus_delete()

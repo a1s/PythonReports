@@ -1,6 +1,24 @@
 PythonReports release history
 =============================
 
+version 0.6.1 (08-dec-2012)
+---------------------------
+
+Add variable calculation types "list", "set", and "chain".
+
+Support encryption for generated PDF.
+
+PDF page compression is on by default.
+
+Add report output and preview functions to the template editor.
+
+Errors in template expression evaluation raise ExpressionError with
+references to original exception, the expression, and template element.
+
+Fix row spacing for centered and right-aligned texts
+
+Various compatibility fixes.
+
 version 0.6.0 (16-nov-2012)
 ---------------------------
 

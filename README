@@ -22,9 +22,9 @@ PythonReports_ require Python_ version 2.4 or newer.  No support
 is planned for earlier Python versions.
 
 All parts of the PythonReports_ toolkit require the ElementTree_
-module.  Python 2.5 includes this module as part of the standard
-library.  Users of older Python versions can download separate
-distribution package from http://effbot.org/downloads/
+module.  Since version 2.5 Python includes this module as part of
+the standard library.  Users of older Python versions can download
+separate distribution package from http://effbot.org/downloads/
 (cElementTree_ add-on is highly recommended too).
 
 Requirements for printout_ rendering depend on selected frontend:
@@ -44,6 +44,12 @@ a report then it should be able to build a report too.
 Report template designer requires Tkinter with Tix_ support
 (standard Python installer for Windows includes Tix; on some
 platforms Tix must be installed separately).
+
+WYSIWIG template editor requires wxPython_.  For wxPython versions
+prior to 2.9 wxPropertyGrid_ must be installed as a separate module [*]_.
+
+.. [*] **Note**: the first Windows installer on the `wxPropertyGrid
+   download page`_ installs source code only; scroll down for binaries.
 
 ===========
 Quick Start
@@ -66,6 +72,8 @@ that can serve as their API usage example.
 .. _Python Imaging Library:
 .. _PIL: http://www.pythonware.com/products/pil/
 .. _wxPython: http://www.wxpython.org/
+.. _wxPropertyGrid: http://wxpropgrid.sourceforge.net/
+.. _wxPropertyGrid download page: http://wxpropgrid.sourceforge.net/cgi-bin/index?page=download
 .. _Tix: http://tix.sourceforge.net/
 .. _test script: http://pythonreports.cvs.sourceforge.net/pythonreports/PythonReports/test/test_build.py?view=markup
 

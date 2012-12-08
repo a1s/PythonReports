@@ -1,10 +1,5 @@
 """Saver for PythonReports xml template from editor"""
-"""
-18-may-2012 [kacah]    fixed minidom's method writexml
-17-may-2012 [kacah]    fixed bug with unicode in String type
-20-apr-2012 [kacah]    created
 
-"""
 try:
     # preferred to pure python because it's faster
     import cElementTree as xmllib
@@ -68,10 +63,11 @@ minidom.Element.writexml = writexml_patch
 
 def save_template_file(report, file_name):
     """Save report to given filename as xml template. Path must exist."""
-
     _xml_template = create_xml_template(report)
-
-    _simple_string = xmllib.tostring(_xml_template,
+    _xml_template.write(file_name)
+    # FIXME: remaining lines and supporting functions seem to be unneeded
+    return
+    _simple_string = xmllib.tostring(_xml_template.getroot(),
         encoding=FILE_ENCODING)
 
     _pretty_string = minidom.parseString(_simple_string).toprettyxml()
@@ -84,7 +80,7 @@ def create_xml_template(report):
 
     _xml_report = xmllib.Element(te.Report.tag)
     save_xml_report(report, _xml_report)
-    return _xml_report
+    return datatypes.ElementTree(te.Report, _xml_report)
 
 def save_xml_report(report, xml_report):
     """Save data from reports to xml_report element"""
@@ -114,7 +110,7 @@ def save_main_headers(report, xml_layout):
         _xml_section = \
             save_one_of_pair(eval(_header[1]), report, xml_layout, _header[0])
 
-        #if has section and has swap flag and shap flag is set to True 
+        #if has section and has swap flag and shap flag is set to True
         if _xml_section is not None and _header[2] \
         and report.get_value("headers", _header[2]):
             _xml_section.set(_header[2], "True")
@@ -161,9 +157,9 @@ def save_section_pair(section_pair, xml_elmnt, pair_names):
 
 def save_one_of_pair(report_section, section_pair, xml_parent, xml_section_tag):
     """Save report section to xml section as part of header/footer pair
-    
+
     @return: created xml_section or None
-    
+
     """
     if section_pair.get_value("headers", xml_section_tag):
         _xml_section = xmllib.SubElement(xml_parent, xml_section_tag)

@@ -14,6 +14,9 @@ class MainMenu(wx.MenuBar):
     delete_id = wx.NewId()
     zoom_in_id = wx.NewId()
     zoom_out_id = wx.NewId()
+    preview_id = wx.NewId()
+    write_prp_id = wx.NewId()
+    write_pdf_id = wx.NewId()
 
     MENUS = [
         ("&File", [
@@ -39,6 +42,16 @@ class MainMenu(wx.MenuBar):
                 "self.OnZoomIn"),
             (zoom_out_id, "Zoom &Out\tCtrl+Num -", "Zoom out workspace", \
                 "self.OnZoomOut"),
+        ]),
+        ("&Run", [
+            (preview_id, "Pre&view", "Open Report Preview window",
+                "self.OnPreview"),
+            (write_prp_id, "Write &XML...",
+                "Build Report Printout for shell data and save to an XML file",
+                "self.OnWritePrp"),
+            (write_pdf_id, "Write &PDF...",
+                "Build Report Printout for shell data and save to PDF file",
+                "self.OnWritePdf"),
         ]),
         ("&Help", [
             (wx.ID_ABOUT, "About", "About the editor", "self.OnAbout"),
@@ -79,6 +92,8 @@ class MainMenu(wx.MenuBar):
         (_id, _title, _help, _bind) = params
 
         _menu_item = main_menu.Append(_id, _title, _help)
+        # FIXME: the binging specs should be method names,
+        # not eval() expressions
         frame.Bind(wx.EVT_MENU, eval(_bind), _menu_item)
 
     def create_separator(self, main_menu):
@@ -118,3 +133,14 @@ class MainMenu(wx.MenuBar):
 
     def OnMoveDown(self, evt):
         self.app.focus_move_down()
+
+    def OnPreview(self, evt):
+        self.app.report_preview()
+
+    def OnWritePrp(self, evt):
+        self.app.report_write_printout()
+
+    def OnWritePdf(self, evt):
+        self.app.report_write_pdf()
+
+# vim: set et sts=4 sw=4 :

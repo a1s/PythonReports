@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 """PythonReports Template Editor application"""
 
 from cStringIO import StringIO
@@ -5,6 +6,9 @@ import os
 import sys
 
 import wx
+
+from PythonReports import wxPrint, pdf
+from PythonReports.builder import Builder
 
 from mainform import EditorForm
 import templateloader, templatesaver
@@ -177,16 +181,10 @@ class EditorApplication(wx.App):
             return
 
         if not filename:
-            _dlg = wx.FileDialog(self.frame, "Choose a template file",
-                self.last_directory or os.getcwd(), self.filename or "",
-                self.FILE_WILDCARDS, wx.SAVE)
-            if _dlg.ShowModal() == wx.ID_OK:
-                filename = _dlg.GetPath()
-                _dlg.Destroy()
-            else:
-                _dlg.Destroy()
+            filename = self.get_output_file_name("Choose a template file",
+                self.FILE_WILDCARDS, self.filename)
+            if not filename:
                 return
-
         try:
             templatesaver.save_template_file(_report, filename)
             self.filename = filename
@@ -200,6 +198,128 @@ class EditorApplication(wx.App):
     def report_save(self):
         """Save template from workspace"""
         self.report_save_file(self.filename)
+
+    def report_build(self):
+        """Build and return printout for open template"""
+        _data = self.get_report_data()
+        _report = self.frame.workspace.get_report()
+        if (_data is None) or not _report:
+            return None
+        _template = templatesaver.create_xml_template(_report)
+        _template.validate()
+        return Builder(_template).run(_data)
+
+    def report_preview(self):
+        """Build report printout and display it in a preview frame"""
+        _printout = self.report_build()
+        if not _printout:
+            return
+        _printout.validate()
+        _preview = wxPrint.Preview(_printout)
+        if self.filename:
+            _title = "%s preview" % os.path.basename(self.filename)
+        else:
+            _title = "Report preview"
+        if self.frame.IsMaximized():
+            _size = wx.Size(800, 600)
+        else:
+            _size = self.frame.GetSize()
+        _frame = wx.PreviewFrame(_preview, self.frame, _title, size=_size)
+        _frame.Initialize()
+        _frame.Show(True)
+
+    def report_write_printout(self):
+        """Build report printout and save it in a disk file"""
+        _filename = self.get_output_file_name("Save As",
+            "Report Printout files (*.prp)|*.prp|All files|*.*",
+            self.filename, "prp")
+        if _filename:
+            _printout = self.report_build()
+            if _printout:
+                _printout.validate()
+                _printout.write(_filename)
+
+    def report_write_pdf(self):
+        """Build report printout and write PDF output"""
+        _filename = self.get_output_file_name("Save As",
+            "PDF files|*.pdf|All files|*.*", self.filename, "pdf")
+        if _filename:
+            _printout = self.report_build()
+            if _printout:
+                _printout.validate()
+                pdf.write(_printout, _filename)
+
+    def get_output_file_name(self, title, wildcard, default, setext=None):
+        """Open "Save As" file dialog, return file path or C{None}
+
+        @param title: title string for the file dialog.
+
+        @param wildcard: file selection wildcards.
+
+        @param default: default file name.
+
+        @param setext: output file extension.
+
+            If passed, extension of the default file name (if any)
+            is changed to this string.
+
+        @return: file name selected in the file dialog.
+
+            If the dialog is cancelled, return C{None}.
+
+        """
+        if default:
+            _filename = default
+            if setext:
+                _filename = os.path.splitext(_filename)[0] + "." + setext
+        else:
+            _filename = ""
+        _dlg = wx.FileDialog(self.frame, title,
+            self.last_directory or os.getcwd(), _filename, wildcard, wx.SAVE)
+        if _dlg.ShowModal() == wx.ID_OK:
+            _rv = _dlg.GetPath()
+        else:
+            _rv = None
+        _dlg.Destroy()
+        return _rv
+
+    def get_report_data(self):
+        """Return data sequence for report preview or output
+
+        If the report cannot be run, return C{None}
+
+        """
+        if not self.frame.workspace.get_report():
+            _dlg = wx.MessageDialog(self.frame, "No template loaded",
+                "Error", wx.ICON_EXCLAMATION | wx.OK)
+            _dlg.ShowModal()
+            _dlg.Destroy()
+            return
+        # get the data
+        _vars = self.frame.shell.interp.locals
+        _message = None
+        try:
+            _data = _vars["data"]
+        except KeyError:
+            _message = "Report data sequence is not defined.\n" \
+                "Please set \"data\" variable in the shell.\n\n" \
+                "Press <Ok> to run the report with empty sequence\n" \
+                "or <Cancel> to return to designer window."
+        else:
+            if not _data:
+                _message = "Report data sequence is empty.\n\n" \
+                    "Run the report anyway?"
+        if _message:
+            _dlg = wx.MessageDialog(self.frame, _message,
+                "Missing Report data",
+                wx.ICON_EXCLAMATION | wx.OK | wx.CANCEL)
+            _rv = _dlg.ShowModal()
+            _dlg.Destroy()
+            if _rv == wx.ID_OK:
+                _data = ()
+            else:
+                return None
+        return _data
 
     def app_close(self):
         """Close this application"""

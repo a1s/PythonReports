@@ -1,11 +1,4 @@
 """Visual design elements, that can be placed in section"""
-"""
-16-jun-2012 [als]   Fix resource paths
-13-apr-2012 [kacah] Added Line, Rectangle, Image, Barcode
-11-apr-2012 [kacah] Subreport moved to section.py, added EventsHandler,
-                    added DesignPlace, added Field
-03-apr-2012 [kacah] created, added Subreport
-"""
 
 import os
 import re
@@ -493,7 +486,7 @@ class Field(ShapeBase, wxogl.TextShape):
 
         #TODO: Apply font from active style
         _font = wx.Font(DEFAULT_FONT_SIZE * self.app.zoom_get(),
-            wx.NORMAL, wx.NORMAL, wx.NORMAL)
+            wx.FONTFAMILY_DEFAULT, wx.NORMAL, wx.NORMAL)
         dc.SetFont(_font)
 
         _format_string = self.get_value("field", "format")

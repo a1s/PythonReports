@@ -20,41 +20,41 @@ class MainMenu(wx.MenuBar):
 
     MENUS = [
         ("&File", [
-            (new_id, "&New\tCtrl+N", "Create new report", "self.OnNew"),
-            (open_id, "&Open\tCtrl+O", "Open existing report", "self.OnOpen"),
-            (save_id, "&Save\tCtrl+S", "Save current report", "self.OnSave"),
-            (save_as_id, "Save &As...", "Save current report under a new name",
-                "self.OnSaveAs"),
+            (new_id, "&New\tCtrl+N", "Create new report", "OnNew"),
+            (open_id, "&Open\tCtrl+O", "Open existing report", "OnOpen"),
+            (save_id, "&Save\tCtrl+S", "Save current report", "OnSave"),
+            (save_as_id, "Save &As...",
+                "Save current report under a new name", "OnSaveAs"),
             None,
-            (wx.ID_EXIT, "&Exit", "Exit the editor", "self.OnExit"),
+            (wx.ID_EXIT, "&Exit", "Exit the editor", "OnExit"),
         ]),
         ("&Edit", [
-            (move_up_id, "Move up\tCtrl+PgUp", "Move shape up",
-                "self.OnMoveUp"),
-            (move_down_id, "Move down\tCtrl+PgDown", "Move shape down", \
-                "self.OnMoveDown"),
+            (move_up_id, "Move up\tCtrl+PgUp",
+                "Move shape up", "OnMoveUp"),
+            (move_down_id, "Move down\tCtrl+PgDown",
+                "Move shape down", "OnMoveDown"),
             None,
-            (delete_id, "&Delete\tDelete", "Delete current element", \
-                "self.OnDelete"),
+            (delete_id, "&Delete\tDelete",
+                "Delete current element", "OnDelete"),
         ]),
         ("&View", [
-            (zoom_in_id, "Zoom &In\tCtrl+Num +", "Zoom in workspace", \
-                "self.OnZoomIn"),
-            (zoom_out_id, "Zoom &Out\tCtrl+Num -", "Zoom out workspace", \
-                "self.OnZoomOut"),
+            (zoom_in_id, "Zoom &In\tCtrl+Num +",
+                "Zoom in workspace", "OnZoomIn"),
+            (zoom_out_id, "Zoom &Out\tCtrl+Num -",
+                "Zoom out workspace", "OnZoomOut"),
         ]),
         ("&Run", [
             (preview_id, "Pre&view", "Open Report Preview window",
-                "self.OnPreview"),
+                "OnPreview"),
             (write_prp_id, "Write &XML...",
                 "Build Report Printout for shell data and save to an XML file",
-                "self.OnWritePrp"),
+                "OnWritePrp"),
             (write_pdf_id, "Write &PDF...",
                 "Build Report Printout for shell data and save to PDF file",
-                "self.OnWritePdf"),
+                "OnWritePdf"),
         ]),
         ("&Help", [
-            (wx.ID_ABOUT, "About", "About the editor", "self.OnAbout"),
+            (wx.ID_ABOUT, "About", "About the editor", "OnAbout"),
         ]),
     ]
 
@@ -74,7 +74,6 @@ class MainMenu(wx.MenuBar):
         wx.MenuBar.__init__(self)
 
         self.app = wx.GetApp()
-
         for _top_menu in self.MENUS:
             _main_menu = wx.Menu()
             for _menu in _top_menu[1]:
@@ -83,22 +82,16 @@ class MainMenu(wx.MenuBar):
                 else:
                     self.create_separator(_main_menu)
             self.Append(_main_menu, _top_menu[0])
-
         main_frame.SetAcceleratorTable(self.shortcuts)
 
     def create_simple_menu(self, frame, main_menu, params):
         """Create simple clickable menu item"""
-
-        (_id, _title, _help, _bind) = params
-
+        (_id, _title, _help, _handler) = params
         _menu_item = main_menu.Append(_id, _title, _help)
-        # FIXME: the binging specs should be method names,
-        # not eval() expressions
-        frame.Bind(wx.EVT_MENU, eval(_bind), _menu_item)
+        frame.Bind(wx.EVT_MENU, getattr(self, _handler), _menu_item)
 
     def create_separator(self, main_menu):
         """Create separator item"""
-
         main_menu.AppendSeparator()
 
     def OnExit(self, evt):

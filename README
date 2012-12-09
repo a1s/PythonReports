@@ -75,7 +75,7 @@ that can serve as their API usage example.
 .. _wxPropertyGrid: http://wxpropgrid.sourceforge.net/
 .. _wxPropertyGrid download page: http://wxpropgrid.sourceforge.net/cgi-bin/index?page=download
 .. _Tix: http://tix.sourceforge.net/
-.. _test script: http://pythonreports.cvs.sourceforge.net/pythonreports/PythonReports/test/test_build.py?view=markup
+.. _test script: http://pythonreports.bzr.sourceforge.net/bzr/pythonreports/annotate/head%3A/test/test_build.py
 
 .. |Python(r)| unicode:: Python U+00AE
 

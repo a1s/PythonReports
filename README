@@ -63,8 +63,8 @@ that can serve as their API usage example.
 .. _External hyperlink targets:
 
 .. _PythonReports: http://pythonreports.sourceforge.net/
-.. _template: http://pythonreports.sourceforge.net/prt.html
-.. _printout: http://pythonreports.sourceforge.net/prp.html
+.. _template: http://pythonreports.sourceforge.net/prt.shtml
+.. _printout: http://pythonreports.sourceforge.net/prp.shtml
 .. _Python: http://www.python.org/
 .. _ElementTree: http://effbot.org/zone/element-index.htm
 .. _cElementTree: http://effbot.org/zone/celementtree.htm

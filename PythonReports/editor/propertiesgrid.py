@@ -437,28 +437,66 @@ class ListPropertyValue(object):
         """Element in property list"""
 
         elem_id = 0
+        tag = name = None
 
         def __init__(self, tag, attributes, parent_list_value):
             """Use only one category - element self"""
-
             PropertiesListener.__init__(self)
-
             if attributes:
                 self.add_attr_ONE(tag, attributes)
-
             self.id = self.generate_id()
-            self.name = "%s %s" % (tag, self.id)
+            self.tag = tag
             self.parent_list_value = parent_list_value
+            self.update_name()
 
         @classmethod
         def generate_id(cls):
-            """Generate unique name for this element. Good for recognizing it"""
-
+            """Generate unique id for each element"""
             cls.elem_id += 1
             return cls.elem_id
 
+        def update_name(self):
+            """Recalculate self.name when contents are changed"""
+            _props = self.properties[self.tag]
+            _title = self.tag.capitalize()
+            # _props contain {attr: (value, class, default)}
+            if _title in ("Arg", "Data", "Group", "Parameter", "Variable"):
+                _name = _props["name"][0]
+                if _name:
+                    self.name = "%s \"%s\"" % (_title, _name)
+                else:
+                    self.name = "%s %s" % (_title, self.id)
+            elif _title == "Eject":
+                self.name = "Eject %s (%s)" % (self.id, _props["type"][0])
+            elif _title == "Font":
+                _attrs = dict((_attr, _props[_attr][0])
+                    for _attr in ("name", "typeface", "size"))
+                for (_attr, _mark) in (
+                    ("bold", "b"), ("italic", "i"), ("underline", "u"),
+                ):
+                    if _props[_attr][0]:
+                        _attrs[_attr] = _mark
+                    else:
+                        _attrs[_attr] = ""
+                self.name = "Font \"%(name)s\"" \
+                    " (%(size)s%(bold)s%(italic)s%(underline)s:%(typeface)s)" \
+                    % _attrs
+            elif _title == "Import":
+                self.name = "import %s" % _props["path"][0]
+            elif _title == "Style":
+                _font = _props["font"][0]
+                if _font:
+                    self.name = "Style %s (Font: %s)" % (self.id, _font)
+                else:
+                    self.name = "Style %s" % self.id
+            elif _title == "Subreport":
+                self.name = "Subreport \"%s\"" % (_props["template"][0])
+            else:
+                self.name = "%s %s" % (_title, self.id)
+
         def after_property_changed(self, category, prop_name):
             """Overrided from PropertiesListener"""
+            self.update_name()
             self.parent_list_value.fire_parent_update()
 
 

@@ -2242,7 +2242,7 @@ class Builder(object):
                 _frame.x = _xpos
                 _frame.column = 0
         # print all headers
-        for _frame in _eject_frames:
+        for _frame in reversed(_eject_frames):
             self.add_section(self.build_section(_frame.header))
 
     def register_eval(self, element):

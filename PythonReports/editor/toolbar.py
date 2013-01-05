@@ -1,8 +1,4 @@
 """Toolbars for editor"""
-"""
-16-jun-2012 [als]   use Glyphicons
-04-apr-2012 [kacah] created
-"""
 
 import wx
 import wx.lib.agw.aui as wxaui
@@ -14,10 +10,10 @@ class FileToolbar(wxaui.AuiToolBar):
     """ToolBar for file operations - Open, Save, New"""
 
     TOOLS = [
-        (1, "New", "glyphicons_036_file.png", "New template", "self.OnNew"),
-        (2, "Open", "glyphicons_359_file_export.png", "Open template",
+        (1, "New", "glyphicons_036_file", "New template", "self.OnNew"),
+        (2, "Open", "glyphicons_359_file_export", "Open template",
             "self.OnOpen"),
-        (3, "Save", "glyphicons_358_file_import.png", "Save template",
+        (3, "Save", "glyphicons_358_file_import", "Save template",
             "self.OnSave"),
     ]
 
@@ -50,17 +46,17 @@ class VisualToolbar(wxaui.AuiToolBar):
 
     TOOLS = [
         (DESIGN_TOOLS["Select"], "Select",
-            "glyphicons_099_vector_path_all.png", "Select elements"),
+            "glyphicons_099_vector_path_all", "Select elements"),
         (DESIGN_TOOLS["Field"], "Field",
-            "glyphicons_104_text.png", "Create field"),
+            "glyphicons_104_text", "Create field"),
         (DESIGN_TOOLS["Line"], "Line",
-            "glyphicons_097_vector_path_line.png", "Create line"),
+            "glyphicons_097_vector_path_line", "Create line"),
         (DESIGN_TOOLS["Rectangle"], "Rectangle",
-            "glyphicons_094_vector_path_square.png", "Create rectangle"),
+            "glyphicons_094_vector_path_square", "Create rectangle"),
         (DESIGN_TOOLS["Image"], "Image",
-            "glyphicons_159_picture.png", "Create image"),
+            "glyphicons_159_picture", "Create image"),
         (DESIGN_TOOLS["Barcode"], "Barcode",
-            "glyphicons_259_barcode.png", "Create barcode"),
+            "glyphicons_259_barcode", "Create barcode"),
     ]
 
     def __init__(self, parent):

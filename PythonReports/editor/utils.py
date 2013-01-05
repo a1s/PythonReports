@@ -6,6 +6,7 @@ import sys
 import wx
 
 import PythonReports.datatypes as datatypes
+import PythonReports.editor.pyrres as pyrres
 
 PT_TO_PIX = 0
 
@@ -75,7 +76,11 @@ def rotate90_bitmap(bitmap, clockwise):
 def get_resource_dir():
     return os.path.join(os.path.dirname(__file__), "res")
 
-ICONS_DIR = get_resource_dir()
+def get_resource_img(imgname):
+    return getattr(pyrres, imgname).GetImage()
+
+def get_resource_ico(iconame):
+    return getattr(pyrres, iconame).GetIcon()
 
 def get_icon(icon_name):
     """Get icon as bitmap by given filename
@@ -83,7 +88,6 @@ def get_icon(icon_name):
     @raise Exception: if not found or unknown file format
 
     """
-    _file = os.path.join(ICONS_DIR, icon_name)
-    return wx.Image(_file, wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+    return get_resource_img(icon_name).ConvertToBitmap()
 
 # vim: set et sts=4 sw=4 :

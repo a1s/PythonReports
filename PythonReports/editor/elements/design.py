@@ -276,8 +276,10 @@ class ShapeBase(Element):
         )
 
         for _point_id in range(8):
-            self._controlPoints[_point_id]._xoffset = POINT_OFFSETS[_point_id][0]
-            self._controlPoints[_point_id]._yoffset = POINT_OFFSETS[_point_id][1]
+            self._controlPoints[_point_id]._xoffset \
+                = POINT_OFFSETS[_point_id][0]
+            self._controlPoints[_point_id]._yoffset \
+                = POINT_OFFSETS[_point_id][1]
 
     def init_shape(self, parent_canvas, x, y, sync_box):
         """Setup settings for shape
@@ -409,7 +411,8 @@ class ShapeBase(Element):
             utils.dim_to_screen(self.get_value("box", "height")))
 
     def get_precise_rectangle(self):
-        """Get bounding box of line from properties - more precise than shapes"""
+        """Get bounding box of line from properties - more precise than shapes
+        """
 
         (_x, _y) = self.get_box_screen_coords()
         (_width, _height) = self.get_box_screen_dims()
@@ -638,6 +641,9 @@ class ResizableBitmapShape(wxogl.BitmapShape):
         self.rotate_bitmap()
         self.resize_bitmap()
 
+    def SetImage(self, image):
+        self.SetBitmap(wx.BitmapFromImage(image))
+
     def SetFilename(self, file_name, file_type=wx.BITMAP_TYPE_BMP):
         self.file_name = file_name
         _bitmap = wx.Image(file_name, file_type).ConvertToBitmap()
@@ -694,8 +700,8 @@ class ResizableBitmapShape(wxogl.BitmapShape):
             self.resize_bitmap()
 
 
-DEFAULT_IMAGE = os.path.join(utils.get_resource_dir(), "image_default.png")
-ERROR_IMAGE = os.path.join(utils.get_resource_dir(), "image_error.png")
+DEFAULT_IMAGE = utils.get_resource_img("image_default")
+ERROR_IMAGE = utils.get_resource_img("image_error")
 IMAGE_MAIN = te.Image
 
 class Image(ShapeBase, ResizableBitmapShape):
@@ -711,7 +717,7 @@ class Image(ShapeBase, ResizableBitmapShape):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, IMAGE_MAIN, DATA_ZERO_OR_ONE)
 
-        self.SetFilename(DEFAULT_IMAGE, wx.BITMAP_TYPE_PNG)
+        self.SetImage(DEFAULT_IMAGE)
         self.init_shape(parent_canvas, x, y, sync_box)
 
     def update_picture(self):
@@ -720,7 +726,7 @@ class Image(ShapeBase, ResizableBitmapShape):
         _file_name = self.get_value("image", "file")
 
         if _file_name is None or _file_name == "":
-            self.SetFilename(DEFAULT_IMAGE, wx.BITMAP_TYPE_PNG)
+            self.SetImage(DEFAULT_IMAGE)
         else:
             _type = self.get_value("image", "type")
 
@@ -730,7 +736,7 @@ class Image(ShapeBase, ResizableBitmapShape):
             try:
                 self.SetFilename(_file_name, self.TYPES_LINK[_type])
             except:
-                self.SetFilename(ERROR_IMAGE, wx.BITMAP_TYPE_PNG)
+                self.SetImage(ERROR_IMAGE)
 
         self.GetCanvas().Refresh(False)
 
@@ -743,7 +749,7 @@ class Image(ShapeBase, ResizableBitmapShape):
             self.update_picture()
 
 
-BARCODE_IMAGE = os.path.join(utils.get_resource_dir(), "barcode_default.png")
+BARCODE_IMAGE = utils.get_resource_img("barcode_default")
 BARCODE_MAIN = te.BarCode
 
 class Barcode(ShapeBase, ResizableBitmapShape):
@@ -756,7 +762,7 @@ class Barcode(ShapeBase, ResizableBitmapShape):
         ResizableBitmapShape.__init__(self)
         ShapeBase.__init__(self, BARCODE_MAIN, DATA_ZERO_OR_ONE)
 
-        self.SetFilename(BARCODE_IMAGE, wx.BITMAP_TYPE_PNG)
+        self.SetImage(BARCODE_IMAGE)
         self.init_shape(parent_canvas, x, y, sync_box)
 
     def get_box_screen_dims(self):

@@ -30,8 +30,7 @@ class EditorForm(wx.Frame):
             pos=wx.DefaultPosition, size=wx.Size(800, 600),
             style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
         _icon = wx.IconBundle()
-        _icon.AddIconFromFile(os.path.join(utils.get_resource_dir(),
-            "pythonreports.ico"), wx.BITMAP_TYPE_ANY)
+        _icon.AddIcon(utils.get_resource_ico("pythonreports"))
         self.SetIcons(_icon)
 
         wxogl.OGLInitialize()
@@ -71,17 +70,17 @@ class EditorForm(wx.Frame):
         self.aui_mgr.AddPane(self.shell, wxaui.AuiPaneInfo()
             .Name("Shell").Caption("Shell").Bottom()
             .CloseButton(False).MinimizeButton(True)
-            .Icon(utils.get_icon("137_computer_service.png")))
+            .Icon(utils.get_icon("img_137_computer_service")))
 
         self.aui_mgr.AddPane(self.property_grid, wxaui.AuiPaneInfo()
             .Name("PropGrid").Caption("Properties").Right()
             .CloseButton(False).MinimizeButton(True)
-            .Icon(utils.get_icon("properties.png")))
+            .Icon(utils.get_icon("properties")))
 
         self.aui_mgr.AddPane(self.elements_tree, wxaui.AuiPaneInfo()
             .Name("ElemTree").Caption("Elements").Left()
             .CloseButton(False).MinimizeButton(True)
-            .Icon(utils.get_icon("114_list.png")))
+            .Icon(utils.get_icon("img_114_list")))
 
         self.aui_mgr.AddPane(self.workspace, wx.CENTER)
         self.aui_mgr.AddPane(self.file_toolbar, wxaui.AuiPaneInfo().Name

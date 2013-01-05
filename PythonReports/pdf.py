@@ -111,6 +111,9 @@ class PdfWriter(object):
         self.canvas = canvas.Canvas(filepath, pageCompression=compression,
             pagesize=self.pagesize, encrypt=encrypt)
         for _page in self.report.findall("page"):
+            # PDF does not keep colors and pen size from previous page.
+            # Make sure we have proper values.
+            self.strokecolor = self.fillcolor = self.pen = None
             self.setPageSize(_page.get("width"), _page.get("height"))
             # draw elements
             for _item in _page:

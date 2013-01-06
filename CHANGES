@@ -1,6 +1,21 @@
 PythonReports release history
 =============================
 
+version 0.6.2 (06-jan-2013)
+---------------------------
+
+Fix PDF outuput: colours and pen size are lost after page feed.
+
+Fix: subreport page header appeared above main header.
+
+Visual template editor changes, thanks to Werner F. Bruhin:
+
+  - property list dialogs display human-readable titles for list items;
+
+  - icon and image resources embedded into Python code
+    for better compatibility with deployment tools like
+    py2exe or bbfreeze.
+
 version 0.6.1 (08-dec-2012)
 ---------------------------
 

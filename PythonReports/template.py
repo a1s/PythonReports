@@ -47,6 +47,15 @@ Import = Validator(tag="import",
     doc="Import a symbol from Python module into expression evaluation context"
 )
 
+Data = DataBlock(tag="data",
+    attributes={
+        "name": (String, None),
+        "pickle": (Boolean, False),
+        "compress": (Compress, None),
+        "encoding": (Encoding, None),
+        "expr": (Expression, None),
+    })
+
 def Style(tree, element, path):
     """Additional validator for "style" elements
 

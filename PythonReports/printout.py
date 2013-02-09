@@ -1,18 +1,4 @@
 """PythonReports Printout (PRP) structures"""
-"""History:
-05-dec-2006 [als]   style: imports come after version, date and exports
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-26-sep-2006 [als]   removed Text.bgcolor
-22-sep-2006 [als]   Rectangle: fix names of color attributes
-22-sep-2006 [als]   BarCode: X dimension is a number of mills
-13-sep-2006 [als]   BarCode: data child replaced by stripes attribute
-21-jul-2006 [als]   export "Data" and "Font" definitions (from datatypes)
-19-jul-2006 [als]   Element classes changed to element validators
-17-jul-2006 [als]   fix Page: missing tag
-10-jul-2006 [als]   created
-"""
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2011/11/25 10:01:56 $"[7:-2]
 
 __all__ = [
     "Text", "Line", "Rectangle", "Image", "BarCode",
@@ -33,6 +19,14 @@ Box = Validator(tag="box",
     i.e. text, line, rectangle and image.
 
     """)
+
+Data = DataBlock(tag="data",
+    attributes={
+        "name": (String, None),
+        "pickle": (Boolean, False),
+        "compress": (Compress, None),
+        "encoding": (Encoding, None),
+    })
 
 Text = Validator(tag="text",
     attributes={

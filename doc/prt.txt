@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.6.1
-:Date: 16-nov-2012
+:Version: 0.6.3
+:Date: 09-feb-2013
 
 .. TODO: variables iterated at start of section
 
@@ -365,6 +365,13 @@ Attributes:
                                   Python object.
 ``compress``       O    string    ``zlib`` or ``bz2``.
 ``encoding``       O    string    ``base64``, ``uu`` or ``qp``.
+``expr``           O    expr      Expression used to compute value.
+                                  The expression is evaluated in current
+                                  builder context and takes precedence
+                                  over the body text of the ``data``
+                                  element.  With ``expr``, attributes
+                                  ``pickle``, ``compress`` and
+                                  ``encoding`` are ignored.
 ================= ===== ========= ======================================
 
 .. [#d] Optional when immediate parent element is `field`_, `image`_

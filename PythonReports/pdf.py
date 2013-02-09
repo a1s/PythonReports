@@ -65,7 +65,7 @@ class PdfWriter(object):
             self.handlers["image"] = self.drawImage
             _images = {}
             for _element in self.report.findall("data"):
-                _data = StringIO(Data.get_data(_element))
+                _data = StringIO(prp.Data.get_data(_element))
                 # data blocks may be used for other purposes too.
                 # if PIL says it's not an image, skip it.
                 try:
@@ -299,7 +299,7 @@ class PdfWriter(object):
         _scale = image.get("scale", True)
         # actually, builder embeds all images into the printout
         if image.find("data") is not None:
-            _data = StringIO(Data.get_data(image.find("data")))
+            _data = StringIO(prp.Data.get_data(image.find("data")))
             _img = Image.open(_data)
         elif image.get("data"):
             _img = self.named_images[image.get("data")]

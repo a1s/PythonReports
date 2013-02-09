@@ -663,11 +663,11 @@ class Section(list):
         _expr = _template.get("expr")
         if _expr:
             if _template.get("evaltime") and (_data is not None):
-                _value = Data.get_data(_data)
+                _value = prt.Data.get_data(_data, context)
             else:
                 _value = context.eval(_expr, self.template)
         elif _data is not None:
-            _value = Data.get_data(_data)
+            _value = prt.Data.get_data(_data, context)
         else:
             _value = None
         if _value is None:
@@ -1010,13 +1010,13 @@ class Section(list):
             # add content (text and images)
             if _template.tag == "field":
                 # TODO: encoding, compression
-                Data.make_element(_prp_element, {}, _element.otext)
+                prp.Data.make_element(_prp_element, {}, _element.otext)
             elif (_template.tag == "image"):
                 _image = _element.image
                 if not _image.name \
                 and ((not _image.filepath) or _template.get("embed")):
                     # bitmap is kept in an anonymous data block
-                    Data.make_element(_prp_element, data=_image.getdata(),
+                    prp.Data.make_element(_prp_element, data=_image.getdata(),
                         attrib={"name": _image.name, "encoding": "base64"})
 
     @staticmethod
@@ -1299,10 +1299,12 @@ class Builder(object):
                 # to have clearly identifiable error source
                 # when _name is not in the datablocks collection.
                 _imgdata = self.template.datablocks[_name]
-                _imgdata = Data.get_data(_imgdata)
+                _imgdata = prt.Data.get_data(_imgdata, self.context)
                 _image = self.image_driver_factory.fromdata(
                     _imgdata, img_type=_type, name=_name)
-                self.images_named[_name] = _image
+                # cache named images unless data is dynamic
+                if not _imgdata.get("expr"):
+                    self.images_named[_name] = _image
                 self.images_loaded[_imgdata] = _image
                 return _image
         # unnamed data block (child of the image element)
@@ -1313,7 +1315,7 @@ class Builder(object):
             if _imgdata not in self.images_loaded:
                 self.images_loaded[_imgdata] = _image
         else:
-            _imgdata = Data.get_data(_data)
+            _imgdata = prt.Data.get_data(_data, self.context)
             if _imgdata not in self.images_loaded:
                 _image = self.image_driver_factory.fromdata(_imgdata,
                     img_type=_type)

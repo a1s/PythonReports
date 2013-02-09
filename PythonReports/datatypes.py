@@ -270,6 +270,23 @@ class DuplicateElement(XmlValidationError):
             "Duplicate name '%s' in %s" % (name, collection),
             element=element, path=path)
 
+class MissingContextError(XmlValidationError):
+
+    """Context not provided for expression evaluation"""
+
+    def __init__(self, expr, element=None, path=None):
+        """Exception constructor
+
+        Parameters:
+            expr: expression being evaluated
+            element: XML tree element causing the exception
+            path: element path in the tree
+
+        """
+        XmlValidationError.__init__(self,
+            "Context not provided for data expression '%s'" % (expr),
+            element=element, path=path)
+
 class REQUIRED(object):
 
     """"Value is required" value
@@ -1083,7 +1100,7 @@ class Validator(object):
         else:
             writer.write("%s<%s />%s" % (indent, _starttag, newl))
 
-class _DataBlock(Validator):
+class DataBlock(Validator):
 
     """A block of data in report templates and printouts
 
@@ -1182,13 +1199,22 @@ class _DataBlock(Validator):
         return _elem
 
     @staticmethod
-    def get_data(element):
+    def get_data(element, context=None):
         """Return raw data from a DataBlock element
 
         Parameters:
             element: XML element of type "data"
+            context: expression evaluation context
+                for data blocks that have an "expr" attribute.
+                If "expr" attribute is set and context is None,
+                raise MissingContextError.
 
         """
+        _expr = element.get("expr")
+        if _expr:
+            if context is None:
+                raise MissingContextError(_expr, element)
+            return context.eval(_expr, element)
         _data = element.text
         # empty xml string is None dependless of encoding/compression/pickling
         if not _data:
@@ -1321,14 +1347,6 @@ class ElementTree(ET.ElementTree):
         return _stream.getvalue()
 
 ### elements common for templates and printouts
-
-Data = _DataBlock(tag="data",
-    attributes={
-        "name": (String, None),
-        "pickle": (Boolean, False),
-        "compress": (Compress, None),
-        "encoding": (Encoding, None),
-    })
 
 Font = Validator(tag="font",
     validate=Validator.Unique("fonts"),
@@ -1534,7 +1552,7 @@ class Box(object):
             id(self), self.x, self.y, self.width, self.height)
 
 # export constants and all non-private callables and constants
-__all__ = ["REQUIRED", "NOTHING", "Data", "Font"] + [
+__all__ = ["REQUIRED", "NOTHING", "Font"] + [
     _global_name for (_global_name, _global_item) in globals().items()
     if callable(_global_item) and not _global_name.startswith("_")
 ]

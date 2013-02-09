@@ -1,6 +1,11 @@
 PythonReports release history
 =============================
 
+version 0.6.3 (09-feb-2013)
+---------------------------
+
+Add "expr" attribute to template element "data".
+
 version 0.6.2 (06-jan-2013)
 ---------------------------
 

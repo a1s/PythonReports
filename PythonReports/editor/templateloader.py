@@ -1,8 +1,5 @@
 """Loader for PythonReports xml template into editor"""
-"""
-18-apr-2012 [kacah]   created
 
-"""
 from PythonReports import datatypes
 import PythonReports.template as te
 import wx
@@ -197,9 +194,9 @@ def load_main_validator(xml_elmnt, report_elmnt):
 
 def fix_element_changed(element, elem_type):
     """Fix elements that in editor are represented with other type.
-    
+
     @note: For example PenType changed to PenTypeExtended
-    
+
     """
     CHANGE_TABLE = {
         datatypes.PenType: PenTypeExtended,
@@ -219,7 +216,7 @@ def load_one_validator(xml_elmnt, report_elmnt, validator):
 
     if validator.tag in ELEMENTS_WITH_BODY:
         report_elmnt.set_value(validator.tag, Element.BODY_PROPERTY,
-            XmlBody(xml_elmnt.text.strip()))
+            XmlBody(xml_elmnt.text.strip() if xml_elmnt.text else ""))
 
 def load_list_validator(xml_parent, report_parent, validator):
     """Load all list properties from xml tree to report element"""

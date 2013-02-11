@@ -5,21 +5,6 @@ Warning: this module is malfunctional.  Print preview is badly broken
 due to wxDC limitations.  Printer output may be broken too.
 
 """
-"""History (most recent first):
-05-dec-2006 [als]   sweep pylint warnings;
-                    remove WrapLines - all texts must be wrapped by builder
-07-Nov-2006 [phd]   Added shebang.
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-20-oct-2006 [als]   added command-line application
-03-oct-2006 [als]   support images
-26-sep-2006 [als]   printout.Text does not use bgcolor
-22-sep-2006 [als]   added bar code drawing (not functional yet)
-06-sep-2006 [als]   disable text wrapping (must be properly wrapped in .prp);
-                    remove -1 offset at bottom right corner of line boxes
-30-aug-2006 [als]   ported from previous implementation
-"""
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 17:12:47 $"[7:-2]
 
 from cStringIO import StringIO
 import re
@@ -89,7 +74,8 @@ class Printout(wx.Printout):
                     _attrs[_attr] = _value
             _fonts[_name] = wx.Font(**_attrs)
         self.fonts = _fonts
-        self.imgdata = dict([(_element.get("name"), Data.get_data(_element))
+        self.imgdata = dict([
+            (_element.get("name"), prp.Data.get_data(_element))
             for _element in report.findall("data")])
 
     def GetPageInfo(self):
@@ -210,7 +196,7 @@ class Printout(wx.Printout):
                 if _data is None:
                     # XXX raise an error?
                     return
-                _data = Data.get_data(_data)
+                _data = prp.Data.get_data(_data)
             _img = wx.ImageFromStream(wx.InputStream(StringIO(_data)))
         _box = Box.from_element(image.find("box"))
         if image.get("scale"):

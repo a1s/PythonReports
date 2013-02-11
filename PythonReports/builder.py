@@ -2360,7 +2360,7 @@ class Builder(object):
                 # image data is converted to preferred type
                 # and stored in base64, without compression
                 # (both preferred types are compressed per se).
-                Data.make_element(_root, data=_image.getdata(),
+                prp.Data.make_element(_root, data=_image.getdata(),
                     attrib={"name": _image.name, "encoding": "base64"})
         # use layout element for page dimensions
         _layout = _template.find("layout")

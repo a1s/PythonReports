@@ -733,8 +733,11 @@ class TreeNodeData(list):
         self.properties = self._build_properties()
         # if this is data element, make a structure for contents editing
         if self.tag == "data":
-            self.data = Structure(node=self,
-                contents=Data.get_data(self.element),
+            try:
+                _contents = prt.Data.get_data(self.element)
+            except MissingContextError:
+                _contents = ""
+            self.data = Structure(node=self, contents=_contents,
                 filename="", filepath="")
         else:
             self.data = None
@@ -874,7 +877,7 @@ class TreeNodeData(list):
         self.updateAttributes()
         if self.data:
             _parent = self.parent.element
-            _new = Data.make_element(_parent,
+            _new = prt.Data.make_element(_parent,
                 self.element.attrib, self.data.contents)
             _parent.remove(self.element)
             self.element = _new

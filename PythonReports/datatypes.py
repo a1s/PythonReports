@@ -795,7 +795,7 @@ class PageSize(_Codes):
         "A3": (Dimension("297mm"), Dimension("420mm")),
         "A4": (Dimension("210mm"), Dimension("297mm")),
         "A5": (Dimension("148mm"), Dimension("210mm")),
-        "A6": (Dimension("105mm"), Dimension("297mm")),
+        "A6": (Dimension("105mm"), Dimension("148mm")),
         "B3": (Dimension("353mm"), Dimension("500mm")),
         "B4": (Dimension("250mm"), Dimension("353mm")),
         "B5": (Dimension("176mm"), Dimension("250mm")),

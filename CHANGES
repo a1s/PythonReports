@@ -6,6 +6,8 @@ version 0.6.4 (??-mar-2013)
 
 Fix page dimensions for paper size "A6".
 
+Allow to resize property dialogs in visual template editor.
+
 version 0.6.3 (09-feb-2013)
 ---------------------------
 

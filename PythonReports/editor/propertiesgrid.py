@@ -321,7 +321,9 @@ class ListPropertyDialog(wx.Dialog):
 
     def __init__(self, parent, value):
         wx.Dialog.__init__(self, parent=parent,
-            title="Edit list", size=self.DIALOG_SIZE)
+            title="Edit list", size=self.DIALOG_SIZE,
+            style=wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER)
+        self.SetMinSize(self.DIALOG_SIZE)
 
         self.value = value
 

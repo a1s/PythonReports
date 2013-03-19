@@ -8,6 +8,9 @@ Fix page dimensions for paper size "A6".
 
 Allow to resize property dialogs in visual template editor.
 
+Fix loading report group definition without title or summary
+into visual template editor.
+
 version 0.6.3 (09-feb-2013)
 ---------------------------
 

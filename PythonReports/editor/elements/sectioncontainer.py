@@ -1,8 +1,4 @@
 """Classes for groups and columns"""
-"""
-30-mar-2012 [kacah]   created
-
-"""
 
 import PythonReports.template as te
 from PythonReports import datatypes
@@ -80,6 +76,10 @@ class SectionPair(object):
     def get_second(self):
         """Get second element of pair"""
         return self.second
+
+    def items(self):
+        """Return a sequence containing both elements of the pair"""
+        return (self.first, self.second)
 
     def force_data_update(self):
         """Update all elements that are linked to report data"""

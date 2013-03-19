@@ -51,15 +51,13 @@ def load_main_headers(xml_layout, report):
 
     for _header in HEADERS_LINK:
         _xml_section = xml_layout.find(_header[0])
-
-        if _xml_section is not None:
-            load_one_of_pair(_xml_section, report, eval(_header[1]))
-
+        _found = (_xml_section is not None)
+        report.set_value("headers", _header[0], datatypes.Boolean(_found))
+        if _found:
+            load_section(_xml_section, eval(_header[1]))
             if  _header[2]:
                 report.set_value("headers", _header[2],
                     datatypes.Boolean(_xml_section.get(_header[2])))
-        else:
-            report.set_value("headers", _header[0], datatypes.Boolean(False))
 
 def load_columns(xml_layout, report):
     """Load data from xml_layout to columns element"""
@@ -106,21 +104,12 @@ def load_group(xml_group, group_parent):
 def load_section_pair(xml_elmnt, section_pair, pair_names):
     """Load header-footer or title-summary pair"""
 
-    load_one_of_pair(xml_elmnt.find(pair_names[0]), section_pair,
-        section_pair.get_first())
-    load_one_of_pair(xml_elmnt.find(pair_names[1]), section_pair,
-        section_pair.get_second())
-
-def load_one_of_pair(xml_section, section_pair, report_section):
-    """Load one of section pair sections"""
-
-    _has_section = xml_section is not None
-
-    section_pair.set_value("headers", xml_section.tag,
-        datatypes.Boolean(_has_section))
-
-    if _has_section:
-        load_section(xml_section, report_section)
+    for (_name, _report_section) in zip(pair_names, section_pair.items()):
+        _xml_section = xml_elmnt.find(_name)
+        _found = (_xml_section is not None)
+        section_pair.set_value("headers", _name, datatypes.Boolean(_found))
+        if _found:
+            load_section(_xml_section, _report_section)
 
 def load_section(xml_section, report_section):
     """Load data from xml section to report section"""
@@ -228,3 +217,5 @@ def load_list_validator(xml_parent, report_parent, validator):
     for _xml_elmnt in _xml_elements:
         _elmt = _list_property_value.add()
         load_one_validator(_xml_elmnt, _elmt, validator)
+
+# vim: set et sts=4 sw=4 :

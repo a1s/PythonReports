@@ -1299,13 +1299,13 @@ class Builder(object):
                 # to have clearly identifiable error source
                 # when _name is not in the datablocks collection.
                 _imgdata = self.template.datablocks[_name]
-                _imgdata = prt.Data.get_data(_imgdata, self.context)
+                _img_contents = prt.Data.get_data(_imgdata, self.context)
                 _image = self.image_driver_factory.fromdata(
-                    _imgdata, img_type=_type, name=_name)
+                    _img_contents, img_type=_type, name=_name)
                 # cache named images unless data is dynamic
                 if not _imgdata.get("expr"):
                     self.images_named[_name] = _image
-                self.images_loaded[_imgdata] = _image
+                self.images_loaded[_img_contents] = _image
                 return _image
         # unnamed data block (child of the image element)
         _data = element.find("data")

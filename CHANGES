@@ -13,6 +13,8 @@ into visual template editor.
 
 Fix error in loading images from named data blocks.
 
+Fix top margin in multi-column output.
+
 version 0.6.3 (09-feb-2013)
 ---------------------------
 

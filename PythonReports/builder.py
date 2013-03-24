@@ -2105,28 +2105,27 @@ class Builder(object):
         # without adding the section to the page
         self.page.append(section)
         self.cur_y = section.box.y + section.box.height
-        if section.template.tag in ("header", "title"):
-            # adjust top margin of all contained frames
-            # (new columns will start at this position)
-            #
-            # updating just one direct child is not enough:
-            #
-            # +-1-------------+
-            # |    header     |
-            # |+-2-----------+|
-            # ||+-3--+ +-3--+||
-            #
-            # we added header of frame 1.  it's direct child
-            # is frame 2, which contains no own sections but
-            # a child frame arranged for multi-column output.
-            # to have correct position after eject of frame 3
-            # we must update all embedded frames recursively.
-            # (perhaps just a grandchild would be enough too?)
-            #
-            _frame = self.section_frames[section.template].child
-            while _frame:
-                _frame.top = self.cur_y
-                _frame = _frame.child
+        # adjust top margin of all contained frames
+        # (new columns will start at this position)
+        #
+        # updating just one direct child is not enough:
+        #
+        # +-1-------------+
+        # |    header     |
+        # |+-2-----------+|
+        # ||+-3--+ +-3--+||
+        #
+        # we added header of frame 1.  its' direct child
+        # is frame 2, which contains no own sections but
+        # a child frame arranged for multi-column output.
+        # to have correct position after eject of frame 3
+        # we must update all embedded frames recursively.
+        # (perhaps just a grandchild would be enough too?)
+        #
+        _frame = self.section_frames[section.template].child
+        while _frame:
+            _frame.top = self.cur_y
+            _frame = _frame.child
         if section.subreports_after:
             self.run_subreport_collection(section.subreports_after,
                 self.section_frames[section.template])

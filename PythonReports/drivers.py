@@ -296,10 +296,32 @@ class TextDriver(object):
         """Return size tuple (width, height) for given text"""
         raise NotImplementedError
 
+    def _find_first_line(self, words, width):
+        """Find longest starting sequence of words fitting into width
+
+        This is private inner routine for L{wrap},
+        called with increasingly aggressive splitting patterns.
+
+        If a fitting sequence can be found, return pair
+        (text_line, number_of_words_consumed).  If even
+        the first word is not short enough, return (None, None)
+
+        """
+        # scan backwards while the line is too wide
+        _ii = len(words)
+        while _ii >= 1:
+            _line = "".join(words[:_ii]).rstrip()
+            _tw = self.getsize(_line)[0]
+            if _tw <= width:
+                return (_line, _ii)
+            _ii -= 1
+        return (None, None)
+
     # Note: not using "word character" matchers (e.g. \w)
     # because punctuation characters must be kept along
     # with words unless separated by blank space.
     _word_re = re.compile("\s*\S+\s*")
+    _word_re_ends = re.compile(".*?[])},.:;!?]")
     def wrap(self, text, width):
         """Wrap the text to given width
 
@@ -317,21 +339,30 @@ class TextDriver(object):
             return text
         # split text to words.  inter-word spaces go to previous word.
         _lines = []
+        # Normally, split by spaces
         _words = self._word_re.findall(text)
         while _words:
-            # scan backwards while the line is too wide
-            _ii = len(_words)
-            while _ii > 1:
-                _line = "".join(_words[:_ii]).rstrip()
-                _tw = self.getsize(_line)[0]
-                if _tw <= width:
-                    break
-                _ii -= 1
+            (_line, _ii) = self._find_first_line(_words, width)
+            if _ii is not None:
+                _words = _words[_ii:]
             else:
-                _line = _words[0].rstrip()
-            # move found line from _words to _lines
+                # Fit not found, try to find punctuation in the first word
+                _word = _words[0].rstrip()
+                if not _word:
+                    del _words[0]
+                    continue
+                _chunks = self._word_re_ends.findall(_word)
+                if _chunks:
+                    (_line, _ii) = self._find_first_line(_chunks, width)
+                if _ii is None:
+                    # Try separate characters
+                    (_line, _ii) = self._find_first_line(list(_word), width)
+                if _ii is None:
+                    # Even one character is too much; further we can't go
+                    _line = _word[:1]
+                # pop it out of the first word
+                _words[0] = _word[len(_line):]
             _lines.append(_line)
-            _words = _words[_ii:]
         return "\n".join(_lines)
 
     def chop(self, text, height):

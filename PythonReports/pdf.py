@@ -77,6 +77,7 @@ class PdfWriter(object):
             self.named_images = _images
         _fonts = {}
         _registered = set()
+        _rlfonts = {}
         for (_name, _font) in self.report.fonts.iteritems():
             _typeface = _font.get("typeface")
             _bold = _font.get("bold")
@@ -88,8 +89,17 @@ class PdfWriter(object):
             if _italic:
                 _facename += " Italic"
             if _facename not in _registered:
-                pdfmetrics.registerFont(ttfonts.TTFont(_facename,
-                    fonts.fontfile(_typeface, _bold, _italic)))
+                _fontfile = fonts.fontfile(_typeface, _bold, _italic)
+                _font = ttfonts.TTFont(_facename, _fontfile)
+                # XXX ReportLab cannot handle different fonts
+                # with same internal typeface name.
+                _rlname = _font.face.name + _font.face.subfontNameX
+                if _rlname in _rlfonts:
+                    # TODO: warning
+                    _facename = _rlfonts[_rlname]
+                else:
+                    pdfmetrics.registerFont(_font)
+                    _rlfonts[_rlname] = _facename
                 _registered.add(_facename)
             # leading is 120% of the font size
             _fonts[_name] = (_facename, _size, _size * 1.2)

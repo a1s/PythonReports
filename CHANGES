@@ -1,6 +1,11 @@
 PythonReports release history
 =============================
 
+version 0.6.5 (23-jun-2013)
+---------------------------
+
+Work around internal name clash for some fonts in PDF output.
+
 version 0.6.4 (24-mar-2013)
 ---------------------------
 

@@ -66,7 +66,7 @@ class HeaderButton(wxpltbns.PlateButton):
     def OnLeftDown(self, evt):
         """Change state to pressed"""
 
-        self.SetState(wxpltbns.PLATE_PRESSED)
+        self._SetState(wxpltbns.PLATE_PRESSED)
 
     def OnLeftUp(self, evt):
         """Just post button event"""
@@ -78,9 +78,9 @@ class HeaderButton(wxpltbns.PlateButton):
 
         self._pressed = need_hl
         if need_hl:
-            self.SetState(wxpltbns.PLATE_PRESSED)
+            self._SetState(wxpltbns.PLATE_PRESSED)
         else:
-            self.SetState(wxpltbns.PLATE_NORMAL)
+            self._SetState(wxpltbns.PLATE_NORMAL)
 
     def DoGetBestSize(self):
         """Header must not be auto resizable"""

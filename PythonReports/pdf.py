@@ -333,6 +333,10 @@ class PdfWriter(object):
         _content = text.find("data").text
         if not _content:
             return
+        # convert all newline sequences into '\n'
+        _content = _content.replace("\r\n", "\n") \
+            .replace("\n\r", "\n").replace("\r", "\n")
+
         _align = text.get("align")
         # if there is no active text object, make one
         if not self.textobject:

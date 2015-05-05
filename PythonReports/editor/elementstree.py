@@ -10,6 +10,7 @@ from elements.section import Section
 from elements.container import Container
 
 SELECTION_COLOR = "Black"
+BACKGROUND_COLOR = "White"
 
 class ElementsTree(wxctree.CustomTreeCtrl):
     """Tree control for displaying items"""
@@ -22,6 +23,7 @@ class ElementsTree(wxctree.CustomTreeCtrl):
 
         self.SetHilightFocusColour(SELECTION_COLOR)
         self.SetHilightNonFocusColour(SELECTION_COLOR)
+        self.SetBackgroundColour(BACKGROUND_COLOR)
 
         self.Bind(wx.EVT_TREE_SEL_CHANGED, self.OnItemActivated)
         self.Bind(wx.EVT_TREE_ITEM_EXPANDED, self.OnItemExpanded)
@@ -92,7 +94,7 @@ class ElementsTree(wxctree.CustomTreeCtrl):
         for _section in report.listeners_list:
             _tree_section = self.AppendItem(tree_root, _section.get_title())
             self.SetPyData(_tree_section, _section)
-            #check if this is really section. It may be button or something else. 
+            #check if this is really section. It may be button or something else.
             if isinstance(_section, Section):
                 self.build_section_items(_tree_section, _section)
 

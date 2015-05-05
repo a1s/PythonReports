@@ -16,6 +16,18 @@ from PythonReports import printout as prp
 from PythonReports import segment_layout
 from PythonReports.datatypes import *
 
+
+# Fix xml Element function for listing all children.
+# Since Python 2.7 Element.getchildren() is deprecated and raises
+# DeprecationWarning on use.
+if sys.version_info <= (2, 7):
+    def getchildren(item):
+        return item.getchildren()
+else:
+    def getchildren(item):
+        return list(item)
+
+
 class ExpressionError(RuntimeError):
 
     """A wrapper for errors raised by expression evaluation
@@ -691,7 +703,7 @@ class Section(list):
         # if the section is suppressed do nothing
         if not self.printable:
             return
-        _elements = self.template.getchildren()
+        _elements = getchildren(self.template)
         # section is resizeable if it's height is not fixed
         # then final size must be recalculated after filling
         self.resizeable = self.tbox.height <= 0
@@ -1330,7 +1342,7 @@ class Builder(object):
         while _descend:
             _next_level = []
             for _item in _descend:
-                for _child in _item.getchildren():
+                for _child in getchildren(_item):
                     if _child.tag in ("group", "columns"):
                         _next_level.append(_child)
                     if _child.tag in (

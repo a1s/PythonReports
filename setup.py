@@ -91,7 +91,7 @@ def run():
         #   have both filled.)
         maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
-            "Development Status :: 4 - Beta",
+            "Development Status :: 5 - Production/Stable",
             "Environment :: Win32 (MS Windows)",
             "Environment :: X11 Applications",
             "Intended Audience :: Developers",

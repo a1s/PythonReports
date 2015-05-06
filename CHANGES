@@ -1,6 +1,13 @@
 PythonReports release history
 =============================
 
+version 0.6.6 (06-may-2015)
+---------------------------
+
+Avoid DeprecationWarning from ElementTree in Python 2.7.
+
+Normalize newline sequences in PDF output.
+
 version 0.6.5 (23-jun-2013)
 ---------------------------
 

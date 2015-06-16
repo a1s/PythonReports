@@ -1,6 +1,11 @@
 PythonReports release history
 =============================
 
+version 0.6.7 (16-jun-2015)
+---------------------------
+
+Fix: "import" element failed to load multi-component paths.
+
 version 0.6.6 (06-may-2015)
 ---------------------------
 

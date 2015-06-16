@@ -348,10 +348,16 @@ class Context(object):
     def load_imports(self, report):
         """Process import declarations in given report ElementTree"""
         for _item in report.findall("import"):
-            _path = _item.get("path").split(".")
-            _module = __import__(_path[0])
-            for _name in _path[1:]:
-                _module = getattr(_module, _name)
+            # cast 'path' to str cause of __import__(fromlist) doesn't
+            # support unicode
+            _path = str(_item.get("path")).rsplit(".", 1)
+            if len(_path) > 1:
+                _module = __import__(_path[0], fromlist=[_path[1]])
+                _module = getattr(_module, _path[1])
+            else:
+                # support for single component paths
+                _module = __import__(_path[0])
+
             self.imports[_item.get("alias") or _path[-1]] = _module
 
 class ReportElement(Structure):

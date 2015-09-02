@@ -17,17 +17,6 @@ from PythonReports import segment_layout
 from PythonReports.datatypes import *
 
 
-# Fix xml Element function for listing all children.
-# Since Python 2.7 Element.getchildren() is deprecated and raises
-# DeprecationWarning on use.
-if sys.version_info <= (2, 7):
-    def getchildren(item):
-        return item.getchildren()
-else:
-    def getchildren(item):
-        return list(item)
-
-
 class ExpressionError(RuntimeError):
 
     """A wrapper for errors raised by expression evaluation

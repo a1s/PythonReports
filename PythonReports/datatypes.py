@@ -31,6 +31,16 @@ except ImportError:
 Element = ET.Element
 SubElement = ET.SubElement
 
+# Fix xml Element function for listing all children.
+# Since Python 2.7 Element.getchildren() is deprecated and raises
+# DeprecationWarning on use.
+if sys.version_info <= (2, 7):
+    def getchildren(item):
+        return item.getchildren()
+else:
+    def getchildren(item):
+        return list(item)
+
 # XXX This is not the best place for such function.
 # It's more about report templates, but the template module
 # does not seem proper, either.
@@ -1084,7 +1094,7 @@ class Validator(object):
             "xmlcharrefreplace")
         # collect known children
         _child_elements = []
-        for _child in element.getchildren():
+        for _child in getchildren(element):
             try:
                 _validator = self.child_validators[_child.tag]
             except KeyError:

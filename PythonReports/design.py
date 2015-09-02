@@ -22,7 +22,7 @@ import tkFileDialog
 
 from PythonReports import datatypes, drivers, version
 from PythonReports import template as prt, printout as prp
-from PythonReports.builder import Builder, getchildren
+from PythonReports.builder import Builder
 from PythonReports.datatypes import *
 from PythonReports.Tk import PreviewWindow
 try:

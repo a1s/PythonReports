@@ -82,50 +82,50 @@ class Variable(object):
         def append(self, value):
             """Add a value to the accumulated sequence"""
 
-    class AccumulateChain(_Accumulator, list):
-        """Accumulator forcing all values to be float"""
-        def append(self, value):
-            """Add a sequence to the accumulated sequence"""
-            if value:
-                self.extend(value)
-
-    class AccumulateDistinct(_Accumulator, set):
-        """Distinct values accumulator"""
-        def append(self, value):
-            """Add a value to the accumulated sequence"""
-            self.add(value)
-
     class AccumulateFloat(_Accumulator, list):
         """Accumulator forcing all values to be float"""
         def append(self, value):
             """Add a value to the accumulated sequence"""
             super(Variable.AccumulateFloat, self).append(float(value))
 
-    class KeepFirst(_Accumulator, list):
-        """"Accumulator" always keeping the first value of the sequence"""
-        value = NOTHING
-        def append(self, value):
-            """Add a value to the accumulated sequence"""
-            if self.value is NOTHING:
-                self[:] = [value]
-
-    class UseCurrent(_Accumulator, list):
-        """"Accumulator" always returning current value of the sequence"""
-        def append(self, value):
-            """Add a value to the accumulated sequence"""
-            self[:] = [value]
-
     ### calculation types
 
     @staticmethod
     def first(value):
         """Return the first element of the value sequence"""
-        return value[0]
+        return value[0] if value else None
+
+    @staticmethod
+    def last(value):
+        """Return the last element of the value sequence"""
+        return value[-1] if value else None
+
+    @staticmethod
+    def chain(value):
+        """Return elements of the value sequence joined into single list
+
+        The elements are assumed to be sequences.
+
+        """
+        _rv = []
+        for _item in value:
+            try:
+                _sequence = iter(_item)
+            except:
+                _rv.append(_item)
+            else:
+                _rv.extend(_sequence)
+        return _rv
+
+    @staticmethod
+    def set(value):
+        """Return a set of the elements in the value sequence"""
+        return set(value)
 
     @staticmethod
     def count(value):
-        """Return number of elements in the value sequence"""
-        return len(value)
+        """Return number of different elements in the value sequence"""
+        return len(frozenset(value))
 
     @staticmethod
     def avg(value):
@@ -181,12 +181,12 @@ class Variable(object):
         #   calculation variants may be defined at class level
         #   (faster because won't use object attribute lookup)
         (self._accumulator, self._compute) = {
-            None: (self.UseCurrent, self.first),
-            "first": (self.KeepFirst, self.first),
-            "count": (self.AccumulateDistinct, self.count),
+            None: (list, self.last),
+            "first": (list, self.first),
+            "count": (list, self.count),
             "list": (list, None),
-            "set": (self.AccumulateDistinct, None),
-            "chain": (self.AccumulateChain, list),
+            "set": (list, self.set),
+            "chain": (list, self.chain),
             "sum": (list, self.sum),
             "avg": (self.AccumulateFloat, self.avg),
             "min": (list, self.min),
@@ -234,7 +234,12 @@ class Variable(object):
     def value(self):
         """Variable evaluation result"""
         if not self.values:
-            return None
+            if self.calc in ("list", "chain"):
+                return []
+            elif self.calc == "set":
+                return set()
+            else:
+                return None
         elif self._compute:
             return self._compute(self.values)
         else:
@@ -1562,7 +1567,7 @@ class Builder(object):
         # initialize all variables
         for _item in self.variables:
             _item.start(_context)
-            if _item.iter == "report":
+            if _item.iter in ("report", "item"):
                 _item.iterate(_context)
         # initialize group expressions
         for _item in self.groups:

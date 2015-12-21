@@ -279,9 +279,9 @@ _`Calculation types`:
 ========= ==============================================================
 Name      Meaning
 ========= ==============================================================
-``count`` Count distinct values.
-          Hint: for iteration counter, use ``sum``
-          with ``expression="1"`` or one of the `predefined variables`_.
+``count`` | Count distinct values.
+          | Hint: for iteration counter, use ``sum`` with ``expression="1"``
+          | or one of the `predefined variables`_.
 ``list``  A list containing all values.
 ``set``   A set containing distinct values.
 ``chain`` Similar to `itertools.chain`_, a list composed of elements

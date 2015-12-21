@@ -6,6 +6,12 @@ version 0.6.8 (21-dec-2015)
 
 Add variable iteration mode "item".
 
+Uninitialized variables of types "list", "chain", and "set"
+return empty sequences of appropriate type.
+
+Fix rolling back context variables when detail section is
+suppressed by "printwhen".
+
 version 0.6.7 (16-jun-2015)
 ---------------------------
 

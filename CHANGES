@@ -1,6 +1,11 @@
 PythonReports release history
 =============================
 
+version 0.6.8 (21-dec-2015)
+---------------------------
+
+Add variable iteration mode "item".
+
 version 0.6.7 (16-jun-2015)
 ---------------------------
 

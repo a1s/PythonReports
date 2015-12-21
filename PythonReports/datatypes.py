@@ -880,7 +880,7 @@ class VariableIteration(_Codes):
     # pylint: disable-msg=R0904
     # R0904: Too many public methods - same as in the base class
 
-    VALUES = ("report", "page", "column", "group", "detail")
+    VALUES = ("report", "page", "column", "group", "detail", "item")
 
 ### XML parsing/construction
 

@@ -2,10 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.6.3
-:Date: 09-feb-2013
-
-.. TODO: variables iterated at start of section
+:Version: 0.6.8
+:Date: 21-dec-2015
 
 .. TODO: outline tags, class names in <style>
 
@@ -251,19 +249,28 @@ Name              Req   Type      Description
                                   Default: ``first``.
 ``iter``           O    string    How often the expression is evaluated:
                                   ``report``, ``page``, ``column``,
-                                  ``group`` or ``detail``. [#a]_
+                                  ``group``, ``detail``, or
+                                  ``item``. [#a]_
                                   Default: ``detail``.
 ``itergrp``       [#b]_ string    Group name for ``iter="group"``.
 ``reset``          O    string    How often the expression is reset
                                   to initial value: ``report``,
-                                  ``page``, ``column``, ``group`` or
-                                  ``detail``. [#a]_
+                                  ``page``, ``column``, ``group``,
+                                  ``detail``, or ``item``.
                                   Default: ``report``.
 ``resetgrp``      [#c]_ string    Group name for ``reset="group"``.
 ================= ===== ========= ======================================
 
-.. [#a] The expression is always evaluated at the end of report
-        group referred by this attribute.
+.. [#a] Both ``item`` and ``detail`` iterate for each element
+        of the `report data`_ sequence, but ``item`` variables
+        iterate as soon as new element comes into the evaluation
+        context (i.e. when ``THIS`` changes), and ``detail`` iterate
+        at the start of the ``detail`` section – it means that
+        ``detail`` variables will not iterate until all ``header``
+        and ``title`` sections are built.  For variables that are
+        neither ``detail`` nor ``item``, the expression is evaluated
+        after build of the corresponding ``footer`` or ``summary``
+        section (if any).
 .. [#b] Required when ``iter`` is ``group``, otherwise ignored.
 .. [#c] Required when ``reset`` is ``group``, otherwise ignored.
 

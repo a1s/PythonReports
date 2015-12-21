@@ -1606,6 +1606,11 @@ class Builder(object):
                 break
         for _group in reversed(_groups_changed):
             self.end_group(_group)
+        for _var in self.variables:
+            if _var.reset == "item":
+                _var.start(_context)
+            if _var.iter == "item":
+                _var.iterate(_context)
         for _group in _groups_changed:
             self.start_group(_group)
 

@@ -280,6 +280,14 @@ class Context(object):
         for (_name, _value) in _attrs.iteritems():
             setattr(self, _name, _value)
 
+    def __repr__(self):
+        return "<%s.%s object:\n%s\n-- at %x>" % (
+            self.__class__.__module__, self.__class__.__name__,
+            "\n".join(("%s: %r" % (_name, getattr(self, _name))
+                for _name in self.__slots__)),
+            id(self)
+        )
+
     # mapping/evaluation interface
 
     def __getitem__(self, name):

@@ -304,6 +304,12 @@ class Context(object):
     def __setitem__(self, name, value):
         self.sysvars[name] = value
 
+    def get(self, name, default=None):
+        try:
+            return self[name]
+        except KeyError:
+            return default
+
     def eval(self, expression, template=None):
         """Evaluate expression in this context
 

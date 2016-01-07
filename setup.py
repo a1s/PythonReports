@@ -84,11 +84,9 @@ def run():
             "http://sourceforge.net/projects/pythonreports/files/",
         description="Database report generator",
         long_description=DESCRIPTION,
-        author="alexander smishlajev",
+        author="Aleksandr Smyshliaev",
         author_email="alex@gorka.lv",
-        # XXX maintainer_email always overwrites author_email.
-        #   (good thing too, but PyPI has two slots, and i'd like to
-        #   have both filled.)
+        maintainer="PythonReports Users Mailing List"
         maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
             "Development Status :: 5 - Production/Stable",

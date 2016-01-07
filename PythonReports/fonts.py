@@ -90,6 +90,7 @@ elif os.name == "posix":
     # X windows
     SYSFONTPATHS.append("/usr/X11R6/lib/X11/fonts/TrueType")
     SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/usr/share/fonts")))
+    SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/usr/local/share/fonts")))
     if sys.platform == "darwin":
         SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/Library/Fonts")))
         FONTS[None] = "Courier New.ttf"

@@ -88,11 +88,8 @@ if os.name == "nt":
     SYSFONTPATHS.append(os.path.join(os.getenv("WINDIR"), "Fonts"))
 elif os.name == "posix":
     # X windows
-    SYSFONTPATHS.extend([
-        "/usr/X11R6/lib/X11/fonts/TrueType",
-        "/usr/share/fonts/corefonts", # Gentoo Linux (TM)
-        "/usr/share/fonts/truetype/msttcorefonts", # Ubuntu (Feisty)
-    ])
+    SYSFONTPATHS.append("/usr/X11R6/lib/X11/fonts/TrueType")
+    SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/usr/share/fonts")))
     if sys.platform == "darwin":
         SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/Library/Fonts")))
         FONTS[None] = "Courier New.ttf"

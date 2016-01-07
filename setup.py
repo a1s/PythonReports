@@ -86,7 +86,7 @@ def run():
         long_description=DESCRIPTION,
         author="Aleksandr Smyshliaev",
         author_email="alex@gorka.lv",
-        maintainer="PythonReports Users Mailing List"
+        maintainer="PythonReports Users Mailing List",
         maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
             "Development Status :: 5 - Production/Stable",

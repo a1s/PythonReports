@@ -1564,7 +1564,7 @@ class Builder(object):
         for (_name, _parm) in _template.parameters.iteritems():
             if _name not in _parameters:
                 _value = _context.eval(_parm.get("default"), _parm)
-                if _parm.prompt:
+                if _parm.get("prompt", False):
                     # TODO? parameter input with wx or Tkinter GUI
                     _input = raw_input("%s [%s]: " % (_name, _value))
                     if _input:

@@ -1,6 +1,14 @@
 PythonReports release history
 =============================
 
+version 0.6.10 (06-feb-2016)
+----------------------------
+
+Fix "'Element' object has no attribute 'prompt'" error
+raised when a template parameter value was not passed by caller.
+
+Disable ejects on empty pages.
+
 version 0.6.9 (07-jan-2016)
 ---------------------------
 

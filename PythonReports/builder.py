@@ -1834,6 +1834,15 @@ class Builder(object):
         for (_template, _junk) in _headers:
             self.add_section(self.build_section(_template))
 
+    def is_page_filled(self):
+        """Return True when there are non-empty sections on current page"""
+        if not self.page:
+            return False
+        for _section in self.page:
+            if _section:
+                return True
+        return False
+
     def start_page(self):
         """Create new output page
 
@@ -1843,7 +1852,12 @@ class Builder(object):
 
         Note: builder's page is just a list of Section objects.
 
+        When current page is initialized but empty, do nothing.
+
         """
+        if self.pages and not self.is_page_filled():
+            # Avoid ejects on empty pages
+            return
         self.page = []
         self.pages.append(self.page)
         self.cur_y = self.topmargin

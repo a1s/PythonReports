@@ -63,13 +63,13 @@ if wx:
             self.dialog.Hide()
             self.dialog.Destroy()
 
-def run():
+def run(template="sakila.prt"):
     if wx:
         # if wx backend is used, App must be created
         # before builder initialization.
         _app = wx.App(0)
     # create report builder
-    _builder = Builder("sakila.prt")
+    _builder = Builder(template)
     # create progress indicator
     if wx:
         _progress = wxProgress(_builder)
@@ -91,7 +91,13 @@ def run():
         _printout.validate()
         write(_printout, "sakila.pdf")
 
+def test_rson(template="sakila.prtr"):
+    from PythonReports.rson import parse_file
+    _prt = parse_file(template)
+    return run(_prt)
+
 if __name__ == "__main__":
     run()
+    #test_rson()
 
 # vim: set et sts=4 sw=4 :

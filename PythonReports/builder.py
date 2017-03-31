@@ -1999,7 +1999,7 @@ class Builder(object):
                         _layout.append(_section)
                 else:
                     _layout.extend(_outer_sections)
-                for _section in _this_layout.findall("header"):
+                for _section in reversed(_this_layout.findall("header")):
                     _layout.insert(0, _section)
                     _outer_sections.append(_section)
                 # create subreport builder
@@ -2288,7 +2288,7 @@ class Builder(object):
                 _frame.x = _xpos
                 _frame.column = 0
         # print all headers
-        for _frame in reversed(_eject_frames):
+        for _frame in _eject_frames:
             self.add_section(self.build_section(_frame.header))
 
     def register_eval(self, element):

@@ -18,19 +18,22 @@ printer, HTML [*]_, PDF etc.
 Requirements
 ============
 
-PythonReports_ require Python_ version 2.4 or newer.  No support
-is planned for earlier Python versions.
+PythonReports_ require Python_ version 2.4 [*]_ to 2.7.
+
+.. [*] Later versions have been tested only with Python 2.7 and 2.6.
+       Compatibility with Python 2.4 and 2.5 may be unintentionally
+       broken.  Please file an issue if you encounter errors.
 
 All parts of the PythonReports_ toolkit require the ElementTree_
-module.  Python includes this module as part of the standard library
-since version 2.5.  Users of older Python versions can download
+module.  Python includes this module as part of the standard
+library since version 2.5.  Python 2.4 users can download
 separate distribution package from http://effbot.org/downloads/
 (cElementTree_ add-on is highly recommended too).
 
 Requirements for printout_ rendering depend on selected frontend:
   * PDF output requires the ReportLab_ Toolkit.
     Reports containing images additionally require
-    `Python Imaging Library`_ (PIL_).
+    `Python Imaging Library`_ (PIL_ or Pillow_).
   * wx-based preview and printing require wxPython_.
   * Tk-based report preview requires Tkinter
     (part of the Python Standard Library).
@@ -40,6 +43,8 @@ Requirements for printout_ rendering depend on selected frontend:
 Report building can utilize any of the above options.
 In other words, if your system is able to display or print
 a report then it should be able to build a report too.
+
+Templates in RSON format (introduced in v0.7.0) require rsonlite_.
 
 Report template designer requires Tkinter with Tix_ support
 (standard Python installer for Windows includes Tix; on some
@@ -69,8 +74,10 @@ that can serve as their API usage example.
 .. _ElementTree: http://effbot.org/zone/element-index.htm
 .. _cElementTree: http://effbot.org/zone/celementtree.htm
 .. _ReportLab: http://www.reportlab.org/rl_toolkit.html
-.. _Python Imaging Library:
 .. _PIL: http://www.pythonware.com/products/pil/
+.. _Python Imaging Library:
+.. _Pillow: https://pypi.python.org/pypi/Pillow
+.. _rsonlite: https://pypi.python.org/pypi/rsonlite
 .. _wxPython: http://www.wxpython.org/
 .. _wxPropertyGrid: http://wxpropgrid.sourceforge.net/
 .. _wxPropertyGrid download page: http://wxpropgrid.sourceforge.net/cgi-bin/index?page=download

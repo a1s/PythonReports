@@ -717,7 +717,7 @@ class Section(list):
         # if the section is suppressed do nothing
         if not self.printable:
             return
-        _elements = getchildren(self.template)
+        _elements = self.template.getchildren()
         # section is resizeable if it's height is not fixed
         # then final size must be recalculated after filling
         self.resizeable = self.tbox.height <= 0
@@ -1356,7 +1356,7 @@ class Builder(object):
         while _descend:
             _next_level = []
             for _item in _descend:
-                for _child in getchildren(_item):
+                for _child in self.template.getchildren(_item):
                     if _child.tag in ("group", "columns"):
                         _next_level.append(_child)
                     if _child.tag in (
@@ -1934,6 +1934,104 @@ class Builder(object):
             _frame.top = ypos
             _frame = _frame.child
 
+    def build_embedded_template(self, element):
+        """Return a template ElementTree for embedded subreport
+
+        Embedded subreports use imports, fonts, named data blocks,
+        and page layout parameters from the main template.
+
+        Build a complete Template ElementTree for a subreport
+        from a combination of own template parts and the element contents.
+
+        """
+        _this_root = self.template.getroot()
+        _new_root = self.template.copy(_this_root)
+        # Make a shallow copy of all top-level elements.
+        for _elem in self.template.getchildren(_this_root):
+            if _elem.tag in ("import", "font", "data", "layout"):
+                _new_root.append(self.template.copy(_elem))
+        _new_layout = _new_root.find("layout")
+        for _elem in self.template.getchildren(element):
+            if _elem.tag in ("parameter", "variable"):
+                _new_root.insert(0, self.template.copy(_elem))
+            else:
+                _new_layout.append(_elem)
+        _rv = ElementTree(self.template.root_validator, _new_root)
+        _rv.filename = self.template.filename
+        _rv.validate()
+        return _rv
+
+    def get_subreport_builder(self, element):
+        """Return a Builder object for a subreport element
+
+        Parameters:
+            element: a "subreport" element from the report template
+
+        Return: tuple (is_inline, builder)
+
+        """
+        _embedded = element.get("embedded")
+        _is_inline = bool(_embedded or element.get("inline"))
+        if element in self.subreports:
+            return (_is_inline, self.subreports[element])
+        _this_layout = self.template.find("layout")
+        if _embedded:
+            _prt = self.build_embedded_template(
+                self.template.embedded[_embedded])
+            _layout = _prt.find("layout")
+        else:
+            _prt_name = element.get("template")
+            _prt = prt.load(self.filepath(_prt_name))
+            if _is_inline:
+                # inlined report must have same page dimensions as this report
+                _pgsize = self.get_page_dimensions(self.template)
+                if self.get_page_dimensions(_prt) != _pgsize:
+                    raise XmlValidationError(
+                        "Page size does not match for inlined report \"%s\""
+                        % _prt_name, element=element)
+                _layout = _prt.find("layout")
+                assert _layout is not None # _prt is verified
+                _MARGIN_ATTRS = ("leftmargin", "topmargin",
+                    "rightmargin", "bottommargin")
+                _margins = tuple(tuple(_section.get(_margin, 0)
+                    for _margin in _MARGIN_ATTRS)
+                    for _section in (_layout, _this_layout))
+                if _margins[0] != _margins[1]:
+                    warn(XmlValidationWarning("Overriding page margins"
+                        " for subreport %s: (%s) => (%s)" % ((_prt_name,)
+                        + tuple(", ".join(map(str, _margin))
+                            for _margin in _margins)),
+                        element=_layout))
+                    for (_name, _value) in zip(_MARGIN_ATTRS, _margins[1]):
+                        _layout.set(_name, _value)
+            else:
+                _builder = Builder(_prt)
+        if _is_inline:
+            # Insert page headers and footers from own template.
+            # Actual rendering will be done by responsible builders,
+            # but subreport builder will need to know sizes
+            # to shrink page contents frame appropriately.
+            _page_frame = self.section_frames[None]
+            _outer_sections = _this_layout.findall("footer")
+            if sys.version_info[:2] < (2, 7):
+                # _ElementInterface instance has no attribute 'extend'
+                for _section in _outer_sections:
+                    _layout.append(_section)
+            else:
+                _layout.extend(_outer_sections)
+            for _section in reversed(_this_layout.findall("header")):
+                _layout.insert(0, _section)
+                _outer_sections.append(_section)
+            # create subreport builder
+            _builder = Builder(_prt)
+            # copied sections must be built by outer builders
+            if _outer_sections:
+                _builder.section_builders = dict(
+                    (_section, self.section_builders.get(_section, self))
+                    for _section in _outer_sections)
+        self.subreports[element] = _builder
+        return (_is_inline, _builder)
+
     def run_subreport(self, element, eject_frame):
         """Execute a subreport element
 
@@ -1957,61 +2055,7 @@ class Builder(object):
         _data = _context.eval(element.get("data"), element)
         if len(_data) < 1:
             return
-        _inline = element.get("inline")
-        # fetch or make a builder
-        if element in self.subreports:
-            _builder = self.subreports[element]
-        else:
-            _prt_name = element.get("template")
-            _prt = prt.load(self.filepath(_prt_name))
-            if _inline:
-                # inlined report must have same page dimensions as this report
-                _pgsize = self.get_page_dimensions(self.template)
-                if self.get_page_dimensions(_prt) != _pgsize:
-                    raise XmlValidationError(
-                        "Page size does not match for inlined report \"%s\""
-                        % _prt_name, element=element)
-                _layout = _prt.find("layout")
-                assert _layout is not None # _prt is verified
-                _this_layout = self.template.find("layout")
-                _MARGIN_ATTRS = ("leftmargin", "topmargin",
-                    "rightmargin", "bottommargin")
-                _margins = tuple(tuple(_section.get(_margin, 0)
-                    for _margin in _MARGIN_ATTRS)
-                    for _section in (_layout, _this_layout))
-                if _margins[0] != _margins[1]:
-                    warn(XmlValidationWarning("Overriding page margins"
-                        " for subreport %s: (%s) => (%s)" % ((_prt_name,)
-                        + tuple(", ".join(map(str, _margin))
-                            for _margin in _margins)),
-                        element=_layout))
-                    for (_name, _value) in zip(_MARGIN_ATTRS, _margins[1]):
-                        _layout.set(_name, _value)
-                # Insert page headers and footers from own template.
-                # Actual rendering will be done by responsible builders,
-                # but subreport builder will need to know sizes
-                # to shrink page contents frame appropriately.
-                _page_frame = self.section_frames[None]
-                _outer_sections = _this_layout.findall("footer")
-                if sys.version_info[:2] < (2, 7):
-                    # _ElementInterface instance has no attribute 'extend'
-                    for _section in _outer_sections:
-                        _layout.append(_section)
-                else:
-                    _layout.extend(_outer_sections)
-                for _section in reversed(_this_layout.findall("header")):
-                    _layout.insert(0, _section)
-                    _outer_sections.append(_section)
-                # create subreport builder
-                _builder = Builder(_prt)
-                # copied sections must be built by outer builders
-                if _outer_sections:
-                    _builder.section_builders = dict(
-                        (_section, self.section_builders.get(_section, self))
-                        for _section in _outer_sections)
-            else:
-                _builder = Builder(_prt)
-            self.subreports[element] = _builder
+        (_inline, _builder) = self.get_subreport_builder(element)
         # collect subreport arguments
         # Note: this is done before any new section is built
         #       to make sure current build context is not changed and

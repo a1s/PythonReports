@@ -113,12 +113,34 @@ Arg = Validator(tag="arg",
     doc="Actual argument value passed to subreport to fill a parameter slot"
 )
 
+def _need_template_or_embedded(tree, element, path):
+    """Additional validation for "subreport" elements
+
+    The element must have either "template" or "embedded" attribute,
+    but not both of them.
+
+    """
+    # pylint: disable-msg=W0613
+    # W0613: Unused argument 'tree'
+    _template = element.get("template")
+    _embedded = element.get("embedded")
+    if _template and _embedded:
+        raise XmlValidationError("Found both 'template' and 'embedded'",
+            element, path)
+    elif not (_template or _embedded):
+        raise XmlValidationError(
+            "Either 'template' or 'embedded' attribute is required",
+            element, path)
+
 # TODO subreport validation:
 #   - cannot be placed in a column
 #   - if inline is True, ownpageno must be False.
 Subreport = Validator(tag="subreport",
-    attributes={
-        "template": (String, REQUIRED),
+    validate=(
+        _need_template_or_embedded,
+    ), attributes={
+        "template": (String, None),
+        "embedded": (String, None),
         "seq": (Integer, REQUIRED),
         "data": (Expression, REQUIRED),
         "when": (Expression, None),
@@ -327,6 +349,30 @@ def _need_pagesize(tree, element, path):
     raise XmlValidationError(
         "Must have either 'pagesize' or 'width' and 'height'", element, path)
 
+Embedded = Validator(tag="embedded",
+    validate=(
+        Validator.Unique("embedded"),
+        _need_subgroup_or_detail,
+    ), attributes={
+        "name": (String, REQUIRED),
+    }, children=[
+        (Parameter, Validator.UNRESTRICTED),
+        (Variable, Validator.UNRESTRICTED),
+        (Style, Validator.UNRESTRICTED),
+        (Title, Validator.ZERO_OR_ONE),
+        (Summary, Validator.ZERO_OR_ONE),
+        (Header, Validator.ZERO_OR_ONE),
+        (Footer, Validator.ZERO_OR_ONE),
+        (Columns, Validator.ZERO_OR_ONE),
+        (Detail, Validator.ZERO_OR_ONE),
+        (Group, Validator.ZERO_OR_ONE),
+    ], doc="An embedded subreport layout definition"
+)
+
+# patch CHILDREN to include the Embedded class itself
+Embedded.children.append((Embedded, Validator.UNRESTRICTED))
+Embedded.child_validators["embedded"] = Embedded
+
 Layout = Validator(tag="layout",
     prevalidate=Data.collect,
     validate=(
@@ -343,6 +389,7 @@ Layout = Validator(tag="layout",
         "bottommargin": (Dimension, 0),
     }, children=(
         (Style, Validator.UNRESTRICTED),
+        (Embedded, Validator.UNRESTRICTED),
         (Title, Validator.ZERO_OR_ONE),
         (Summary, Validator.ZERO_OR_ONE),
         (Header, Validator.ZERO_OR_ONE),
@@ -365,6 +412,7 @@ def Report(tree, element, path):
     tree.variables = {}
     tree.groups = {}
     tree.fonts = {}
+    tree.embedded = {}
     # Keep the filename if present
     # (repeated validation after the template is loaded)
     if not hasattr(tree, "filename"):

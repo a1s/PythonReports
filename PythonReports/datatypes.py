@@ -1356,6 +1356,32 @@ class ElementTree(ET.ElementTree):
         self.write(_stream)
         return _stream.getvalue()
 
+    def getchildren(self, element=None):
+        """Return a list of child elements
+
+        Pararmeters:
+            element: Optional parent element to iterate over.
+
+                If omitted, use the root element of the tree.
+
+        Return: a list of Element objects.
+
+        """
+        if element is None:
+            element = self.getroot()
+        return getchildren(element)
+
+    def copy(self, element):
+        """Return a shallow copy of the element
+
+        Create a new Element with the same tag, attributes and text
+        and return it.
+
+        """
+        _rv = Element(element.tag, element.attrib)
+        _rv.text = element.text
+        return _rv
+
 ### elements common for templates and printouts
 
 Font = Validator(tag="font",

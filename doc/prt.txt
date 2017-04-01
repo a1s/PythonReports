@@ -39,11 +39,11 @@ Let's start with some terminology:
 
 The root of the template structure is `report`_ element.  It must
 contain exactly one `layout`_ element and may contain and arbitrary
-number of `font`_, `parameter`_, `variable`_ and `data`_ elements.
+number of `font`_, `parameter`_, `variable`_, and `data`_ elements.
 
 The `layout`_ element contains one `group`_ or `detail`_ element
 and may contain a sequence of `style`_ elements and possible
-`columns`_, `header`_, `footer`_, `title`_ and `summary`_ elements.
+`columns`_, `header`_, `footer`_, `title`_, and `summary`_ elements.
 
 The `columns`_ element may contain a sequence of `style`_ elements
 and possible `header`_ and `footer`_ elements.
@@ -56,7 +56,7 @@ Report template may contain only one `detail`_ section (innermost
 in the `layout`_/`group`_ hierarchy).
 
 All `section elements`_ may contain one `box`_ element, a sequence
-of `eject`_ variants and `style`_ definitions and any `body elements`_.
+of `eject`_ variants and `style`_ definitions, and any `body elements`_.
 The order of `body elements`_ is important: elements appearing later
 in the template sequence are laid out on top of previous elements.
 
@@ -196,8 +196,8 @@ Element contents (text) are ignored except for the `data`_ elements.
 ----------
 
 The root element of template.  Contains a sequence of `parameter`_,
-`variable`_, `import`_ and `font`_ elements and exactly one `layout`_
-element.
+`variable`_, `import`_, `font`_, and `data_` elements and exactly one
+`layout`_ element.
 
 Attributes:
 
@@ -495,6 +495,29 @@ Attributes:
                                   `eject`_ is ignored.
 ================= ===== ========= ======================================
 
+``embedded``
+------------
+
+An inline `subreport`_ definition for a nested sequence of data.
+
+Embedded subreports inherit page layout, fonts, and named data blocks
+from containing template and always start rendering at current page
+position of containing report.
+
+Similar to `layout`_ definition, `embedded`_ element contains one `group`_
+or `detail`_ element and may contain a sequence of `style`_ elements and
+possible `columns`_, `header`_, `footer`_, `title`_, and `summary`_ elements.
+In addition, `embedded`_ element may contain `parameter`_, `variable`_,
+and `embedded`_ elements.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    Subreport name.
+================= ===== ========= ======================================
+
 ``arg``
 -------
 
@@ -530,10 +553,11 @@ and thus require a totally different layout for their parts.
 
 Subreports **must not** be placed inside columns.
 
-================= ===== ========= ======================================
+================= ===== ========= =========================================
   Name            Req     Type      Description
-================= ===== ========= ======================================
-``template``       M    string    Name of the template file.
+================= ===== ========= =========================================
+``template``      [#e]_ string    Name of the template file.
+``embedded``      [#e]_ string    Name of an embedded subreport definition.
 ``seq``            M    integer   Subreport sequence indicator.
                                   Subreports for a section will be run
                                   in the order of ``seq`` numbers.
@@ -555,15 +579,21 @@ Subreports **must not** be placed inside columns.
                                   main report, without page eject before
                                   or after it. [#inlined]_
 
-                                  If False (default), the subreport is
-                                  printed on separate pages.
+                                  For `embedded`_ subreports, this
+                                  attribute is ignored: they always go
+                                  inline.  For external subreports,
+                                  default value is False: print on
+                                  separate pages.
 ``ownpageno``      O    boolean   If set to True, pages in the subreport
                                   are numbered as in standalone report.
                                   If False (default), page numbers in
                                   the subreport continue the sequence of
                                   the main report page numbers.  Cannot
                                   be set to True for inline subreports.
-================= ===== ========= ======================================
+================= ===== ========= =========================================
+
+.. [#e] Attributes ``template`` and ``embedded`` are mutually exclusive.
+        Either ``template`` or ``embedded`` must be present.
 
 .. [#inlined] Inline reports start at current page position.
               When inline report ends, containing report continues
@@ -638,6 +668,10 @@ for report page or column respectively.
 
 Topmost element of report layout definition.
 
+The `layout`_ element contains one `group`_ or `detail`_ element
+and may contain a sequence of `style`_ elements and possible
+`columns`_, `header`_, `footer`_, `title`_, and `summary`_ elements.
+
 Attributes:
 
 ================= ===== ========= ======================================
@@ -646,8 +680,8 @@ Attributes:
 ``pagesize``       O    string    Standard page size, like ``A4``,
                                   ``Letter``, ``Envelope#10`` or
                                   ``EnvelopeDL``.
-``width``         [#e]_ dimension Page width.
-``height``        [#e]_ dimension Page height.
+``width``         [#f]_ dimension Page width.
+``height``        [#f]_ dimension Page height.
 ``landscape``      O    boolean   If True, page dimensions are swapped
                                   (landscape orientation).
 ``leftmargin``     O    dimension Left page margin.
@@ -656,7 +690,7 @@ Attributes:
 ``bottommargin``   O    dimension Bottom page margin.
 ================= ===== ========= ======================================
 
-.. [#e] Required when ``pagesize`` is not specified;
+.. [#f] Required when ``pagesize`` is not specified;
         ignored when ``pagesize`` is set.
 
 .. TODO: `layout`_ should have target resolution to compute image box

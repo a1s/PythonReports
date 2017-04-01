@@ -66,6 +66,7 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
   topmargin="1.5cm" bottommargin="1.5cm">
   <style font="body" color="0" bgcolor="white" />
   <title swapheader="true">
+   <outline title="'DVD rental payments'" closed="true" />
    <barcode type="Code128">
     <data>Code 128</data>
    </barcode>
@@ -176,6 +177,8 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
   </columns>
   <group name="customer" expr="customer_id">
    <title>
+    <outline title="'%s, %s'
+     % (customer['last_name'], customer['first_name'])" level="2" />
     <box height="14" />
     <style font="bold" color="#000900" />
     <field expr="(customer['last_name'], customer['first_name'])"

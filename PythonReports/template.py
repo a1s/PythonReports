@@ -2,7 +2,7 @@
 
 __all__ = [
     "Parameter", "Variable", "Import", "Data", "Font",
-    "Style", "Box", "Eject",
+    "Style", "Box", "Eject", "Embedded", "Outline",
     "Field", "Line", "Rectangle", "Image", "BarCode",
     "Detail", "Header", "Footer", "Title", "Summary",
     "Columns", "Group", "Layout", "Report", "load",
@@ -103,6 +103,15 @@ Eject = Validator(tag="eject",
     for all other sections - at the beginning of the section.
 
     """
+)
+
+Outline = Validator(tag="outline",
+    attributes={
+        "title": (Expression, REQUIRED),
+        "level": (Integer, 1),
+        "closed": (Boolean, False),
+    },
+    doc="A bookmark for document outline navigation"
 )
 
 Arg = Validator(tag="arg",

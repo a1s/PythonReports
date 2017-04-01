@@ -1,7 +1,7 @@
 """PythonReports Printout (PRP) structures"""
 
 __all__ = [
-    "Text", "Line", "Rectangle", "Image", "BarCode",
+    "Text", "Line", "Rectangle", "Image", "BarCode", "Outline",
     "Box", "Page", "Data", "Font", "Printout", "load",
 ]
 
@@ -89,6 +89,19 @@ BarCode = Validator(tag="barcode",
 
     """)
 
+Outline = Validator(tag="outline",
+    validate=Validator.Unique("outline"),
+    attributes={
+        "name": (String, REQUIRED),
+        "title": (String, REQUIRED),
+        "level": (Integer, 1),
+        "closed": (Boolean, False),
+        "x": (Dimension, 0),
+        "y": (Dimension, 0),
+    },
+    doc="A bookmark for document outline navigation"
+)
+
 Page = Validator(tag="page",
     attributes={
         "width": (Dimension, REQUIRED),
@@ -103,9 +116,22 @@ Page = Validator(tag="page",
         (Rectangle, Validator.UNRESTRICTED),
         (Image, Validator.UNRESTRICTED),
         (BarCode, Validator.UNRESTRICTED),
+        (Outline, Validator.UNRESTRICTED),
     ), doc="Single output page")
 
-Printout = Validator(tag="printout",
+def Printout(tree, element, path):
+    """Prevalidator for "printout" element: initialize structures"""
+    # pylint: disable-msg=W0613
+    # W0613: Unused arguments 'element', 'path'
+
+    tree.fonts = {}
+    tree.outline = {}
+    # Keep the filename if present
+    # (repeated validation after the template is loaded)
+    if not hasattr(tree, "filename"):
+        tree.filename = None
+
+Printout = Validator(tag="printout", prevalidate=Printout,
     attributes={
         "name": (String, None),
         "description": (String, None),

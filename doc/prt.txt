@@ -2,10 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.6.8
-:Date: 21-dec-2015
-
-.. TODO: outline tags, class names in <style>
+:Version: 0.7.0
+:Date: 1-apr-2017
 
 .. contents::
 
@@ -19,7 +17,10 @@ a template to a sequence of `report data`_ objects and produces a
 drivers to screen, printer, HTML, PDF etc.
 
 Report templates are files in XML format.
-By convention, these files use extension ``.PRT``.
+By convention, these files use extension ``.prt``.
+Starting from version 0.7, report template files may also
+use human-friendly syntax based on `RSON`_.
+These files by convention use extension ``.prtr``.
 
 This document describes the structure of the template files.
 
@@ -55,8 +56,9 @@ may contain a sequence of `style`_ elements and possible `columns`_,
 Report template may contain only one `detail`_ section (innermost
 in the `layout`_/`group`_ hierarchy).
 
-All `section elements`_ may contain one `box`_ element, a sequence
-of `eject`_ variants and `style`_ definitions, and any `body elements`_.
+All `section elements`_ may contain one `outline`_ element,
+one `box`_ element, a sequence of `eject`_ variants and
+`style`_ definitions, and any `body elements`_.
 The order of `body elements`_ is important: elements appearing later
 in the template sequence are laid out on top of previous elements.
 
@@ -440,11 +442,11 @@ Attributes:
                                   Default: -1.
 ``halign``         O    string    Horizontal alignment for `field`_,
                                   `image`_ and `barcode`_ elements:
-                                  ``left``, ``right`` or ``center``.
+                                  ``left``, ``right``, or ``center``.
                                   Default: ``left``.
 ``valign``         O    string    Vertical alignment for `field`_,
                                   `image`_ and `barcode`_ elements:
-                                  ``top``, ``bottom`` or ``center``.
+                                  ``top``, ``bottom``, or ``center``.
                                   Default: ``bottom``.
 ================= ===== ========= ======================================
 
@@ -493,6 +495,37 @@ Attributes:
                                   eject is unconditional.
 ``when``           O    expr      If the expression evaluates to False,
                                   `eject`_ is ignored.
+================= ===== ========= ======================================
+
+``outline``
+-----------
+
+A bookmark in the document navigation pane.
+
+Some printout rendering front-ends may support navigation in the
+document contents.  (For example, PDF documents have an outline pane.)
+The `outline`_ element defines an entry for document navigation tree.
+
+Attributes:
+
+.. TODO: evaltime
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``title``          M    expr      Caption text for the outline tree.
+``level``          O    integer   An outline nesting level.
+
+                                  The outermost level (default) is 1.
+                                  Nested levels have higher numbers.
+
+                                  The level number must be increased
+                                  by one when a nested level is
+                                  created: going from 1 to 3 without 2
+                                  is an error.
+``closed``         O    boolean   True to display the outline closed
+                                  at this entry (i.e. hide all nested
+                                  levels).
 ================= ===== ========= ======================================
 
 ``embedded``
@@ -678,7 +711,7 @@ Attributes:
   Name            Req     Type      Description
 ================= ===== ========= ======================================
 ``pagesize``       O    string    Standard page size, like ``A4``,
-                                  ``Letter``, ``Envelope#10`` or
+                                  ``Letter``, ``Envelope#10``, or
                                   ``EnvelopeDL``.
 ``width``         [#f]_ dimension Page width.
 ``height``        [#f]_ dimension Page height.
@@ -761,13 +794,13 @@ Attributes:
 ================= ===== ========= ======================================
 ``expr``           O    string    Field expression.
 ``evaltime``       O    string    When the expression is evaluated:
-                                  ``report``, ``page``, ``column``
+                                  ``report``, ``page``, ``column``,
                                   or group name.  Evaluation is delayed
                                   until the end of this section.
 ``data``           O    string    Name of a `data`_ section defined as
                                   a child of the `report`_ element.
 ``align``          O    string    Text alignment: ``left``, ``center``,
-                                  ``right`` or ``justified``.
+                                  ``right``, or ``justified``.
 ``format``         O    string    Formatting expression.
                                   Default: ``%s`` (unicode conversion).
 ``stretch``        O    boolean   Stretch with overflow.
@@ -828,7 +861,7 @@ Attributes:
 ``data``           O    string    Name of a `data`_ section defined as
                                   a child of the `report`_ element.
 ``scale``          O    string    Scaling mode: ``cut``, ``fill``
-                                  (adjust image to the `box`_) or
+                                  (adjust image to the `box`_), or
                                   ``grow`` (adjust the `box`_ to the
                                   image.)
 ``proportional``   O    boolean   If True (default), image or `box`_
@@ -859,14 +892,14 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``type``           M    string    ``Code128``, ``Code39`` or ``2of5i``.
+``type``           M    string    ``Code128``, ``Code39``, or ``2of5i``.
 ``module``         O    number    X dimension, in mils (1/1000inch).
                                   Default: 10.0.
 ``vertical``       O    boolean   If True, the image is rotated
                                   90 degrees clockwise.
 ``expr``           O    string    Value expression.
 ``evaltime``       O    string    When the expression is evaluated:
-                                  ``report``, ``page``, ``column``
+                                  ``report``, ``page``, ``column``,
                                   or group name.  Evaluation is delayed
                                   until the end of this section.
 ``data``           O    string    Name of a `data`_ section defined as
@@ -877,6 +910,8 @@ Attributes:
 
 .. _Printout:
 .. _PRP file: prp.html
+
+.. _RSON: https://pypi.python.org/pypi/rsonlite
 
 .. _itertools.chain: http://docs.python.org/2/library/itertools.html#itertools.chain
 

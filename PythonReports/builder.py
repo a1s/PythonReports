@@ -8,6 +8,7 @@ import math
 import os
 import sys
 import time
+import threading
 from warnings import warn
 
 from PythonReports import barcode, drivers
@@ -392,7 +393,7 @@ class ReportElement(Structure):
     # section: containing section object
     # template: template element
     # style: dictionary of style attributes
-    # printable: True (non-printable elements cannot be processed at present)
+    # printable: False if the element is suppressed (by style printwhen)
     # tbox: box defined in the template
     # bbox: box with absolute sizes (computed from tbox and section sizes)
     # obox: output box, with absolute position and size values
@@ -439,6 +440,7 @@ class Section(list):
             (prt.Rectangle, prp.Rectangle),
             (prt.Image, prp.Image),
             (prt.BarCode, prp.BarCode),
+            (prt.Outline, prp.Outline),
         ))
 
     # Bar Code drivers
@@ -447,6 +449,10 @@ class Section(list):
         "Code39": barcode.code39,
         "2of5i": barcode.code2of5i,
     }
+
+    # Tag names for printable output elements (with dimension boxes)
+    PRINTABLE_ELEMENT_TAGS = frozenset(("field",
+        "line", "rectangle", "image", "barcode"))
 
     # printability is set by .build
     printable = None
@@ -487,7 +493,8 @@ class Section(list):
         self.template = template
         self.box = self.tbox = Box.from_element(template.find("box"))
         self.resizeable = False
-        self.subreports_before = self.subreports_after = () # filled by .build
+        # subreports and bookmarks lists are created in .build()
+        self.subreports_before = self.subreports_after = self.bookmarks = ()
         self.template2element = {}
         self.vertical_segment_layout = self.has_floating_boxes = None
         self.create_vertical_segment_layout(template)
@@ -501,7 +508,8 @@ class Section(list):
 
         """
         _elements = [(_item, Box.from_element(_item.find("box")))
-            for _item in template if self.is_body_element(_item)]
+            for _item in template
+            if _item.tag in self.PRINTABLE_ELEMENT_TAGS]
 
         self.has_floating_boxes = any(_it[1].float and
             (_it[1].y >= 0) and (_it[1].height >= 0) for _it in _elements)
@@ -717,7 +725,7 @@ class Section(list):
         # if the section is suppressed do nothing
         if not self.printable:
             return
-        _elements = self.template.getchildren()
+        _elements = getchildren(self.template)
         # section is resizeable if it's height is not fixed
         # then final size must be recalculated after filling
         self.resizeable = self.tbox.height <= 0
@@ -736,13 +744,19 @@ class Section(list):
         _default_element_style = [self.compose_style(context,
             ("font", "color", "bgcolor"), self.iter_styles())]
         _subreports = []
+        _bookmarks = []
         for _item in _elements:
             if _item.tag == "subreport":
                 _when = _item.get("when")
                 if (not _when) or context.eval(_when, _item):
                     _subreports.append((_item.get("seq"), _item))
                 continue
-            if not self.is_body_element(_item):
+            if _item.tag == "outline":
+                _bookmarks.append(Structure(template=_item,
+                    name=self.builder.generate_id(),
+                    title=context.eval(_item.get("title"), _item)))
+                continue
+            if _item.tag not in self.PRINTABLE_ELEMENT_TAGS:
                 continue
             _element = ReportElement(section=self, template=_item)
             self.template2element[_item] = _element
@@ -773,16 +787,7 @@ class Section(list):
             if _item[0] < 0)
         self.subreports_after = tuple(_item[1] for _item in _subreports
             if _item[0] > 0)
-
-    @staticmethod
-    def is_body_element(item):
-        """@return: whether item represents body element or not.
-
-        @param item: template section element.
-
-        """
-        # TODO convert it to element's or template's property or method
-        return item.tag in ("field", "line", "rectangle", "image", "barcode")
+        self.bookmarks = tuple(_bookmarks)
 
     def build_barcode(self, element):
         """Compute sripe widths and box size/position for barcode element
@@ -998,12 +1003,22 @@ class Section(list):
             page: printout.Page object
 
         """
+        for _element in self.bookmarks:
+            _template = _element.template
+            (_prp_type, _prp_attrs) = self.PRINTOUTS[_template.tag]
+            _attrib = dict([(_name, _template.get(_name, ""))
+                for _name in _prp_attrs])
+            # 01-apr-2017 The only bookmarks type is Outline
+            _attrib.update(dict(x=self.box.x, y=self.box.y,
+                name=_element.name, title=_element.title,
+            ))
+            _prp_element = SubElement(page, _prp_type.tag, _attrib)
         for _element in self:
             # build definition for printout element
             _template = _element.template
             (_prp_type, _prp_attrs) = self.PRINTOUTS[_template.tag]
             _prp_tag = _prp_type.tag
-            _attrib = dict([(_name, _template.get(_name))
+            _attrib = dict([(_name, _template.get(_name, ""))
                 for _name in _prp_attrs])
             # add style attributes (must be done before constructor is called)
             if _prp_tag == "text":
@@ -1182,6 +1197,9 @@ class Builder(object):
 
     """
 
+    # An ID generator state
+    gen_id = 0
+    gen_id_lock = threading.Lock()
     ### following properties hold builder state.  reinitialized by each .run()
     # current page position
     cur_y = 0
@@ -1280,6 +1298,17 @@ class Builder(object):
     def __repr__(self):
         return "<%s@%x:%r>" % (self.__class__.__name__, id(self),
             os.path.basename(self.template.filename))
+
+    @classmethod
+    def generate_id(cls):
+        """Return a new unique element ID string"""
+        cls.gen_id_lock.acquire()
+        try:
+            cls.gen_id += 1
+            _rv = "i%08X" % cls.gen_id
+        finally:
+            cls.gen_id_lock.release()
+        return _rv
 
     def filepath(self, *path):
         """Return normalized absolute pathname
@@ -2460,6 +2489,8 @@ class Builder(object):
             _prt_page = SubElement(_root, prp.Page.tag, _page_attrs)
             for _section in _page:
                 _section.output(_prt_page)
-        return ElementTree(prp.Printout, _root)
+        _rv = ElementTree(prp.Printout, _root)
+        _rv.validate()
+        return _rv
 
 # vim: set et sts=4 sw=4 :

@@ -2,8 +2,8 @@
 
 from datetime import date
 
-__version__ = "0.6.10"
-__date__ = date(2016, 2, 6)
+__version__ = "0.7.0"
+__date__ = date(2017, 4, 1)
 __all__ = ["__version__", "__date__"]
 
 # vim: set et sts=4 sw=4 :

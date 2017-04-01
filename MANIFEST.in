@@ -4,4 +4,4 @@ recursive-include PythonReports *
 recursive-exclude PythonReports *.pyc *.pyo
 include scripts/prd scripts/prtedit scripts/*.bat
 include doc/*.txt doc/*.html doc/default.css doc/Makefile
-include test/*.py test/*.prt
+include test/*.py test/*.prt test/*.prtr

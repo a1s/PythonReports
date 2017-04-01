@@ -2,10 +2,8 @@
 PythonReports Printout
 ======================
 
-:Version: 0.1.0
-:Date: 20-oct-2006
-
-.. TODO: backgrounds, outline tags
+:Version: 0.7.0
+:Date: 1-apr-2017
 
 .. contents::
 
@@ -19,9 +17,9 @@ with a frontend driver.  Printouts are stored in XML files with extension
 This document describes printout structures.
 
 The overall structure of printouts is very simple: printout contains
-one or more `page`_ elements, and each page contains `text`_, `line`_,
-`rectangle`_, `image`_ and `barcode`_ elements, each having it's final
-dimensions and placement.
+one or more `page`_ elements, and each page contains `outline`_,
+`text`_, `line`_, `rectangle`_, `image`_, and `barcode`_ elements,
+each having it's final dimensions and placement.
 
 `printout`_ element also contains `font`_ definitions and may contain
 named `data`_ elements providing bitmaps for repeated images.
@@ -34,8 +32,8 @@ This section explains special attribute types used in element descriptions.
 Booleans
 --------
 
-Values ``true``, ``yes`` and ``1`` stand for boolean True,
-values ``false``, ``no`` and ``0`` stand for boolean False.
+Values ``true``, ``yes``, and ``1`` stand for boolean True,
+values ``false``, ``no``, and ``0`` stand for boolean False.
 Recommended form is ``true`` and ``false``.
 
 Colors
@@ -76,7 +74,7 @@ OLIVE     #808000 PINK      #FFAFAF
 Dimensions
 ----------
 
-All report dimensions (page and field sizes, margins etc.) are expressed
+All report dimensions (page and field sizes, margins, etc.) are expressed
 as integer or floating point numbers with optional suffix:
 
 * ``mm`` - millimeters,
@@ -113,7 +111,7 @@ Element contents (text) are ignored except for `data`_ elements.
 ------------
 
 The root element of the printout tree.  Contains elements of types
-`font`_, `data`_ and `page`_.
+`font`_, `data`_, and `page`_.
 
 Attributes:
 
@@ -135,7 +133,7 @@ Attributes:
 ``data``
 --------
 
-Contains arbitrary data for use in `text`_, `image`_ and `barcode`_
+Contains arbitrary data for use in `text`_, `image`_, and `barcode`_
 elements.
 
 This is the only element in PythonReports templates that has significant
@@ -153,7 +151,7 @@ Attributes:
 ``encoding``       O    string    ``base64``, ``uu`` or ``qp``.
 ================= ===== ========= ======================================
 
-.. [#d] Ignored when immediate parent element is `text`_, `image`_
+.. [#d] Ignored when immediate parent element is `text`_, `image`_,
         or `barcode`_; required otherwise.
 
 ``font``
@@ -178,8 +176,8 @@ Attributes:
 ``page``
 --------
 
-Single output page.  Child elements are `text`_, `line`_, `rectangle`_
-and `image`_.
+Single output page.  Child elements are `outline`_, `text`_, `line`_,
+`rectangle`_, `image`_, and `barcode`_.
 
 Attributes:
 
@@ -198,7 +196,7 @@ Attributes:
 -------
 
 Required child for all elements placed in pages, i.e. `text`_, `line`_,
-`rectangle`_ and `image`_.
+`rectangle`_, `image`_, and `barcode`_.
 
 Attributes:
 
@@ -223,7 +221,7 @@ Attributes:
 ================= ===== ========= ======================================
 ``font``           M    string    Name of the font definition.
 ``align``          O    string    Text alignment: ``left``, ``center``,
-                                  ``right`` or ``justified``.
+                                  ``right``, or ``justified``.
                                   Default: ``left``.
 ``color``          M    color     Text color.
 ================= ===== ========= ======================================
@@ -299,7 +297,7 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``type``           M    string    ``Code128``, ``Code39`` or ``2of5i``.
+``type``           M    string    ``Code128``, ``Code39``, or ``2of5i``.
 ``value``          M    string    The text encoded with the bar code.
 ``stripes``        M    list of   Precomputed bar code - comma-delimited
                         integers  sequence of bar/space widths, starting
@@ -308,6 +306,40 @@ Attributes:
                                   Default: 10.0.
 ``vertical``       O    boolean   If True, the image is rotated
                                   90 degrees clockwise.
+================= ===== ========= ======================================
+
+``outline``
+-----------
+
+A bookmark in the document navigation pane.
+
+Some printout rendering front-ends may support navigation inside
+document contents.  (For example, PDF documents have an outline pane.)
+The `outline`_ element defines an entry in such navigation tree.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``name``           M    string    An identifier for the bookmark.
+
+                                  Must be unique within the document.
+``title``          M    string    Caption text for the outline tree.
+``level``          O    integer   An outline nesting level.
+
+                                  The outermost level (default) is 1.
+                                  Nested levels have bigger numbers.
+
+                                  The level number must be increased
+                                  by one when a nested level is created:
+                                  going from 1 to 3 without 2 is an
+                                  error.
+``closed``         O    boolean   True to display the outline closed
+                                  at this entry (i.e. hide all nested
+                                  levels).
+``x``              O    dimension Horizontal position (Default: 0).
+``y``              O    dimension Vertical position (Default: 0).
 ================= ===== ========= ======================================
 
 .. vim: set et ft=rst sts=2 sw=2 :

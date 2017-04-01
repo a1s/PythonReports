@@ -80,8 +80,7 @@ def run():
     setup(name="PythonReports",
         version=get_version(),
         url="http://pythonreports.sourceforge.net/",
-        download_url=
-            "http://sourceforge.net/projects/pythonreports/files/",
+        download_url="https://pypi.python.org/pypi/PythonReports",
         description="Database report generator",
         long_description=DESCRIPTION,
         author="Aleksandr Smyshliaev",

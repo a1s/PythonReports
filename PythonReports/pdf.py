@@ -59,6 +59,7 @@ class PdfWriter(object):
             "rectangle": self.drawRectangle,
             "text": self.drawText,
             "barcode": self.drawBarcode,
+            "outline": self.addOutline,
         }
         if Image:
             # PIL is loaded - can process images
@@ -273,6 +274,14 @@ class PdfWriter(object):
         _height = _box.get("height")
         return (_box.get("x"), self.pagesize[1] - _box.get("y") - _height,
             _box.get("width"), _height)
+
+    def addOutline(self, element):
+        """Add a document outline entry"""
+        _key = element.get("name")
+        self.canvas.bookmarkPage(_key, "FitH", left=element.get("x", 0),
+            top=(self.pagesize[1] - element.get("y", 0)))
+        self.canvas.addOutlineEntry(element.get("title"),
+            _key, element.get("level", 1) - 1, element.get("closed"))
 
     def drawLine(self, line):
         """Draw a line"""

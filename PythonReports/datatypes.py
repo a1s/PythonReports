@@ -312,16 +312,13 @@ class REQUIRED(object):
 # XXX should NOTHING be different from REQUIRED?
 REQUIRED = NOTHING = REQUIRED()
 
-class Structure:
+class Structure(object):
 
     """Simple object with custom attributes
 
     Structures are silly containers that do nothing but
     hold a set of values.  Attributes may be initialized
     by passing keyword arguments to object constructor.
-
-    Structures use old-style classes for better attribute
-    access times.
 
     """
     # pylint: disable-msg=R0903

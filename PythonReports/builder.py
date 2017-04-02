@@ -809,10 +809,9 @@ class Section(list):
         if element.template.get("vertical"):
             (_min_height, _min_width) = (_min_width, _min_height)
         _bbox = element.tbox.copy()
-        if _bbox.width < _min_width:
-            _bbox.width = _min_width
-        if _bbox.height < _min_height:
-            _bbox.height = _min_height
+        # Always apply minimums here, actual sizes calculated in .refill()
+        _bbox.width = _min_width
+        _bbox.height = _min_height
         _bbox.place_x(self.box)
         _bbox.place_y(self.box)
         element.bbox = _bbox
@@ -890,8 +889,18 @@ class Section(list):
         if self.resizeable:
             _height = self.tbox.height
             for _element in self:
+                if _element.template.tag == "barcode":
+                    # For barcodes, bbox is minimum allowed.
+                    # If there is bigger fixed size in the template,
+                    # use that size instead of bbox minimum.
+                    _bbox = _element.bbox.copy()
+                    if _element.tbox.width > _bbox.width:
+                        _bbox.width = _element.tbox.width
+                    if _element.tbox.height > _bbox.height:
+                        _bbox.height = _element.tbox.height
+                else:
+                    _bbox = _element.bbox
                 # Note: bbox vertical dimensions are relative yet
-                _bbox = _element.bbox
                 if (_bbox.height < 0) and (_element.template.tag == "image") \
                 and (_element.template.get("scale") == "grow"):
                     # box height is relative to section size
@@ -907,7 +916,6 @@ class Section(list):
                 elif _bbox.height >= 0:
                     _elem_height = _bbox.y + _bbox.height
                 else:
-                    # FIXME is it for _bbox.height < 0?
                     # fixed space from top and bottom, unknown size
                     _elem_height = _bbox.y + 1 - _bbox.height
                 if _elem_height > _height:
@@ -972,6 +980,28 @@ class Section(list):
             if _element.template.tag == "barcode":
                 # update encoded symbol and bbox from current text if needed
                 self.build_barcode(_element)
+                # Do the final placement: align width, grow height
+                _pbox = _element.tbox.copy()
+                _pbox.place_x(self.box)
+                _pbox.place_y(self.box)
+                _obox = _element.bbox.copy() # Minimal allowed dimensions
+                if not _element.template.get("grow"):
+                    # Align both dimensions.
+                    _obox.align_x(_pbox)
+                    _obox.align_y(_pbox)
+                elif _element.template.get("vertical"):
+                    # Align vertically, grow horizontally.
+                    _obox.align_y(_pbox)
+                    if _obox.width < _pbox.width:
+                        _obox.width = _pbox.width
+                else:
+                    # Align horizontally, grow vertically.
+                    _obox.align_x(_pbox)
+                    if _obox.height < _pbox.height:
+                        _obox.height = _pbox.height
+                _element.obox = _obox
+                # No more adjustments for barcodes.
+                continue
             _bbox = _element.bbox
             if _sbox:
                 # vertical position changed.  recalc from template.

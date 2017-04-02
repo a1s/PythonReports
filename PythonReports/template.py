@@ -230,6 +230,7 @@ BarCode = Validator(tag="barcode",
         "type": (BarCodeType, REQUIRED),
         "module": (Numeric(1), 10),
         "vertical": (Boolean, False),
+        "grow": (Boolean, False),
         "expr": (Expression, None),
         "data": (String, None),
     }, children=(

@@ -897,6 +897,11 @@ Attributes:
                                   Default: 10.0.
 ``vertical``       O    boolean   If True, the image is rotated
                                   90 degrees clockwise.
+``grow``           O    boolean   If True, the height of the bars is
+                                  increased to occupy the whole `box`_.
+
+                                  If False (default), the bars have the
+                                  lowest height allowed by code specs.
 ``expr``           O    string    Value expression.
 ``evaltime``       O    string    When the expression is evaluated:
                                   ``report``, ``page``, ``column``,

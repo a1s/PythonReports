@@ -1,6 +1,19 @@
 PythonReports release history
 =============================
 
+version 0.7.0 (02-apr-2017)
+---------------------------
+
+Add human-friendly syntax for template files, based on RSON.
+
+Add embedded subreports.
+
+Add document outline.
+
+Fix alignment for barcode elements, add "grow" option.
+
+Fix: column header printed before page header (broken in v0.6.2).
+
 version 0.6.10 (06-feb-2016)
 ----------------------------
 

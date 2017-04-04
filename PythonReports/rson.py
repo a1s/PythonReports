@@ -109,6 +109,9 @@ def rson2element(tag, data):
     for (_name, _value) in data:
         if not _value:
             continue
+        # _name is RsonToken which does not like ti be combined
+        # with Unicode values in error messages.
+        _name = _name.decode("utf-8")
         if isinstance(_value[0], basestring):
             assert len(_value) == 1
             _value = str2value(_value[0])

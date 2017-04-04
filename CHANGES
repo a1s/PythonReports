@@ -1,6 +1,13 @@
 PythonReports release history
 =============================
 
+version 0.7.1 (04-apr-2017)
+---------------------------
+
+Add system variables VERTICAL_POSITION and VERTICAL_SPACE.
+
+Fix reading Unicode values from RSON files.
+
 version 0.7.0 (02-apr-2017)
 ---------------------------
 

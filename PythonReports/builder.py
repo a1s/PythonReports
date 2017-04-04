@@ -264,6 +264,7 @@ class Context(object):
         "THIS", "ITEM_NUMBER",
         "DATA_COUNT", "REPORT_COUNT", "PAGE_COUNT", "COLUMN_COUNT",
         "PAGE_NUMBER", "COLUMN_NUMBER",
+        "VERTICAL_POSITION", "VERTICAL_SPACE",
     )
 
     def __init__(self, *args, **kwargs):
@@ -2212,6 +2213,8 @@ class Builder(object):
             return _rv
         _frame = self.section_frames[template]
         _context["COLUMN_NUMBER"] = _frame.column + 1
+        _context["VERTICAL_POSITION"] = self.cur_y
+        _context["VERTICAL_SPACE"] = _frame.bottom - self.cur_y
         _section = Section(self, template, _context)
         if not _section.printable:
             return None
@@ -2220,6 +2223,8 @@ class Builder(object):
             # reevaluate the section
             # NB: this discards the context passed in arguments
             _context = self.context
+            _context["VERTICAL_POSITION"] = self.cur_y
+            _context["VERTICAL_SPACE"] = _frame.bottom - self.cur_y
             _section.build(_context)
             if not _section.printable:
                 # oops!
@@ -2229,6 +2234,8 @@ class Builder(object):
         and (_section.template.tag not in ("header", "footer")):
             self.eject(_frame)
             _context["COLUMN_NUMBER"] = _frame.column + 1
+            _context["VERTICAL_POSITION"] = self.cur_y
+            _context["VERTICAL_SPACE"] = _frame.bottom - self.cur_y
             _section.build(_context)
             if not _section.printable:
                 return None

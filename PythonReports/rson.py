@@ -63,12 +63,14 @@ def str2value(txt):
     """Build an output value from an RSON string
 
     If "txt" is enclosed in square brackets, parse one-line
-    short-cut notation and return a list of 2-element tuples.
+    short-cut notation and make a list of 2-element tuples.
 
     Otherwise if "txt" is enclosed in double quotes,
-    pass it to Python "eval()" and return the result.
+    pass it to Python "eval()" and use the result.
 
-    Otherwise return "txt" as is.
+    Otherwise use "txt" as is.
+
+    Decode all values from UTF-8 (that's encoding forced by rsonlite).
 
     """
     if len(txt) < 2:
@@ -77,11 +79,13 @@ def str2value(txt):
         _rv = []
         for _item in txt[1:-1].split(";"):
             (_name, _value) = _item.split("=", 1)
-            _rv.append((_name.strip(), [_value.strip()]))
+            _rv.append((_name.strip(), [str2value(_value.strip())]))
     elif txt[0] == txt[-1] == "\"":
         _rv = eval(txt)
     else:
         _rv = txt
+    if not isinstance(_rv, (unicode, list)): # list may come from one-liner
+        _rv = _rv.decode("utf-8")
     return _rv
 
 def rson2element(tag, data):
@@ -106,8 +110,6 @@ def rson2element(tag, data):
         if not _value:
             continue
         if isinstance(_value[0], basestring):
-            if len(_value) > 1:
-                print ("ERR", tag, _name, _value)
             assert len(_value) == 1
             _value = str2value(_value[0])
         if isinstance(_value, basestring):

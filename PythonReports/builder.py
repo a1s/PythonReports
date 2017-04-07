@@ -333,8 +333,15 @@ class Context(object):
         @return: expression evaluation result.
 
         """
+        __slots__ = ["sysvars", "imports", "parameters", "variables"]
+        # Generator expressions run in their own local context,
+        # name defined in the locals dictionary are not visible there.
+        # Make globals dictionary from all known names.
+        _globals = {}
+        for _name in reversed(self.__slots__):
+            _globals.update(getattr(self, _name))
         try:
-            return eval(expression, {}, self)
+            return eval(expression, _globals, self)
         except Exception, _err:
             raise ExpressionError(_err, expression, template), \
                 None, sys.exc_info()[2]
@@ -1956,7 +1963,7 @@ class Builder(object):
             self.check_eject(_title)
             self.add_section(self.build_section(_title))
         _columns = group.find("columns")
-        if _columns:
+        if _columns is not None:
             self.add_section(self.build_section(_columns.find("header")))
 
     def end_group(self, group):
@@ -1966,7 +1973,7 @@ class Builder(object):
 
         """
         _columns = group.find("columns")
-        if _columns:
+        if _columns is not None:
             self.add_section(self.build_section(_columns.find("footer"),
                 context=self.old_context))
             _max_y = self.section_frames[_columns].max_y

@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.7.1
-:Date: 4-apr-2017
+:Version: 0.7.2
+:Date: 7-apr-2017
 
 .. contents::
 
@@ -43,7 +43,7 @@ contain exactly one `layout`_ element and may contain and arbitrary
 number of `font`_, `parameter`_, `variable`_, and `data`_ elements.
 
 The `layout`_ element contains one `group`_ or `detail`_ element
-and may contain a sequence of `style`_ elements and possible
+and may contain a sequence of `style`_ elements and possible `embedded`_,
 `columns`_, `header`_, `footer`_, `title`_, and `summary`_ elements.
 
 The `columns`_ element may contain a sequence of `style`_ elements
@@ -707,7 +707,7 @@ for report page or column respectively.
 Topmost element of report layout definition.
 
 The `layout`_ element contains one `group`_ or `detail`_ element
-and may contain a sequence of `style`_ elements and possible
+and may contain a sequence of `style`_ elements and possible `embedded`_,
 `columns`_, `header`_, `footer`_, `title`_, and `summary`_ elements.
 
 Attributes:

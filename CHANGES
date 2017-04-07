@@ -1,6 +1,15 @@
 PythonReports release history
 =============================
 
+version 0.7.2 (07-apr-2017)
+---------------------------
+
+For expression evaluation context, add to the globals dictionary
+all known names: system variables, imports, report parameters, and
+defined variables.  (Locals are not visible in generator expressions.)
+
+Add parse_rson function to .api exports.
+
 version 0.7.1 (04-apr-2017)
 ---------------------------
 

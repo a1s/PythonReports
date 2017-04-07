@@ -4,11 +4,6 @@ This module exports modules, functions and classes needed
 to build a report and format or display report printout.
 
 """
-"""History:
-22-jul-2010 [als]   moved from __init__.py
-"""
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2010/07/22 06:07:02 $"[7:-2]
 
 __all__ = [
     "template", "load_template",
@@ -48,5 +43,12 @@ except ImportError:
     pass
 else:
     __all__.extend(("wxPrint", "wxPrintout", "wxPreview", "wxPrintApp"))
+
+try:
+    from PythonReports.rson import parse_file as parse_rson
+except ImportError:
+    pass
+else:
+    __all__.append("parse_rson")
 
 # vim: set et sts=4 sw=4 :

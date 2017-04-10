@@ -1,6 +1,15 @@
 PythonReports release history
 =============================
 
+version 0.7.3 (10-apr-2017)
+---------------------------
+
+Fix: subreports with no items in the data sequence or suppressed
+by 'printwhen' produced unexpected page ejects.
+
+When an error occurs while parsing an RSON input, report the number
+of the line that caused the error.
+
 version 0.7.2 (07-apr-2017)
 ---------------------------
 

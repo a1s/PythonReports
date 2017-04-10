@@ -55,6 +55,8 @@ to store computer-generated structures in that format.
 
 """
 
+import sys
+
 import rsonlite
 
 from PythonReports import datatypes, template
@@ -106,19 +108,24 @@ def rson2element(tag, data):
     """
     _attrs = {}
     _children = []
-    for (_name, _value) in data:
-        if not _value:
-            continue
-        # _name is RsonToken which does not like ti be combined
-        # with Unicode values in error messages.
-        _name = _name.decode("utf-8")
-        if isinstance(_value[0], basestring):
-            assert len(_value) == 1
-            _value = str2value(_value[0])
-        if isinstance(_value, basestring):
-            _attrs[_name] = _value
-        else:
-            _children.append((_name, _value))
+    for (_key, _value) in data:
+        try:
+            if not _value:
+                continue
+            # _key is RsonToken which does not like to be combined
+            # with Unicode values in error messages.
+            _name = _key.decode("utf-8")
+            if isinstance(_value[0], basestring):
+                assert len(_value) == 1
+                _value = str2value(_value[0])
+            if isinstance(_value, basestring):
+                _attrs[_name] = _value
+            else:
+                _children.append((_name, _value))
+        except Exception:
+            (_type, _val, _tb) = sys.exc_info()
+            raise (ValueError("Failed to parse RSON input in line %s: %s"
+                % (_key.line, unicode(_val))), None, _tb)
     _body = _attrs.pop("body", None)
     _rv = datatypes.Element(tag, _attrs)
     for (_name, _value) in _children:

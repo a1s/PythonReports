@@ -2117,11 +2117,11 @@ class Builder(object):
         # return early if subreport is skipped
         _when = element.get("when")
         if _when and not _context.eval(_when, element):
-            return
+            return eject_frame
         # return early if there are no data items for the subreport
         _data = _context.eval(element.get("data"), element)
         if len(_data) < 1:
-            return
+            return eject_frame
         (_inline, _builder) = self.get_subreport_builder(element)
         # collect subreport arguments
         # Note: this is done before any new section is built

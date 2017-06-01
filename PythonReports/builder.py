@@ -1750,6 +1750,8 @@ class Builder(object):
         for _var in self.variables:
             if _var.reset == "detail":
                 _var.start(_new_context)
+                if _var.iter == "item":
+                    _var.iterate(self.context)
             if _var.iter == "detail":
                 _var.iterate(_new_context)
         # apply new context.
@@ -1768,6 +1770,8 @@ class Builder(object):
                 if _var.reset == "detail":
                     # reinitialize with context rolled back
                     _var.start(self.context)
+                    if _var.iter == "item":
+                        _var.iterate(self.context)
                 elif _var.iter == "detail":
                     _var.rollback()
 
@@ -1942,6 +1946,8 @@ class Builder(object):
         for _var in self.variables:
             if _var.reset in ("page", "column"):
                 _var.start(self.context)
+                if _var.iter == "item":
+                    _var.iterate(self.context)
             if _var.iter in ("page", "column"):
                 _var.iterate(self.context)
 
@@ -1956,6 +1962,8 @@ class Builder(object):
         for _var in self.variables:
             if (_var.reset == "group") and (_var.resetgrp == _group_name):
                 _var.start(self.context)
+                if _var.iter == "item":
+                    _var.iterate(self.context)
             if (_var.iter == "group") and (_var.itergrp == _group_name):
                 _var.iterate(self.context)
         _title = group.find("title")
@@ -2392,6 +2400,8 @@ class Builder(object):
             for _var in self.variables:
                 if _var.reset == "column":
                     _var.start(self.context)
+                    if _var.iter == "item":
+                        _var.iterate(self.context)
                 if _var.iter == "column":
                     _var.iterate(self.context)
             # change page position to the top of new column

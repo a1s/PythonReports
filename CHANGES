@@ -1,6 +1,14 @@
 PythonReports release history
 =============================
 
+version 0.7.4 (03-jun-2017)
+---------------------------
+
+Fix loading for embedded subreport templates: check parameter and
+variable names against namespace that is separated from the main report.
+
+Iterate variables defined with iter="item" immediately after reset.
+
 version 0.7.3 (10-apr-2017)
 ---------------------------
 

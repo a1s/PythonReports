@@ -359,9 +359,39 @@ def _need_pagesize(tree, element, path):
     raise XmlValidationError(
         "Must have either 'pagesize' or 'width' and 'height'", element, path)
 
-Embedded = Validator(tag="embedded",
+class EmbeddedValidator(Validator):
+
+    """A validator for embedded reports
+
+    The "embedded" element is an isolated sub-tree, it
+    must have own namespaces for Unique property checking.
+
+    We achieve that by creating a temporary ElementTree object
+    to validate the sub-tree separately from the parent tree.
+
+    """
+
+
+    def __init__(self, tag, attributes=None, children=(),
+        prevalidate=None, validate=None, doc=None,
+    ):
+        super(EmbeddedValidator, self).__init__(tag,
+            attributes=attributes, children=children,
+            prevalidate=prevalidate, validate=validate, doc=doc)
+        # The Unique validator must run in the context of parent tree
+        self.validate_unique = Validator.Unique("embedded")
+
+    def __call__(self, tree, element, path):
+        self.validate_unique(tree, element, path)
+        _subtree = ElementTree(element)
+        _subtree.filename = tree.filename
+        # Embedded reports use fonts and named data blocks from main
+        _subtree.fonts = dict(tree.fonts)
+        _subtree.datablocks = dict(tree.datablocks)
+        super(EmbeddedValidator, self).__call__(_subtree, element, path)
+
+Embedded = EmbeddedValidator(tag="embedded",
     validate=(
-        Validator.Unique("embedded"),
         _need_subgroup_or_detail,
     ), attributes={
         "name": (String, REQUIRED),

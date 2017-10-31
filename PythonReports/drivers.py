@@ -4,21 +4,6 @@ This module contains base classes for text and image rendering drivers
 and exports API function `get_driver`, used to get a driver implementation.
 
 """
-"""History (most recent first):
-12-dec-2006 [als]   fix misleading comment
-06-dec-2006 [als]   more lint fixes
-05-dec-2006 [als]   sweep pylint warnings
-04-nov-2006 [als]   added text driver backend "Tk";
-                    have different backend lists for texts and images
-03-nov-2006 [als]   fix image drivers loading (broken in revision 1.3)
-01-nov-2006 [als]   get_driver won't fail if no image driver found
-                    (but the first image operation will raise an error)
-01-nov-2006 [als]   driver classes have backend name property
-11-oct-2006 [als]   fix variable name in ImageDriver.resize
-05-oct-2006 [als]   created
-"""
-__version__ = "$Revision: 1.8 $"[11:-2]
-__date__ = "$Date: 2006/12/12 10:42:02 $"[7:-2]
 
 __all__ = ["PIXEL", "get_driver"]
 
@@ -355,7 +340,11 @@ class TextDriver(object):
                 if _chunks:
                     (_line, _ii) = self._find_first_line(_chunks, width)
                 if _ii is None:
-                    # Try separate characters
+                    # Try separate characters,
+                    # convert leading blanks to single space
+                    if _word[0].isspace():
+                        _lines.append("")
+                        _word = _word.lstrip()
                     (_line, _ii) = self._find_first_line(list(_word), width)
                 if _ii is None:
                     # Even one character is too much; further we can't go

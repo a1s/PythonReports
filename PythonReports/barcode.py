@@ -1,20 +1,12 @@
 """BarCode routines"""
-"""History:
-25-nov-2007 [als]   fix default value for errors parameter to __call__
-05-dec-2006 [als]   sweep pylint warnings
-07-nov-2006 [als]   fix doctests (no quet zones encoded)
-22-sep-2006 [als]   encoding calls return sequences w/o quiet zones;
-                    added .add_qz(), .min_height()
-12-sep-2006 [als]   created
-"""
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2007/11/25 08:48:41 $"[7:-2]
 
-__all__ = ["code2of5i", "code39", "code128"]
+__all__ = ["code2of5i", "code39", "code128", "aztec"]
 
 import itertools
 import math
 import re
+
+from aztec_code_generator import AztecCode
 
 _re_digit = re.compile("\d")
 _re_nondigit = re.compile("\D")
@@ -41,9 +33,13 @@ class BarCode(object):
 
     """
 
-    # minimum size of quiet zones, in mils
+    # Minimum size of quiet zones, in mils.
     # 2of5I and Code128 require .25inch, Code39 require .10inch
+    # BarCode2D codes uses fixed number of X dimensions instead of this.
     QZ_MILS = 250
+
+    # Set to True for 2D barcodes (Aztec and QR Code)
+    IS_2D = False
 
     def __call__(self, text, errors="strict"):
         """Encode passed text, return sequence of stripe widths
@@ -57,6 +53,20 @@ class BarCode(object):
         The first and the last values are widths of the outermost
         bars.  The caller must ensure that there are wide enough
         quiet zones on both sides of the symbol.
+
+        For 2D codes, return value is a tuple of line specifications.
+        Each line spec is a 2-element tuple containing the starting
+        stripe color indicator (True for line, False for blank),
+        and the sequence of element widths, alternating lines and blanks.
+        For example, this spec:
+
+            ((True, (1, 2, 1)), (False, (2, 1, 1)), (True, (1, 1, 2)))
+
+        would produce image like this:
+
+            #  #
+              #
+            # ##
 
         """
 
@@ -435,7 +445,7 @@ class Code128(BarCode):
     2, 2, 1, 1, 1, 2, 2, 1, 4, 2, 1, 2, 2, 2, 2, 1, 2, 3, 2, 2, 1,
     2, 2, 3, 2, 1, 1, 3, 1, 1, 2, 2, 2, 1, 1, 1, 4, 2, 2, 2, 3, 3,
     1, 1, 1, 2)
-    >>> print textwrap.fill(repr(code128("\rx")), 64)
+    >>> print textwrap.fill(repr(code128("\\rx")), 64)
     (2, 1, 1, 4, 1, 2, 4, 1, 3, 1, 1, 1, 1, 1, 4, 1, 3, 1, 4, 2, 1,
     2, 1, 1, 3, 2, 1, 2, 2, 1, 2, 3, 3, 1, 1, 1, 2)
     >>> print textwrap.fill(repr(code128("0123456789")), 64)
@@ -614,14 +624,151 @@ class Code128(BarCode):
 
 code128 = Code128()
 
+class BarCode2D(BarCode):
+
+    """Base class for 2-dimensional encoders"""
+
+    IS_2D = True
+
+    # Note: not all 2D codes require the quiet zone (Aztec doesn't),
+    # but we add it always to simplify the structure: when we have
+    # a quiet zone, the first stripe of each scan row is always blank,
+    # and we do not need an additional indicator.
+    QZ_MODULES = 1
+
+    def add_qz(self, sequence, xdim=None):
+        """Return a code sequence with added quiet zones
+
+        Parameters:
+            sequence: a sequence of sequences of line/blank widths
+                relative to X dimension, as returned by the encoder.
+            xdim: X dimension in mils (not used here).
+
+        Return value: A tuple of tuples of integers.
+        Each inner tuple contains integer widths of
+        blanks and lines for one scan row, starting
+        with blank for the quiet zone.
+
+        Note: the top and bottom rows are always blank,
+        corresponding tuples contain just one integer
+        matching the whole width of the symbol.
+
+        """
+        _width = self.symbol_width(sequence) + 2 * self.QZ_MODULES
+        _rv = [(_width,)] * self.QZ_MODULES # Top quiet zone rows
+        for _row in sequence:
+            _stripes = [self.QZ_MODULES]
+            if _row[0]: # The row starts with stripe
+                _stripes.append(_row[1][0])
+            else: # The row starts wit blank
+                _stripes[0] += _row[1][0]
+            _stripes.extend(_row[1][1:])
+            # Add trailing quiet zone
+            _qz = _width - sum(_stripes)
+            if len(_stripes) & 1: # The last stripe is blank
+                _stripes[-1] += _qz
+            else:
+                _stripes.append(_qz)
+            _rv.append(tuple(_stripes))
+        # Bottom quiet zone rows
+        _rv.extend([(_width,)] * self.QZ_MODULES)
+        return tuple(_rv)
+
+    def symbol_width(self, sequence):
+        """Return the number of modules in one scan row of the symbol w/o QZ"""
+        return max(sum(_row[1]) for _row in sequence)
+
+    def min_height(self, sequence, xdim):
+        _rw = len(sequence) * xdim / 1000.0 * 72
+        return int(math.ceil(_rv))
+
+class Aztec(BarCode2D):
+
+    """Aztec Code
+
+    Aztec Code is a type of 2D barcode.  The symbol is built
+    on a square grid with a bulls-eye pattern at its centre
+    for locating the code.  Data is encoded in concentric square rings
+    around the bulls-eye pattern.  The central bulls-eye is 9x9 or
+    13x13 pixels, and one row of pixels around that encodes basic
+    coding parameters, producing a "core" of 11x11 or 15x15 squares.
+    Data is added in "layers", each one containing two rings of pixels,
+    giving total sizes of 15x15, 19x19, 23x23, etc.
+
+    The variable pixels in the central core encode the size, so it
+    is not necessary to mark the boundary of the code with a blank
+    "quiet zone", although some bar code readers require one.
+
+    The compact Aztec code core may be surrounded by 1 to 4 layers,
+    producing symbols from 15x15 (room for 13 digits or 12 letters)
+    through 27x27.  The full core supports up to 32 layers, 151x151 pixels,
+    which can encode 3832 digits, 3067 letters, or 1914 bytes of data.
+
+    This implementation uses Aztec Code generator by Dmitry Alimov.
+    @see: https://github.com/delimitry/aztec_code_generator
+
+    Encoding examples:
+
+    >>> cc = aztec("Aztec Code 2D :)")
+    >>> pprint.pprint(cc)
+    ((False, (6, 2, 2, 1, 1, 2, 1, 4)),
+     (False, (1, 1, 3, 2, 1, 5, 2, 3, 1)),
+     (False, (1, 1, 2, 2, 2, 1, 1, 1, 3, 1, 1, 3)),
+     (True, (2, 1, 1, 2, 1, 4, 2, 1, 2, 3)),
+     (False, (4, 2, 1, 1, 1, 1, 4, 1, 1, 1, 2)),
+     (True, (2, 1, 12, 1, 1, 1, 1)),
+     (False, (1, 3, 1, 1, 7, 3, 2, 1)),
+     (True, (2, 3, 1, 1, 5, 1, 1, 1, 2, 1, 1)),
+     (False, (1, 1, 3, 1, 1, 1, 3, 1, 1, 2, 4)),
+     (False, (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3)),
+     (False, (4, 2, 1, 1, 3, 1, 1, 2, 1, 2, 1)),
+     (True, (4, 1, 1, 1, 5, 1, 2, 1, 1, 2)),
+     (False, (2, 1, 1, 2, 7, 2, 1, 2, 1)),
+     (False, (1, 2, 2, 11, 1, 1, 1)),
+     (False, (2, 2, 4, 1, 1, 2, 3, 2, 1, 1)),
+     (False, (5, 2, 1, 1, 1, 3, 1, 1, 2, 2)),
+     (False, (6, 12, 1)),
+     (True, (2, 3, 1, 5, 1, 1, 2, 3, 1)),
+     (True, (2, 2, 1, 4, 2, 1, 3, 3, 1)))
+    >>> len(cc)
+    19
+    >>> # Note: symbol_width is code width plus 2 * QZ_MODULES
+    >>> aztec.symbol_width(cc)
+    19
+    >>> pprint.pprint(aztec.add_qz(cc)[:5])
+    ((21,),
+     (7, 2, 2, 1, 1, 2, 1, 4, 1),
+     (2, 1, 3, 2, 1, 5, 2, 3, 2),
+     (2, 1, 2, 2, 2, 1, 1, 1, 3, 1, 1, 3, 1),
+     (1, 2, 1, 1, 2, 1, 4, 2, 1, 2, 4))
+
+
+    """
+
+    _re_stripe = re.compile(" +|#+")
+
+    def __call__(self, text):
+        _symbol = AztecCode(text)
+        _rv = []
+        for _row in _symbol.matrix:
+            _stripes = self._re_stripe.findall("".join(_row))
+            _rv.append((
+                (not _stripes[0].isspace()),
+                tuple(len(_stripe) for _stripe in _stripes),
+            ))
+        return tuple(_rv)
+
+aztec = Aztec()
+
 def _test():
     """Run doctests"""
     import doctest
-    # textwrap is used in tests to wrap output
-    # so that example lines do not exceed allowed
-    # source code width.
-    import textwrap
-    (_fail, _total) = doctest.testmod(extraglobs={"textwrap": textwrap})
+    # textwrap and pprint are used in tests to wrap output
+    # so that example lines do not exceed allowed source code width.
+    import pprint, textwrap
+    (_fail, _total) = doctest.testmod( extraglobs={
+        "pprint": pprint, "textwrap": textwrap,
+    })
     # if there were failed tests, doctest reported that itself
     if not _fail:
         print "%i tests passed." % _total

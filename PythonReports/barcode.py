@@ -5,8 +5,16 @@ __all__ = ["code2of5i", "code39", "code128", "aztec"]
 import itertools
 import math
 import re
+import sys
 
 from aztec_code_generator import AztecCode
+try:
+    from qrcode import QRCode, \
+        ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q, ERROR_CORRECT_H
+except ImportError:
+    QRCode = ERROR_CORRECT_L = ERROR_CORRECT_M \
+        = ERROR_CORRECT_Q = ERROR_CORRECT_H = None
+    qr_missing = sys.exc_info()
 
 _re_digit = re.compile("\d")
 _re_nondigit = re.compile("\D")
@@ -759,6 +767,53 @@ class Aztec(BarCode2D):
         return tuple(_rv)
 
 aztec = Aztec()
+
+class QR(BarCode2D):
+
+    """QR Code
+
+    QR Code (Quick Response Code) is a matrix code developed
+    by Nippondenso ID Systems and is in the public domain.
+
+    Maximum symbol size is 177 modules square, capable of encoding
+    7366 numeric characters, or 4464 alpha numeric characters.
+
+    """
+
+    # QR codes are known to work well with 1X quiet zone
+    # (see, f.e., https://qrworld.wordpress.com/2011/08/09/the-quiet-zone/)
+    # but the specs require 4X.
+    QZ_MODULES = 4
+
+    # Error correction level
+    ec = None
+
+    def __init__(self, ec=ERROR_CORRECT_M):
+        super(QR, self).__init__()
+        self.ec = ec
+
+    _re_stripe = re.compile(" +|#+")
+
+    def __call__(self, text):
+        if QRCode is None:
+            raise qr_missing[0], qr_missing[1], qr_missing[2]
+        _symbol = QRCode(error_correction=self.ec)
+        _symbol.add_data(text)
+        _symbol.make()
+        _rv = []
+        for _row in _symbol.modules:
+            _stripes = self._re_stripe.findall("".join(
+                "#" if _module else " " for _module in _row))
+            _rv.append((
+                (not _stripes[0].isspace()),
+                tuple(len(_stripe) for _stripe in _stripes),
+            ))
+        return tuple(_rv)
+
+qr_l = QR(ec=ERROR_CORRECT_L)
+qr_m = QR(ec=ERROR_CORRECT_M)
+qr_q = QR(ec=ERROR_CORRECT_Q)
+qr_h = QR(ec=ERROR_CORRECT_H)
 
 def _test():
     """Run doctests"""

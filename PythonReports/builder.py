@@ -457,6 +457,10 @@ class Section(list):
         "Code39": barcode.code39,
         "2of5i": barcode.code2of5i,
         "Aztec": barcode.aztec,
+        "QR-L": barcode.qr_l,
+        "QR-M": barcode.qr_m,
+        "QR-Q": barcode.qr_q,
+        "QR-H": barcode.qr_h,
     }
 
     # Tag names for printable output elements (with dimension boxes)

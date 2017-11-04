@@ -737,7 +737,8 @@ class BarCodeType(_Codes):
     # pylint: disable-msg=R0904
     # R0904: Too many public methods - same as in the base class
 
-    VALUES = ("Code128", "Code39", "2of5i", "Aztec")
+    VALUES = ("Code128", "Code39", "2of5i",
+        "Aztec", "QR-L", "QR-M", "QR-Q", "QR-H")
 
 class BitmapScale(_Codes):
 

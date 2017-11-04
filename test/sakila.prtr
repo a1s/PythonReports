@@ -129,7 +129,16 @@ layout
       type = Aztec
       body = Aztec Code 2D :)
       box = [ x = 2.3in ; width = .3in ; halign = center ; valign = top ]
-      #grow = True
+      grow = True
+    barcode
+      type = QR-L
+      body = Ver1
+      box = [ x = 2.3in ; y = .4in ; width = .3in ; halign = center ]
+    barcode
+      type = QR-Q
+      body = Version 2 (25x25)
+      box = [ x = 2.6in ; width = .9in ; halign = center ; valign = center ]
+      grow = True
     field
       align = right
       box = [ x = 4.5in ; height = 1cm ; halign = right ; valign = top ]

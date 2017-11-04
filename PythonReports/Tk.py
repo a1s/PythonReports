@@ -1,16 +1,5 @@
 #! /usr/bin/env python
 """Tk output for PythonReports"""
-"""History (most recent first):
-05-dec-2006 [als]   fix dashed lines: option is "dash", not "stipple"
-05-dec-2006 [als]   fix errors and some warnings reported by pylint
-07-Nov-2006 [phd]   Added shebang.
-20-oct-2006 [als]   Barcode X dimension attr renamed to "module"
-12-oct-2006 [als]   added zoom
-12-oct-2006 [als]   added page controls and panning on right mouse
-10-oct-2006 [als]   created
-"""
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/07 11:56:49 $"[7:-2]
 
 __all__ = []
 
@@ -268,17 +257,30 @@ class Painter(object):
     def drawBarcode(self, canvas, barcode):
         """Draw Bar Code symbol"""
         _xdim = barcode.get("module") / 1000. * 72.
-        _stripes = [int(_stripe) * _xdim * self.scale
-            for _stripe in barcode.get("stripes").split(",")]
+        _stripes = [[int(_stripe) * _xdim for _stripe in _row.split(",")]
+            for _row in barcode.get("stripes").split(" ")]
         # blank out the symbol area
         _box = Box.from_element(barcode.find("box"))
         _box.rescale(self.scale)
         canvas.create_rectangle(fill="white", width=0,
             *map(dimension, (_box.left, _box.top, _box.right, _box.bottom)))
         # draw bars
-        if barcode.get("vertical"):
+        if len(_stripes) > 1: # 2D barcode
             _cur_y = _box.y
-            for (_idx, _stripe) in enumerate(_stripes):
+            for _row in _stripes:
+                _cur_x = _box.x
+                _next_y = _cur_y + _xdim
+                for (_idx, _stripe) in enumerate(_row):
+                    _next_x = _cur_x + _stripe
+                    if _idx & 1:
+                        canvas.create_rectangle(fill="black", width=0,
+                            *map(dimension,
+                                (_cur_x, _cur_y, _next_x, _next_y)))
+                    _cur_x = _next_x
+                _cur_y = _next_y
+        elif barcode.get("vertical"):
+            _cur_y = _box.y
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
                     canvas.create_rectangle(fill="black", width=0,
                         *map(dimension,
@@ -286,7 +288,7 @@ class Painter(object):
                 _cur_y += _stripe
         else:
             _cur_x = _box.x
-            for (_idx, _stripe) in enumerate(_stripes):
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
                     canvas.create_rectangle(fill="black", width=0,
                         *map(dimension,

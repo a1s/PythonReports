@@ -231,8 +231,8 @@ class Printout(wx.Printout):
 
     def drawBarcode(self, barcode):
         """Draw Bar Code symbol"""
-        _stripes = [int(_stripe)
-            for _stripe in barcode.get("stripes").split(",")]
+        _stripes = [[int(_stripe) for _stripe in _row.split(",")]
+            for _row in barcode.get("stripes").split(" ")]
         # temporary set DC scale to X-dimension
         _scale = barcode.get("module") / 1000. * 72.
         # (Note: current DC scale is points)
@@ -247,15 +247,24 @@ class Printout(wx.Printout):
         _dc.DrawRectangle(_box.x, _box.y, _box.width, _box.height)
         # draw bars
         _dc.SetBrush(wx.BLACK_BRUSH)
-        if barcode.get("vertical"):
+        if len(_stripes) > 1: # 2D barcode
             _cur_y = _box.y
-            for (_idx, _stripe) in enumerate(_stripes):
+            for _row in _stripes:
+                _cur_x = _box.x
+                for (_idx, _stripe) in enumerate(_row):
+                    if _idx & 1:
+                        _dc.DrawRectangle(_cur_x, _cur_y, _stripe, 1)
+                    _cur_x += _stripe
+                _cur_y += 1
+        elif barcode.get("vertical"):
+            _cur_y = _box.y
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
                     _dc.DrawRectangle(_box.x, _cur_y, _box.width, _stripe)
                 _cur_y += _stripe
         else:
             _cur_x = _box.x
-            for (_idx, _stripe) in enumerate(_stripes):
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
                     _dc.DrawRectangle(_cur_x, _box.y, _stripe, _box.height)
                 _cur_x += _stripe

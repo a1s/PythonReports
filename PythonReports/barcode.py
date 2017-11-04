@@ -679,7 +679,7 @@ class BarCode2D(BarCode):
         return max(sum(_row[1]) for _row in sequence)
 
     def min_height(self, sequence, xdim):
-        _rw = len(sequence) * xdim / 1000.0 * 72
+        _rv = (len(sequence) + 2 * self.QZ_MODULES) * xdim / 1000.0 * 72
         return int(math.ceil(_rv))
 
 class Aztec(BarCode2D):

@@ -69,10 +69,11 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
    <outline title="'DVD rental payments'" closed="true" />
    <barcode type="Code128">
     <data>Code 128</data>
+    <box valign="top" />
    </barcode>
    <barcode type="Code39">
     <data>CODE 39</data>
-    <box y=".4in" />
+    <box y=".4in" valign="top" />
    </barcode>
    <barcode type="2of5i" module="7.5" vertical="true"
     expr="PAGE_COUNT" evaltime="page"

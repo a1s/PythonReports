@@ -456,6 +456,7 @@ class Section(list):
         "Code128": barcode.code128,
         "Code39": barcode.code39,
         "2of5i": barcode.code2of5i,
+        "Aztec": barcode.aztec,
     }
 
     # Tag names for printable output elements (with dimension boxes)
@@ -811,9 +812,16 @@ class Section(list):
         _code = self.BARCODES[element.template.get("type")]
         _stripes = _code(element.text)
         element.stripes = _code.add_qz(_stripes, _xdim)
+        # The module may be adjusted for growing 2D codes
+        element.module = _xdim
+        element.is_2d = _code.IS_2D
+        if not element.is_2d:
+            # 1D codes produce one tuple. Make it 2-dimensional for simplicity.
+            element.stripes = (element.stripes,)
         # expand the bounding box if needed
         _min_height = _code.min_height(_stripes, _xdim)
-        _min_width = math.ceil(sum(element.stripes) * _xdim / 1000. * 72)
+        # Assume all rows have the same width
+        _min_width = math.ceil(sum(element.stripes[0]) * _xdim / 1000. * 72)
         if element.template.get("vertical"):
             (_min_height, _min_width) = (_min_width, _min_height)
         _bbox = element.tbox.copy()
@@ -997,6 +1005,17 @@ class Section(list):
                     # Align both dimensions.
                     _obox.align_x(_pbox)
                     _obox.align_y(_pbox)
+                elif _element.is_2d:
+                    # Change the module to use maximum of the box space
+                    # (assume the code has equal height and width)
+                    assert _obox.width == _obox.height
+                    _avail = min(_pbox.width, _pbox.height)
+                    if _avail > _obox.width:
+                        _element.module = _avail * 1000.0 / 72 \
+                            / len(_element.stripes)
+                        _obox.width = _obox.height = _avail
+                    _obox.align_x(_pbox)
+                    _obox.align_y(_pbox)
                 elif _element.template.get("vertical"):
                     # Align vertically, grow horizontally.
                     _obox.align_y(_pbox)
@@ -1069,8 +1088,10 @@ class Section(list):
                 if _template.get("opaque"):
                     _attrib["color"] = _element.style["bgcolor"]
             elif _prp_tag == "barcode":
-                _attrib["stripes"] = ",".join([str(_stripe)
-                    for _stripe in _element.stripes])
+                _attrib["stripes"] = " ".join(",".join(str(_stripe)
+                    for _stripe in _row) for _row in _element.stripes)
+                # We may have changed the module size
+                _attrib["module"] = "%.2f" % _element.module
                 _attrib["value"] = _element.text
             elif _prp_tag == "image":
                 _image = _element.image

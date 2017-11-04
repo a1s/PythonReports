@@ -394,26 +394,46 @@ class PdfWriter(object):
     def drawBarcode(self, barcode):
         """Draw Bar Code symbol"""
         _xdim = barcode.get("module") / 1000. * 72.
-        _stripes = [int(_stripe) * _xdim
-            for _stripe in barcode.get("stripes").split(",")]
+        _stripes = [[int(_stripe) * _xdim for _stripe in _row.split(",")]
+            for _row in barcode.get("stripes").split(" ")]
         # blank out the symbol area
         _canvas = self.canvas
         (_x, _y, _width, _height) = self.getDimensions(barcode)
         self.setFillColor(Color("white"))
         _canvas.rect(_x, _y, _width, _height, False, True)
+        # Although we set stroke=False on black elements, they come out
+        # slightly wider than blanks, especially on low-DPI printers.
+        # Make the bars slightly reduced to avoid that.
+        _downsize_black = 0.05
         # draw bars
         self.setFillColor(Color("black"))
-        if barcode.get("vertical"):
+        if len(_stripes) > 1: # 2D barcode
             _cur_y = _y + _height
-            for (_idx, _stripe) in enumerate(_stripes):
+            for _row in _stripes:
+                _cur_x = _x
+                for (_idx, _stripe) in enumerate(_row):
+                    if _idx & 1:
+                        _canvas.rect(_cur_x, _cur_y,
+                            _stripe - _downsize_black,
+                            _xdim - _downsize_black,
+                            stroke=False, fill=True)
+                    _cur_x += _stripe
+                _cur_y -= _xdim
+        elif barcode.get("vertical"):
+            _cur_y = _y + _height
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
-                    _canvas.rect(_x, _cur_y, _width, _stripe, False, True)
+                    _canvas.rect(_x, _cur_y, _width,
+                        _stripe - _downsize_black,
+                        stroke=False, fill=True)
                 _cur_y -= _stripe
         else:
             _cur_x = _x
-            for (_idx, _stripe) in enumerate(_stripes):
+            for (_idx, _stripe) in enumerate(_stripes[0]):
                 if _idx & 1:
-                    _canvas.rect(_cur_x, _y, _stripe, _height, False, True)
+                    _canvas.rect(_cur_x, _y,
+                        _stripe - _downsize_black, _height,
+                        stroke=False, fill=True)
                 _cur_x += _stripe
 
 def write(report, filepath, compression=True, encrypt=None):

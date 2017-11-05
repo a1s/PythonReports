@@ -2,8 +2,8 @@
 PythonReports Printout
 ======================
 
-:Version: 0.7.0
-:Date: 1-apr-2017
+:Version: 0.8.0
+:Date: 5-nov-2017
 
 .. contents::
 
@@ -297,15 +297,26 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``type``           M    string    ``Code128``, ``Code39``, or ``2of5i``.
+``type``           M    string    ``Code128``, ``Code39``, ``2of5i``,
+                                  ``Aztec``, ``QR-L``, ``QR-M``,
+                                  ``QR-Q``, or ``QR-H``.
 ``value``          M    string    The text encoded with the bar code.
-``stripes``        M    list of   Precomputed bar code - comma-delimited
-                        integers  sequence of bar/space widths, starting
-                                  from space for leading quiet zone.
+``stripes``        M    list of   Precomputed bar code: comma-delimited
+                        integers  sequence of alternating mark and blank
+                                  widths, starting from blank for
+                                  leading quiet zone.
+
+                                  With two-dimensional bar codes,
+                                  one comma-delimited list represents
+                                  one scan line of the code, and lists
+                                  for several lines are separated
+                                  with spaces.
 ``module``         O    number    X dimension, in mils (1/1000inch).
                                   Default: 10.0.
 ``vertical``       O    boolean   If True, the image is rotated
                                   90 degrees clockwise.
+
+                                  Ignored for 2D codes (Aztec and QR).
 ================= ===== ========= ======================================
 
 ``outline``

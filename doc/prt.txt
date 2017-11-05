@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.7.2
-:Date: 7-apr-2017
+:Version: 0.8.0
+:Date: 5-nov-2017
 
 .. contents::
 
@@ -879,10 +879,15 @@ Attributes:
 ``barcode``
 -----------
 
-Print a bar code image.  The `box`_ of the `barcode`_ elements always
-grows in the direction of coding (vertically if ``vertical="true"``,
-horizontally otherwise) and is filled in the opposite direction.
-Bar code images are always embedded in the `PRP file`_.
+Print a bar code image.
+
+
+For 1-dimensional bar codes (``Code128``, ``Code39``, and ``205i``),
+the `box`_ always grows in the direction of coding (vertically
+if ``vertical="true"``, horizontally otherwise) and is aligned or
+filled (depending on the ``grow`` option) in the opposite direction.
+For 2-dimensional bar codes (``Aztec`` and ``QR``), the box grows both
+vertically and horizontally according to minimal allowed symbol size.
 
 Code contents may be set by ``expr`` or ``data`` attributes
 or by child `data`_ element.  Data may be set (either by attribute
@@ -894,19 +899,34 @@ Characters that cannot be encoded with selected code ``type`` are ignored.
 
 Attributes:
 
-================= ===== ========= ======================================
+================= ===== ========= ==========================================
   Name            Req     Type      Description
-================= ===== ========= ======================================
-``type``           M    string    ``Code128``, ``Code39``, or ``2of5i``.
+================= ===== ========= ==========================================
+``type``           M    string    ``Code128``, ``Code39``, ``2of5i``,
+                                  ``Aztec``, ``QR-L``, ``QR-M``, ``QR-Q``,
+                                  or ``QR-H``.
+
+                                  ``QR-L``, ``QR-M``, ``QR-Q``, and ``QR-H``
+                                  are variants of `QR Code`_ with
+                                  different error correction levels:
+                                  7%, 15%, 25%, and 30% correspondingly.
 ``module``         O    number    X dimension, in mils (1/1000inch).
                                   Default: 10.0.
-``vertical``       O    boolean   If True, the image is rotated
+``vertical``       O    boolean   If ``True``, the image is rotated
                                   90 degrees clockwise.
-``grow``           O    boolean   If True, the height of the bars is
-                                  increased to occupy the whole `box`_.
 
-                                  If False (default), the bars have the
-                                  lowest height allowed by code specs.
+                                  Ignored for 2D codes.
+``grow``           O    boolean   With 1D bar codes (Code 128, Code 39,
+                                  and “2 of 5”), ``True`` means that
+                                  the height of the bars is increased to
+                                  occupy the whole `box`_.  If ``grow``
+                                  is ``False`` (default), the bars have
+                                  the lowest height allowed by code specs.
+
+                                  With 2D codes (Aztec and QR), ``True``
+                                  means that the coding ``module`` is
+                                  made as big as necessary to occupy
+                                  the whole `box`_.
 ``expr``           O    string    Value expression.
 ``evaltime``       O    string    When the expression is evaluated:
                                   ``report``, ``page``, ``column``,
@@ -914,13 +934,14 @@ Attributes:
                                   until the end of this section.
 ``data``           O    string    Name of a `data`_ section defined as
                                   a child of the `report`_ element.
-================= ===== ========= ======================================
+================= ===== ========= ==========================================
 
 .. _External hyperlink targets:
 
 .. _Printout:
 .. _PRP file: prp.html
 
+.. _QR Code: https://en.wikipedia.org/wiki/QR_code
 .. _RSON: https://pypi.python.org/pypi/rsonlite
 
 .. _itertools.chain: http://docs.python.org/2/library/itertools.html#itertools.chain

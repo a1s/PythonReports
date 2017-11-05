@@ -18,33 +18,33 @@ printer, HTML [*]_, PDF etc.
 Requirements
 ============
 
-PythonReports_ require Python_ version 2.4 [*]_ to 2.7.
+PythonReports_ require Python_ version 2.5 [*]_ to 2.7.
 
-.. [*] Later versions have been tested only with Python 2.7 and 2.6.
-       Compatibility with Python 2.4 and 2.5 may be unintentionally
-       broken.  Please file an issue if you encounter errors.
-
-All parts of the PythonReports_ toolkit require the ElementTree_
-module.  Python includes this module as part of the standard
-library since version 2.5.  Python 2.4 users can download
-separate distribution package from http://effbot.org/downloads/
-(cElementTree_ add-on is highly recommended too).
+.. [*] Later versions have been tested only with Python 2.7.
+       Compatibility with Python 2.5 and 2.6 may be unintentionally broken.
+       Please file an issue if you encounter errors.
 
 Requirements for printout_ rendering depend on selected frontend:
   * PDF output requires the ReportLab_ Toolkit.
     Reports containing images additionally require
-    `Python Imaging Library`_ (PIL_ or Pillow_).
+    `Python Imaging Library`_: Pillow_ (preferred) or PIL_.
   * wx-based preview and printing require wxPython_.
+
+    **Warning**: The ``wx`` front-end has never been checked
+    with `wxPython Phoenix`_, and has known issues with
+    print preview on earlier wxPython_ versions.
   * Tk-based report preview requires Tkinter
     (part of the Python Standard Library).
     Reports containing images additionally require
-    PIL_ or wxPython_.
+    `Python Imaging Library`_ or wxPython_.
 
 Report building can utilize any of the above options.
 In other words, if your system is able to display or print
 a report then it should be able to build a report too.
 
 Templates in RSON format (introduced in v0.7.0) require rsonlite_.
+
+`QR`_ barcodes (introduced in v0.8.0) require qrcode_.
 
 Report template designer requires Tkinter with Tix_ support
 (standard Python installer for Windows includes Tix; on some
@@ -77,8 +77,11 @@ that can serve as their API usage example.
 .. _PIL: http://www.pythonware.com/products/pil/
 .. _Python Imaging Library:
 .. _Pillow: https://pypi.python.org/pypi/Pillow
+.. _qrcode: https://pypi.python.org/pypi/qrcode
+.. _QR: https://en.wikipedia.org/wiki/QR_code
 .. _rsonlite: https://pypi.python.org/pypi/rsonlite
 .. _wxPython: http://www.wxpython.org/
+.. _wxPython Phoenix: https://wxpython.org/Phoenix/docs/html/index.html
 .. _wxPropertyGrid: http://wxpropgrid.sourceforge.net/
 .. _wxPropertyGrid download page: http://wxpropgrid.sourceforge.net/cgi-bin/index?page=download
 .. _Tix: http://tix.sourceforge.net/

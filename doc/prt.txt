@@ -882,7 +882,7 @@ Attributes:
 Print a bar code image.
 
 
-For 1-dimensional bar codes (``Code128``, ``Code39``, and ``205i``),
+For 1-dimensional bar codes (``Code128``, ``Code39``, and ``2of5i``),
 the `box`_ always grows in the direction of coding (vertically
 if ``vertical="true"``, horizontally otherwise) and is aligned or
 filled (depending on the ``grow`` option) in the opposite direction.

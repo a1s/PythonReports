@@ -1,6 +1,13 @@
 PythonReports release history
 =============================
 
+version 0.8.0 (05-nov-2017)
+---------------------------
+
+Support for 2D bar codes: Aztec and QR Code.
+
+Fix wrapping text strings with non-breaking spaces in a too narrow field.
+
 version 0.7.4 (03-jun-2017)
 ---------------------------
 

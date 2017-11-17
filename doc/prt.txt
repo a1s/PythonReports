@@ -747,6 +747,9 @@ and `group`_ elements.
 in a nested `group`_), that does not work well.  It is highly recommended
 to have only one (or none) `columns`_ element per report template.
 
+The `columns`_ element may contain a sequence of `style`_ elements
+and possible `header`_ and `footer`_ elements.
+
 Attributes:
 
 ================= ===== ========= ======================================

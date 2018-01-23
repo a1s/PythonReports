@@ -97,7 +97,7 @@ def test_rson(template="sakila.prtr"):
     return run(_prt)
 
 if __name__ == "__main__":
-    run()
-    #test_rson()
+    #run()
+    test_rson()
 
 # vim: set et sts=4 sw=4 :

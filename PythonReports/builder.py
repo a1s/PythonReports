@@ -1715,13 +1715,46 @@ class Builder(object):
                     self.group_values[_group.get("name")] = _context.eval(
                         _group.get("expr"), _group)
                 break
+        # output group summaries, see if any of changed groups
+        # start with a column or page eject.
+        _eject = None
         for _group in reversed(_groups_changed):
             self.end_group(_group)
+            if (_eject == "column") and _group.find("columns"):
+                # The columns end here.  No eject after this group's summary.
+                _eject = None
+            _first_section = _group.find("title")
+            if _first_section is None:
+                _first_section = _group.find("detail")
+            if _first_section is None:
+                # The first of the following sections
+                # belongs to an embedded group, won't eject here.
+                continue
+            _eject = self.need_eject(_first_section)
+            if _eject == "page":
+                break
+        if _eject:
+            _eject_frames = self.get_eject_frames(
+                self.section_frames[self.detail],
+                newpage=(_eject == "page"))
+            # Build all footers in the context of the previous item
+            self.context = self.old_context
+            self.eject_print_footers(_eject_frames)
+            self.context = _context
+        else:
+            _eject_frames = []
+        for _group in reversed(_groups_changed):
+            self.resolve_eval(("group", _group.get("name")))
         for _var in self.variables:
             if _var.reset == "item":
                 _var.start(_context)
             if _var.iter == "item":
                 _var.iterate(_context)
+        for _group in _groups_changed:
+            self.iterate_group_variables(_group)
+        if _eject:
+            _eject_frames.reverse()
+            self.eject_print_headers(_eject_frames)
         for _group in _groups_changed:
             self.start_group(_group)
 
@@ -1809,6 +1842,7 @@ class Builder(object):
         _layout = self.template.find("layout")
         for _group in reversed(self.groups):
             self.end_group(_group)
+            self.resolve_eval(("group", _group.get("name")))
         _columns = _layout.find("columns")
         if _columns is not None:
             self.add_section(self.build_section(_columns.find("footer")))
@@ -1976,12 +2010,8 @@ class Builder(object):
             if _var.iter in ("page", "column"):
                 _var.iterate(self.context)
 
-    def start_group(self, group):
-        """Start a data group
-
-        Iterate all group-based variables, print group and column headers
-
-        """
+    def iterate_group_variables(self, group):
+        """Iterate all group-based variables at the start of a data group"""
         _group_name = group.get("name")
         self.context["%s_COUNT" % _group_name] = 0
         for _var in self.variables:
@@ -1991,6 +2021,13 @@ class Builder(object):
                     _var.iterate(self.context)
             if (_var.iter == "group") and (_var.itergrp == _group_name):
                 _var.iterate(self.context)
+
+    def start_group(self, group):
+        """Start a data group
+
+        Print group title and column header (if any).
+
+        """
         _title = group.find("title")
         if _title is not None:
             self.check_eject(_title)
@@ -2002,7 +2039,7 @@ class Builder(object):
     def end_group(self, group):
         """End a data group
 
-        Print column and group footers, resolve deferred evaluations.
+        Print column footer and group summary (if any).
 
         """
         _columns = group.find("columns")
@@ -2017,7 +2054,6 @@ class Builder(object):
             self.check_eject(_summary)
             self.add_section(self.build_section(_summary,
                 context=self.old_context))
-        self.resolve_eval(("group", group.get("name")))
 
     def set_page_position(self, ypos):
         """Set current y position on the output page
@@ -2168,7 +2204,7 @@ class Builder(object):
             _rv = eject_frame
         else:
             # print all footers, end current page
-            _eject_frames = self._get_eject_frames(eject_frame, True)
+            _eject_frames = self.get_eject_frames(eject_frame, True)
             for _frame in _eject_frames:
                 self.add_section(self.build_section(_frame.footer))
             self.resolve_eval("page", "column")
@@ -2212,7 +2248,7 @@ class Builder(object):
         if _frame is None:
             # current page was ejected by subreport
             self.start_page()
-            _eject_frames = self._get_eject_frames(current_frame, True)
+            _eject_frames = self.get_eject_frames(current_frame, True)
             # headers go in reverse order
             _eject_frames.reverse()
             # print all headers
@@ -2325,14 +2361,17 @@ class Builder(object):
             self.run_subreport_collection(section.subreports_after,
                 self.section_frames[section.template])
 
-    def check_eject(self, section, ignoresize=False):
-        """Eject page/column if requested by report template
+    def need_eject(self, section, ignoresize=False):
+        """Return an eject requested by report template section
 
         Parameters:
             section: template section
             ignoresize: if True, don't eject when section height
                 is greater than remaining available space
                 (used to eject *after* report title section)
+
+        Return "page" or "column" when an eject is required.
+        Otherwise return None.
 
         """
         _current_frame = self.section_frames[section]
@@ -2354,11 +2393,23 @@ class Builder(object):
             _box = Box.from_element(section.find("box"))
             if (_box.y + _box.height) > _avail:
                 _eject = "column"
-        # return early if no eject needed
-        if _eject:
-            self.eject(_current_frame, _eject=="page")
+        return _eject
 
-    def _get_eject_frames(self, current_frame, newpage):
+    def check_eject(self, section, ignoresize=False):
+        """Eject page/column if requested by report template
+
+        Parameters:
+            section: template section
+            ignoresize: if True, don't eject when section height
+                is greater than remaining available space
+                (used to eject *after* report title section)
+
+        """
+        _eject = self.need_eject(section, ignoresize)
+        if _eject:
+            self.eject(self.section_frames[section], _eject=="page")
+
+    def get_eject_frames(self, current_frame, newpage):
         """Return a list of frames affected by eject
 
         Parameters:
@@ -2393,28 +2444,19 @@ class Builder(object):
                 _frame = _frame.parent
         return _eject_frames
 
-    def eject(self, current_frame, newpage=False):
-        """Eject page or column
+    def eject_print_footers(self, eject_frames):
+        """Output all footer sections before a page or column eject"""
+        self.fill_footers(tuple(
+            _frame.footer for _frame in eject_frames
+            if _frame.footer is not None
+        ), context=self.old_context)
 
-        Parameters:
-            current_frame: frame for a section that caused eject
-            newpage: if True, eject page.
-                Otherwise eject column (default).
-
-        """
-        # build a list of all frames that will have their
-        # headers/footers printed by this eject
-        _eject_frames = self._get_eject_frames(current_frame, newpage)
-        # print all footers
-        self.fill_footers(tuple(_frame.footer
-            for _frame in _eject_frames
-            if _frame.footer is not None), context=self.old_context)
-        # headers will go in reverse order: first for the last footer printed
-        _eject_frames.reverse()
+    def eject_print_headers(self, eject_frames):
+        """Output all header sections after a page or column eject"""
         # if last ejected was page footer, start new page
         # otherwise reset column index for all column frames
         # except the last one
-        _frame = _eject_frames[0]
+        _frame = eject_frames[0]
         if _frame is self.section_frames[None]:
             self.resolve_eval("page", "column")
             self.start_page()
@@ -2436,12 +2478,29 @@ class Builder(object):
                 + ((_frame.width + _frame.colgap) * _frame.column)
             _frame.x = _xpos
             # all inner frames are at the first column
-            for _frame in _eject_frames[1:]:
+            for _frame in eject_frames[1:]:
                 _frame.x = _xpos
                 _frame.column = 0
         # print all headers
-        for _frame in _eject_frames:
+        for _frame in eject_frames:
             self.add_section(self.build_section(_frame.header))
+
+    def eject(self, current_frame, newpage=False):
+        """Eject page or column
+
+        Parameters:
+            current_frame: frame for a section that caused eject
+            newpage: if True, eject page.
+                Otherwise eject column (default).
+
+        """
+        # build a list of all frames that will have their
+        # headers/footers printed by this eject
+        _eject_frames = self.get_eject_frames(current_frame, newpage)
+        self.eject_print_footers(_eject_frames)
+        # headers will go in reverse order: first for the last footer printed
+        _eject_frames.reverse()
+        self.eject_print_headers(_eject_frames)
 
     def register_eval(self, element):
         """Register deferred evaluation for element expression

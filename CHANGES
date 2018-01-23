@@ -1,6 +1,18 @@
 PythonReports release history
 =============================
 
+version 0.9.0 (23-jan-2018)
+---------------------------
+
+When a page or a column is ejected by the first section of a data group
+(either title or detail), build corresponding footers in the context of
+the last item of the previous group, and the headers in the context of
+the first item of the new group.
+
+Add predefined variables for page numbers within each data group.
+
+Add variable calculation type "last".
+
 version 0.8.0 (05-nov-2017)
 ---------------------------
 

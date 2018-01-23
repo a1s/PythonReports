@@ -763,8 +763,8 @@ class Calculation(_Codes):
     # pylint: disable-msg=R0904
     # R0904: Too many public methods - same as in the base class
 
-    VALUES = ("count", "list", "set", "chain",
-        "sum", "avg", "min", "max", "std", "var", "first")
+    VALUES = ("count", "list", "set", "chain", "first", "last",
+        "sum", "avg", "min", "max", "std", "var")
 
 class Compress(_Codes):
 

@@ -184,6 +184,7 @@ class Variable(object):
         (self._accumulator, self._compute) = {
             None: (list, self.last),
             "first": (list, self.first),
+            "last": (list, self.last),
             "count": (list, self.count),
             "list": (list, None),
             "set": (list, self.set),

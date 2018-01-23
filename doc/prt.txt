@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.8.0
-:Date: 5-nov-2017
+:Version: 0.9.0
+:Date: 23-jan-2018
 
 .. contents::
 
@@ -300,7 +300,8 @@ Name      Meaning
 ``max``   Highest value.
 ``std``   Standard deviation. [#float_value]_
 ``var``   Variance from the average. [#float_value]_
-``first`` Keeps the first value calculated after reset.
+``first`` The first value calculated after reset.
+``last``  The last calculated value.
 ========= ==============================================================
 
 .. [#float_value]  The expression must be compatible with float type.

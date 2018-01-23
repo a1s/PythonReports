@@ -1275,6 +1275,8 @@ class Builder(object):
     context = old_context = None
     # group expressions, used to detect group changes
     group_values = {}
+    # page number offset for each group
+    group_page_offsets = {}
     # deferred evaluations.
     # keys are "report", "page", "column" or tuples ("group", name)
     # values are ReportElements with templates having the "expr"
@@ -1644,9 +1646,11 @@ class Builder(object):
         # build initial context:
         # initialize counters for all report groups,
         # set row object and total length of data
+        _group_names = [_item.get("name") for _item in self.groups]
         _context = Context(sysvars=dict(
             [("DATA_COUNT", len(_data)), ("THIS", _data_obj)]
-            + [(_item.get("name") + "_COUNT", 0) for _item in self.groups]
+            + [(_name + "_COUNT", 0) for _name in _group_names]
+            + [(_name + "_PAGE_NUMBER", 0) for _name in _group_names]
         ))
         _context.add_variables(*self.variables)
         _context.load_imports(_template)
@@ -1668,9 +1672,10 @@ class Builder(object):
         # initialize build structures
         self.pages = []
         self.eval_later = dict([(_key, [])
-            for _key in ["report", "page", "column"] + [
-                ("group", _item.get("name")) for _item in self.groups]
+            for _key in ["report", "page", "column"]
+                + [("group", _name) for _name in _group_names]
         ])
+        self.group_page_offsets = dict.fromkeys(_group_names, 0)
         # initialize all variables
         for _item in self.variables:
             _item.start(_context)
@@ -1995,6 +2000,9 @@ class Builder(object):
         self.context["PAGE_NUMBER"] += 1
         self.context["PAGE_COUNT"] = 0
         self.context["COLUMN_COUNT"] = 0
+        for (_name, _offset) in self.group_page_offsets.iteritems():
+            self.context[_name + "_PAGE_NUMBER"] \
+                = self.context["PAGE_NUMBER"] - _offset
         # reset column index for all frames
         _frame = self.section_frames[None]
         while _frame:
@@ -2029,6 +2037,9 @@ class Builder(object):
         Print group title and column header (if any).
 
         """
+        _group_name = group.get("name")
+        self.group_page_offsets[_group_name] = self.context["PAGE_NUMBER"] - 1
+        self.context[_group_name + "_PAGE_NUMBER"] = 1
         _title = group.find("title")
         if _title is not None:
             self.check_eject(_title)

@@ -153,27 +153,28 @@ i.e. result set fields may be referred directly as python variables.
 In addition, expressions can use names defined by `import`_, `parameter`_
 and `variable`_ elements and the following _`predefined variables`:
 
-===================== ====================================================
-Name                  Meaning
-===================== ====================================================
-``THIS``              Current row object from `report data`_.
-``ITEM_NUMBER``       Zero-based index of current row object in `report
-                      data`_ sequence.  May differ from ``REPORT_COUNT``
-                      if some `detail`_ sections are suppressed by
-                      ``printwhen``.
-``DATA_COUNT``        Total length of the `report data`_ sequence.
-``REPORT_COUNT``      Number of detail sections from start of the report.
-``PAGE_COUNT``        Number of detail sections from start of the page.
-``COLUMN_COUNT``      Number of detail sections from start of the column.
-*group* ``_COUNT``    Number of detail sections from start of named group.
-``PAGE_NUMBER``       Current page number.
-``COLUMN_NUMBER``     Current column number.
-``VERTICAL_POSITION`` Position of current section on the page, in points.
-                      (See `section elements`_, `dimensions`_.)
-``VERTICAL_SPACE``    Distance in points from the top of current section
-                      to the nearest footer - or to the bottom of the page
-                      when there are no footers.
-===================== ====================================================
+======================== ====================================================
+Name                     Meaning
+======================== ====================================================
+``THIS``                 Current row object from `report data`_.
+``ITEM_NUMBER``          Zero-based index of current row object in `report
+                         data`_ sequence.  May differ from ``REPORT_COUNT``
+                         if some `detail`_ sections are suppressed by
+                         ``printwhen``.
+``DATA_COUNT``           Total length of the `report data`_ sequence.
+``REPORT_COUNT``         Number of detail sections from start of the report.
+``PAGE_COUNT``           Number of detail sections from start of the page.
+``COLUMN_COUNT``         Number of detail sections from start of the column.
+*group* ``_COUNT``       Number of detail sections from start of named group.
+``PAGE_NUMBER``          Current page number.
+``COLUMN_NUMBER``        Current column number.
+*group* ``_PAGE_NUMBER`` Current page number from start of named group.
+``VERTICAL_POSITION``    Position of current section on the page, in points.
+                         (See `section elements`_, `dimensions`_.)
+``VERTICAL_SPACE``       Distance in points from the top of current section
+                         to the nearest footer - or to the bottom of the page
+                         when there are no footers.
+======================== ====================================================
 
 Evaluation context performs name lookup in the following order:
 

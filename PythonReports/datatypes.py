@@ -684,6 +684,30 @@ class String(unicode, _Value):
         """Return quoted XML representation of the attribute value"""
         return saxutils.quoteattr(self)
 
+class NonEmptyString(String):
+
+    """A String that is forced to have contents
+
+    Normally, _Value objects refuse to instantiate when
+    the value held is blank - such as a string of spaces.
+
+    This class always produces a string.
+    When there are no contents, make a single space.
+
+    """
+
+    BLANK = " "
+
+    @classmethod
+    def fromValue(cls, value):
+        """Return new object of this class"""
+        # REQUIRED must be allowed for class initialization
+        if not value:
+            return cls.BLANK
+        if isinstance(value, basestring) and (value.strip() == ""):
+            return cls.BLANK
+        return super(NonEmptyString, cls).fromValue(value)
+
 class Expression(String):
 
     # pylint: disable-msg=R0904

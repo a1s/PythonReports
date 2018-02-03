@@ -334,7 +334,6 @@ class Context(object):
         @return: expression evaluation result.
 
         """
-        __slots__ = ["sysvars", "imports", "parameters", "variables"]
         # Generator expressions run in their own local context,
         # name defined in the locals dictionary are not visible there.
         # Make globals dictionary from all known names.

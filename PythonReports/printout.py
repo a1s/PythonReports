@@ -93,7 +93,7 @@ Outline = Validator(tag="outline",
     validate=Validator.Unique("outline"),
     attributes={
         "name": (String, REQUIRED),
-        "title": (String, REQUIRED),
+        "title": (NonEmptyString, ""),
         "level": (Integer, 1),
         "closed": (Boolean, False),
         "x": (Dimension, 0),

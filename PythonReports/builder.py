@@ -412,9 +412,8 @@ class ReportElement(Structure):
     # text: text value acquired from data or expression evaluation
     # otext: output text, wrapped to box width
 
-    # make pylint happy
-    section = template = style = printable = None
-    tbox = bbox = obox = text = otext = None
+    __slots__ = ["section", "template", "style", "printable",
+        "tbox", "bbox", "obox", "text", "otext"]
 
     def __repr__(self):
         for _box in (self.obox, self.bbox, self.tbox):
@@ -439,6 +438,25 @@ class Section(list):
     After a section is built it acts like a list of ReportElement objects.
 
     """
+
+    __slots__ = ["builder", "template", "box", "tbox", "resizeable",
+        "subreports_before", "subreports_after", "bookmarks",
+        # map template items to self's elements
+        # for floating segment layout calculation
+        "template2element",
+        # printability is set by .build
+        "printable",
+        # mark whether the section has floating boxes or not
+        "has_floating_boxes",
+        # the vertical layout of floating boxes is 1D problem, so
+        # boxes become segments.  Each segment has
+        # C{(template y, template height, floating mark,
+        #   segment number for debug,
+        #   template item that produced the segment)}
+        # The last segment's item is used as index in C{template2element}
+        # for calculating actual segment height.
+        "vertical_segment_layout",
+    ]
 
     # Printout classes and attributes to copy from templates
     PRINTOUTS = dict(
@@ -467,27 +485,6 @@ class Section(list):
     # Tag names for printable output elements (with dimension boxes)
     PRINTABLE_ELEMENT_TAGS = frozenset(("field",
         "line", "rectangle", "image", "barcode"))
-
-    # printability is set by .build
-    printable = None
-
-    # map template items to self's elements
-    # for floating segment layout calculation
-    template2element = None
-
-    # TODO create specific class for template's section elements
-
-    # mark whether the section has floating boxes or not
-    has_floating_boxes = False
-
-    # the vertical layout of floating boxes is 1D problem, so
-    # boxes become segments.  Each segment has
-    # C{(template y, template height, floating mark,
-    #   segment number for debug,
-    #   template item that produced the segment)}
-    # The last segment's item is used as index in C{template2element}
-    # for calculating actual segment height.
-    vertical_segment_layout = None
 
     def __init__(self, builder, template, context=None):
         """Create Section instance

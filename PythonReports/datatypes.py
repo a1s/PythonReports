@@ -1409,6 +1409,12 @@ class Box(object):
         ("float", False),
     )
 
+    # 03-feb-2018 The dimensions take about 13% of the total memory
+    # consumption by the builder, and Box objects take about 30%.
+    # Tried putting x, y, width, and height to an array();
+    # got 25% relative gain of total size of Box objects,
+    # but cumulative size of the arrays is 3x bigger than Dimensions,
+    # which made 20% loss in the whole.
     __slots__ = map(lambda x: x[0], DEFAULTS)
 
     # dimensions must be rounded after each calculation.

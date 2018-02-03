@@ -378,6 +378,34 @@ class Context(object):
 
             self.imports[_item.get("alias") or _path[-1]] = _module
 
+class Style(Structure):
+
+    """A set of formatting characteristics for report elements
+
+    This directly matches the style element in Report Templates.
+
+    One object of this class is attached to each ReportElement,
+    and holds all style attributes computed from the element hierarchy.
+
+    """
+
+    __slots__ = ["when", "printwhen", "font", "color", "bgcolor"]
+
+    def __init__(self, **kwargs):
+        _attrs = dict.fromkeys(self.__slots__)
+        _attrs.update(kwargs)
+        super(Style, self).__init__(**_attrs)
+
+    def get(self, name, default=None):
+        """An alias for getattr()
+
+        This is called by Section.compose_styles() and provides
+        the uniform interface for reading style attributes from
+        Style objects and Template Elements (made by ElementTree).
+
+        """
+        return getattr(self, name, default)
+
 class ReportElement(Structure):
 
     """Printable report element
@@ -658,9 +686,9 @@ class Section(list):
                 processing stops when all these attributes
                 are set to non-empty value or when the sequence
                 is exhausted
-            styles: sequence of dictionary-like objects
+            styles: sequence of Template Elements and/or Style objects
 
-        Return value: dictionary containing all names from need_attrs.
+        Return value: a Style object containing all names from need_attrs.
         If some of the attributes are not filled, their values will be None.
 
         """
@@ -682,7 +710,7 @@ class Section(list):
             # the loop didn't break, some attributes are not filled
             for _name in need_attrs:
                 _attrs.setdefault(_name, None)
-        return _attrs
+        return Style(**_attrs)
 
     def set_text_value(self, context, element):
         """Attach initial text value to field or barcode element.
@@ -866,7 +894,7 @@ class Section(list):
             if _template.tag == "field":
                 _stretch = _template.get("stretch")
                 if _stretch or (_bbox.height >= 0):
-                    _driver = _text_drivers[_element.style["font"]]
+                    _driver = _text_drivers[_element.style.font]
                     if _stretch:
                         # expand box height to suffice for the whole text
                         _otext = _driver.wrap(_element.text, _bbox.width)
@@ -1050,7 +1078,7 @@ class Section(list):
                 _bbox.place_y(_sbox)
             _obox = _bbox.copy()
             if _element.template.tag == "field":
-                _driver = _text_drivers[_element.style["font"]]
+                _driver = _text_drivers[_element.style.font]
                 _element.otext = _driver.wrap(_element.text, _bbox.width)
                 (_width, _height) = _driver.getsize(_element.otext)
                 if _height > _bbox.height:
@@ -1093,14 +1121,14 @@ class Section(list):
                 for _name in _prp_attrs])
             # add style attributes (must be done before constructor is called)
             if _prp_tag == "text":
-                _attrib["font"] = _element.style["font"]
-                _attrib["color"] = _element.style["color"]
+                _attrib["font"] = _element.style.font
+                _attrib["color"] = _element.style.color
             elif _prp_tag == "line":
-                _attrib["color"] = _element.style["color"]
+                _attrib["color"] = _element.style.color
             elif _prp_tag == "rectangle":
-                _attrib["pencolor"] = _element.style["color"]
+                _attrib["pencolor"] = _element.style.color
                 if _template.get("opaque"):
-                    _attrib["color"] = _element.style["bgcolor"]
+                    _attrib["color"] = _element.style.bgcolor
             elif _prp_tag == "barcode":
                 _attrib["stripes"] = " ".join(",".join(str(_stripe)
                     for _stripe in _row) for _row in _element.stripes)

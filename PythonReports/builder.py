@@ -980,6 +980,18 @@ class Section(list):
             if _element.printable:
                 _element.bbox.y = _y
 
+    def end_build(self):
+        """Deallocate structures used to build the section
+
+        After .end_build() is called, section building methods
+        (particulary, .build() and .fill()) will not work any more.
+        Still, .refill() is allowed to adjust layout for individual
+        ReportElements without affecting the placement for the
+        whole Section.
+
+        """
+        self.template2element = self.vertical_segment_layout = None
+
     def refill(self, new_y=None):
         """Update section element placements.
 
@@ -2325,6 +2337,7 @@ class Builder(object):
             if not _section.printable:
                 return None
             _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
+        _section.end_build()
         return _section
 
     def add_section(self, section):

@@ -144,6 +144,19 @@ def rson2element(tag, data):
 
 def parse_string(txt, validator=template.Report):
     """Build an validate an XML tree from RSON text string"""
+    if isinstance(txt, unicode):
+        # RSONlite is going to decode it anyway.
+        # Do it ourselves in order to detect and remove BOM.
+        txt = txt.encode("utf-8")
+    # XXX rsonlite does not tolerate BOM:
+    # when the first line is empty, BOM appears as a token by itself;
+    # otherwise it is added to the element name in the first line.
+    if txt.startswith("\xEF\xBB\xBF"):
+        txt = txt[3:]
+    elif txt.startswith("\xFF\xFE"):
+        txt = txt[2:].decode("utf-16-le").encode("utf-8")
+    elif txt.startswith("\xFE\xFF"):
+        txt = txt[2:].decode("utf-16-be").encode("utf-8")
     _root = rson2element(validator.tag, rsonlite.loads(txt))
     _rv = datatypes.ElementTree(validator, _root)
     _rv.validate()

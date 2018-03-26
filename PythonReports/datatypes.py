@@ -116,7 +116,7 @@ class XmlValidationWarning(UserWarning):
         if self.path:
             _rv += " in " + self.path
         elif self.element is not None:
-            _rv += " for element '%s'" % self.element.tag
+            _rv += " for element <%s>" % element_label(self.element)
         return _rv
 
     def __str__(self):
@@ -170,7 +170,7 @@ class XmlValidationError(RuntimeError):
         if self.path:
             _rv += " in " + self.path
         elif self.element is not None:
-            _rv += " for element '%s'" % self.element.tag
+            _rv += " for element <%s>" % element_label(self.element)
         return _rv
 
     def __str__(self):

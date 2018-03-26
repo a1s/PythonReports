@@ -893,7 +893,12 @@ class Section(list):
             if _template.tag == "field":
                 _stretch = _template.get("stretch")
                 if _stretch or (_bbox.height >= 0):
-                    _driver = _text_drivers[_element.style.font]
+                    try:
+                        _driver = _text_drivers[_element.style.font]
+                    except KeyError:
+                        raise XmlValidationError(
+                            "Unknown font: \"%s\"" % _element.style.font,
+                            element=_element.template)
                     if _stretch:
                         # expand box height to suffice for the whole text
                         _otext = _driver.wrap(_element.text, _bbox.width)

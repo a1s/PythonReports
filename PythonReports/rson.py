@@ -56,6 +56,7 @@ to store computer-generated structures in that format.
 """
 
 import sys
+from warnings import warn
 
 import rsonlite
 
@@ -108,10 +109,19 @@ def rson2element(tag, data):
     """
     _attrs = {}
     _children = []
-    for (_key, _value) in data:
+    for _item in data:
+        if not isinstance(_item, tuple) or (len(_item) != 2):
+            # For top level elements without value
+            # RSONlite yields RsonToken instead of tuple
+            if isinstance(_item, tuple):
+                _item = _item[0]
+            warn("Unexpected element \"%s\" in RSON input line %s"
+                % (_item, _item.line))
+            continue
+        (_key, _value) = _item
+        if not _value: # Skip empties
+            continue
         try:
-            if not _value:
-                continue
             # _key is RsonToken which does not like to be combined
             # with Unicode values in error messages.
             _name = _key.decode("utf-8")

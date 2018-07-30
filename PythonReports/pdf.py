@@ -106,6 +106,41 @@ class PdfWriter(object):
             _fonts[_name] = (_facename, _size, _size * 1.2)
         self.fonts = _fonts
 
+    def format_page(self, page):
+        """Write a printout page to self.canvas
+
+        Note: this does not call canvas.showPage()
+        to allow for custom additional output
+        before the page is finalized.
+
+        """
+        # PDF does not keep colors and pen size from previous page.
+        # Make sure we have proper values.
+        self.strokecolor = self.fillcolor = self.pen = None
+        self.setPageSize(page.get("width"), page.get("height"))
+        # draw elements
+        for _item in page:
+            # if current item is not a text
+            # and there is accumulated text, write it down
+            if (_item.tag != "text") and self.textobject:
+                self._flushText()
+            try:
+                _handler = self.handlers[_item.tag]
+            except KeyError:
+                # no handler for element type - ignore element
+                continue
+            _handler(_item)
+        # output accumulated text, if any
+        if self.textobject:
+            self._flushText()
+
+    def format_printout(self, canvas):
+        """Write the report to ReportLab Canvas object"""
+        self.canvas = canvas
+        for _page in self.report.findall("page"):
+            self.format_page(_page)
+            self.canvas.showPage()
+
     def write(self, filepath=None, compression=True, encrypt=None):
         """Write the report to PDF file
 
@@ -119,31 +154,10 @@ class PdfWriter(object):
                 used to protect the document contents.
 
         """
-        self.canvas = canvas.Canvas(filepath, pageCompression=compression,
+        _canvas = canvas.Canvas(filepath, pageCompression=compression,
             pagesize=self.pagesize, encrypt=encrypt)
-        for _page in self.report.findall("page"):
-            # PDF does not keep colors and pen size from previous page.
-            # Make sure we have proper values.
-            self.strokecolor = self.fillcolor = self.pen = None
-            self.setPageSize(_page.get("width"), _page.get("height"))
-            # draw elements
-            for _item in _page:
-                # if current item is not a text
-                # and there is accumulated text, write it down
-                if (_item.tag != "text") and self.textobject:
-                    self._flushText()
-                try:
-                    _handler = self.handlers[_item.tag]
-                except KeyError:
-                    # no handler for element type - ignore element
-                    continue
-                _handler(_item)
-            # output accumulated text, if any
-            if self.textobject:
-                self._flushText()
-            # finalize page output
-            self.canvas.showPage()
-        self.canvas.save()
+        self.write_to_canvas(_canvas)
+        _canvas.save()
 
     def _flushText(self):
         """output current text object and discard it"""

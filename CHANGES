@@ -1,6 +1,12 @@
 PythonReports release history
 =============================
 
+version 0.9.3 (30-jul-2018)
+---------------------------
+
+Split PdfWriter.write() into smaller methods to allow output modifications
+by the caller or in a subclass.
+
 version 0.9.2 (31-mar-2018)
 ---------------------------
 

@@ -156,7 +156,7 @@ class PdfWriter(object):
         """
         _canvas = canvas.Canvas(filepath, pageCompression=compression,
             pagesize=self.pagesize, encrypt=encrypt)
-        self.write_to_canvas(_canvas)
+        self.format_printout(_canvas)
         _canvas.save()
 
     def _flushText(self):

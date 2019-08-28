@@ -1,6 +1,13 @@
 PythonReports release history
 =============================
 
+version 0.9.4 (28-aug-2019)
+---------------------------
+
+Check the beginning of a Template file to select XML or RSON template loader.
+
+Add "when" expression for outline definitions.
+
 version 0.9.3 (31-jul-2018)
 ---------------------------
 

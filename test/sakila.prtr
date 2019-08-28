@@ -29,6 +29,13 @@ variable
   expr = datetime.now()
   calc = first
   iter = report
+variable
+  name = customers_count
+  expr = 1
+  calc = sum
+  init = 0
+  iter = group
+  itergrp = customer
 
 font
   name = title
@@ -254,8 +261,13 @@ layout
     expr = customer_id
     title
       outline
-        title = '%s, %s' % (customer['last_name'], customer['first_name'])
+        title = '\\ %s, %s' % (customer['last_name'], customer['first_name'])
         level = 2
+        when = customers_count % 2
+      outline
+        title = '/ %s, %s' % (customer['last_name'], customer['first_name'])
+        level = 2
+        when = not (customers_count % 2)
       box = [ height = 14 ]
       style = [ font = bold ; color = #000900 ]
       field

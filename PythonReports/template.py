@@ -109,6 +109,7 @@ Outline = Validator(tag="outline",
     attributes={
         "title": (Expression, REQUIRED),
         "level": (Integer, 1),
+        "when": (Expression, None),
         "closed": (Boolean, False),
     },
     doc="A bookmark for document outline navigation"
@@ -260,6 +261,7 @@ _section_children = (
     (Box, Validator.ZERO_OR_ONE),
     (Style, Validator.UNRESTRICTED),
     (Eject, Validator.UNRESTRICTED),
+    (Outline, Validator.UNRESTRICTED),
     (Field, Validator.UNRESTRICTED),
     (Line, Validator.UNRESTRICTED),
     (Rectangle, Validator.UNRESTRICTED),

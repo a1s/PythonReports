@@ -22,7 +22,7 @@ try:
     from PythonReports.rson import load_template_file
 except ImportError:
     # Fall back to XML only
-    load_template_file = load_template
+    load_template_file = prt.load
 
 class ExpressionError(RuntimeError):
 
@@ -796,9 +796,11 @@ class Section(list):
                     _subreports.append((_item.get("seq"), _item))
                 continue
             if _item.tag == "outline":
-                _bookmarks.append(Structure(template=_item,
-                    name=self.builder.generate_id(),
-                    title=context.eval(_item.get("title"), _item)))
+                _when = _item.get("when")
+                if (not _when) or context.eval(_when, _item):
+                    _bookmarks.append(Structure(template=_item,
+                        name=self.builder.generate_id(),
+                        title=context.eval(_item.get("title"), _item)))
                 continue
             if _item.tag not in self.PRINTABLE_ELEMENT_TAGS:
                 continue

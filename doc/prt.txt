@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.9.0
-:Date: 23-jan-2018
+:Version: 0.9.4
+:Date: 28-aug-2019
 
 .. contents::
 
@@ -288,7 +288,7 @@ _`Calculation types`:
 Name      Meaning
 ========= ==============================================================
 ``count`` | Count distinct values.
-          | Hint: for iteration counter, use ``sum`` with ``expression="1"``
+          | Hint: for iteration counter, use ``sum`` with ``expr="1"``
           | or one of the `predefined variables`_.
 ``list``  A list containing all values.
 ``set``   A set containing distinct values.
@@ -530,6 +530,8 @@ Attributes:
                                   by one when a nested level is
                                   created: going from 1 to 3 without 2
                                   is an error.
+``when``           O    expr      If this expression evaluates to False,
+                                  do not create this outline entry.
 ``closed``         O    boolean   True to display the outline closed
                                   at this entry (i.e. hide all nested
                                   levels).

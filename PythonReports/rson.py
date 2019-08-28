@@ -55,6 +55,7 @@ to store computer-generated structures in that format.
 
 """
 
+import re
 import sys
 from warnings import warn
 
@@ -179,5 +180,30 @@ def parse_file(path, validator=template.Report):
     _rv = parse_string(_txt, validator=validator)
     _rv.filename = path
     return _rv
+
+_re_nonempty_line = re.compile(r"(?:\xEF\xBB\xBF|\xFF\xFE|\xFE\xFF)?\s*(\S)")
+
+def load_template_file(filename):
+    """Load Template file in XML or RSON format, return Template ElementTree
+
+    @param filename: input file path
+
+    Read the beginning of the file until a non-blank character is found.
+    When the first non-blank character is the angle bracket ("<"),
+    use XML loader.  Otherwise use RSON loader.
+
+    """
+    with open(filename, "rU") as _ff:
+        for _line in _ff:
+            _match = _re_nonempty_line.match(_line)
+            if _match:
+                if _match.group(1) == "<":
+                    _ff.seek(0)
+                    _rv = template.load(ff)
+                    _rv.filename = filename
+                    return _rv
+                break
+    # Must be RSON
+    return parse_file(filename)
 
 # vim: set et sts=4 sw=4 :

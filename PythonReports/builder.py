@@ -17,6 +17,12 @@ from PythonReports import printout as prp
 from PythonReports import segment_layout
 from PythonReports.datatypes import *
 
+# Note: same as in .api (cannot import from .api because it imports Builder)
+try:
+    from PythonReports.rson import load_template_file
+except ImportError:
+    # Fall back to XML only
+    load_template_file = load_template
 
 class ExpressionError(RuntimeError):
 
@@ -1352,7 +1358,7 @@ class Builder(object):
         """
         super(Builder, self).__init__()
         if isinstance(template, basestring):
-            self.template = prt.load(template)
+            self.template = load_template_file(template)
         else:
             self.template = template
         self.data = data
@@ -2170,7 +2176,7 @@ class Builder(object):
             _layout = _prt.find("layout")
         else:
             _prt_name = element.get("template")
-            _prt = prt.load(self.filepath(_prt_name))
+            _prt = load_template_file(self.filepath(_prt_name))
             if _is_inline:
                 # inlined report must have same page dimensions as this report
                 _pgsize = self.get_page_dimensions(self.template)

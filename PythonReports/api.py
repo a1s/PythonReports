@@ -9,6 +9,9 @@ __all__ = [
     "template", "load_template",
     "printout", "load_printout",
     "Builder",
+    # Note: load_template is a legacy call, parsing XML templates only.
+    # load_template_file is newer API, trying both XML and RSON (if available)
+    "load_template_file",
 ]
 
 from PythonReports import template, printout
@@ -45,10 +48,11 @@ else:
     __all__.extend(("wxPrint", "wxPrintout", "wxPreview", "wxPrintApp"))
 
 try:
-    from PythonReports.rson import parse_file as parse_rson
+    from PythonReports.rson import load_template_file, parse_file as parse_rson
 except ImportError:
-    pass
+    # Fall back to XML only
+    load_template_file = load_template
 else:
-    __all__.append("parse_rson")
+    __all__.extend("parse_rson")
 
 # vim: set et sts=4 sw=4 :

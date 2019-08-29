@@ -199,7 +199,7 @@ def load_template_file(filename):
             if _match:
                 if _match.group(1) == "<":
                     _ff.seek(0)
-                    _rv = template.load(ff)
+                    _rv = template.load(_ff)
                     _rv.filename = filename
                     return _rv
                 break

@@ -63,7 +63,9 @@ if wx:
             self.dialog.Hide()
             self.dialog.Destroy()
 
-def run(template="sakila.prt"):
+def run(template="sakila.prt", data=None):
+    if data is None:
+        data = sakila.load()[:DATA_LIMIT]
     if wx:
         # if wx backend is used, App must be created
         # before builder initialization.
@@ -77,8 +79,7 @@ def run(template="sakila.prt"):
         _progress = Progress(_builder)
     # build printout
     try:
-        _printout = _builder.run(sakila.load()[:DATA_LIMIT],
-            item_callback=_progress)
+        _printout = _builder.run(data, item_callback=_progress)
     finally:
         _progress.terminate()
     # write printout file
@@ -91,10 +92,10 @@ def run(template="sakila.prt"):
         _printout.validate()
         write(_printout, "sakila.pdf")
 
-def test_rson(template="sakila.prtr"):
+def test_rson(template="sakila.prtr", data=None):
     from PythonReports.rson import parse_file
     _prt = parse_file(template)
-    return run(_prt)
+    return run(_prt, data=data)
 
 if __name__ == "__main__":
     #run()

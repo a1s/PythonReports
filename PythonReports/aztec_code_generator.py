@@ -7,7 +7,7 @@
 
     Aztec code generator.
 
-    :copyright: (c) 2016 by Dmitry Alimov.
+    :copyright: (c) 2016-2018 by Dmitry Alimov.
     :license: The MIT License (MIT), see LICENSE for more details.
 """
 
@@ -251,22 +251,64 @@ def find_optimal_sequence(data):
                             # TODO: update for digit
                             if x in ['punct', 'digit'] and y != 'upper':
                                 cur_seq[y] = cur_seq[x] + ['resume', 'U/L', '%s/L' % y.upper()[0]]
+                                back_to[y] = y
                             elif x in ['upper', 'lower'] and y == 'punct':
                                 cur_seq[y] = cur_seq[x] + ['M/L', '%s/L' % y.upper()[0]]
-                            elif x in ['binary'] and y == 'punct':
-                                cur_seq[y] = cur_seq[x] + ['resume', 'M/L', '%s/L' % y.upper()[0]]
+                                back_to[y] = y
+                            elif x == 'mixed' and y != 'upper':
+                                if y == 'punct':
+                                    cur_seq[y] = cur_seq[x] + ['P/L']
+                                    back_to[y] = 'punct'
+                                else:
+                                    cur_seq[y] = cur_seq[x] + ['U/L', 'D/L']
+                                    back_to[y] = 'digit'
+                                continue
                             else:
-                                cur_seq[y] = cur_seq[x] + ['resume', '%s/L' % y.upper()[0]]
+                                if x == 'binary':
+                                    # TODO: review this
+                                    # Reviewed by jravallec
+                                    if y == back_to[x]:
+                                        # when return from binary to previous mode, skip mode change
+                                        cur_seq[y] = cur_seq[x] + ['resume']
+                                    elif y == 'upper':
+                                        if back_to[x] == 'lower':
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'M/L', 'U/L']
+                                        if back_to[x] == 'mixed':
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'U/L']
+                                        back_to[y] = 'upper'
+                                    elif y == 'lower':
+                                        cur_seq[y] = cur_seq[x] + ['resume', 'L/L']
+                                        back_to[y] = 'lower'
+                                    elif y == 'mixed':
+                                        cur_seq[y] = cur_seq[x] + ['resume', 'M/L']
+                                        back_to[y] = 'mixed'
+                                    elif y == 'punct':
+                                        if back_to[x] == 'mixed':
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'P/L']
+                                        else:
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'M/L', 'P/L']
+                                        back_to[y] = 'punct'
+                                    elif y == 'digit':
+                                        if back_to[x] == 'mixed':
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'U/L', 'D/L']
+                                        else:
+                                            cur_seq[y] = cur_seq[x] + ['resume', 'D/L']
+                                        back_to[y] = 'digit'
+                                else:
+                                    cur_seq[y] = cur_seq[x] + ['resume', '%s/L' % y.upper()[0]]
+                                    back_to[y] = y
                         else:
                             # if changing from punct or digit mode - use U/L as intermediate mode
                             # TODO: update for digit
                             if x in ['punct', 'digit']:
                                 cur_seq[y] = cur_seq[x] + ['U/L', '%s/L' % y.upper()[0]]
+                                back_to[y] = y
                             elif x in ['binary', 'upper', 'lower'] and y == 'punct':
                                 cur_seq[y] = cur_seq[x] + ['M/L', '%s/L' % y.upper()[0]]
+                                back_to[y] = y
                             else:
                                 cur_seq[y] = cur_seq[x] + ['%s/L' % y.upper()[0]]
-                        back_to[y] = x
+                                back_to[y] = y
         next_len = {
             'upper': E, 'lower': E, 'mixed': E, 'punct': E, 'digit': E, 'binary': E
         }
@@ -286,6 +328,12 @@ def find_optimal_sequence(data):
             possible_modes.append('digit')
         possible_modes.append('binary')
         for x in possible_modes:
+            # TODO: review this!
+            if back_to[x] == 'digit' and x == 'lower':
+                cur_seq[x] = cur_seq[x] +  ['U/L', 'L/L']
+                cur_len[x] = cur_len[x] + latch_len[back_to[x]][x]
+                back_to[x] = 'lower'
+            # add char to current sequence
             if cur_len[x] + char_size[x] < next_len[x]:
                 next_len[x] = cur_len[x] + char_size[x]
                 next_seq[x] = cur_seq[x] + [c]
@@ -332,17 +380,25 @@ def find_optimal_sequence(data):
             reset_pos = result_seq_len - i - 2
     for size_pos in sizes:
         result_seq[len(result_seq) - size_pos - 1] = sizes[size_pos]
-    # remove 'reset' tokens
+    # remove 'resume' tokens
     result_seq = [x for x in result_seq if x != 'resume']
     # update binary sequences' extra sizes
     updated_result_seq = []
+    is_binary_length = False
     for i, c in enumerate(result_seq):
-        if c == 'B/S':
-            if result_seq[i + 1] > 31:
-                updated_result_seq.append(c)
+        if is_binary_length:
+            if c > 31:
                 updated_result_seq.append(0)
-                continue
-        updated_result_seq.append(c)
+                updated_result_seq.append(c - 31)
+            else:
+                updated_result_seq.append(c)
+            is_binary_length = False
+        else:
+            updated_result_seq.append(c)
+
+        if c == 'B/S':
+            is_binary_length = True
+
     return updated_result_seq
 
 
@@ -401,8 +457,9 @@ def optimal_sequence_to_bits(optimal_sequence):
                 if not isinstance(seq_len, numbers.Number):
                     raise Exception('Binary sequence length must be a number')
                 out_bits += bin(seq_len)[2:].zfill(11)
-                binary_seq_len = seq_len
+                binary_seq_len = seq_len + 31
             binary = True
+            binary_index = 0
         # update previous mode
         if not shift:
             prev_mode = mode
@@ -516,7 +573,9 @@ class AztecCode(object):
         :param module_size: barcode module size in pixels.
         """
         if ImageDraw is None:
-            raise missing_pil[0], missing_pil[1], missing_pil[2]
+            exc = missing_pil[0](missing_pil[1])
+            exc.__traceback__ = missing_pil[2]
+            raise exc
         image = Image.new('RGB', (self.size * module_size, self.size * module_size), 'white')
         image_draw = ImageDraw.Draw(image)
         for y in range(self.size):
@@ -773,7 +832,7 @@ def main():
     aztec_code = AztecCode(data)
     aztec_code.print_out()
     if ImageDraw is None:
-        print 'PIL is not installed, cannot generate PNG'
+        print('PIL is not installed, cannot generate PNG')
     else:
         aztec_code.save('aztec_code.png', 4)
     print('Aztec Code info: {0}x{0} {1}'.format(aztec_code.size, '(compact)' if aztec_code.compact else ''))

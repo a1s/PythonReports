@@ -204,7 +204,7 @@ Element contents (text) are ignored except for the `data`_ elements.
 ----------
 
 The root element of template.  Contains a sequence of `parameter`_,
-`variable`_, `import`_, `font`_, and `data_` elements and exactly one
+`variable`_, `import`_, `font`_, and `data`_ elements and exactly one
 `layout`_ element.
 
 Attributes:

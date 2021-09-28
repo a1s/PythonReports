@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.9.4
-:Date: 28-aug-2019
+:Version: 0.9.6
+:Date: 28-sep-2021
 
 .. contents::
 
@@ -363,7 +363,7 @@ Contains arbitrary data for use in `field`_, `image`_ and `barcode`_
 elements.
 
 This is the only element in PythonReports templates that has significant
-body text; for all other elements body text is ignored.
+body text [#rson_data_body]_; for all other elements body text is ignored.
 
 .. Discussion: for easier processing, `data`_ elements may be restricted
   to be immediate children of the `report`_ element (named data) or
@@ -389,6 +389,9 @@ Attributes:
                                   ``pickle``, ``compress`` and
                                   ``encoding`` are ignored.
 ================= ===== ========= ======================================
+
+.. [#rson_data_body] In RSON format, the contents of a `data`_ element
+   are set by attribute ``body``.
 
 .. [#d] Optional when immediate parent element is `field`_, `image`_
         or `barcode`_; required otherwise.

@@ -2,8 +2,8 @@
 PythonReports Printout
 ======================
 
-:Version: 0.8.0
-:Date: 5-nov-2017
+:Version: 0.9.6
+:Date: 28-sep-2021
 
 .. contents::
 
@@ -133,8 +133,7 @@ Attributes:
 ``data``
 --------
 
-Contains arbitrary data for use in `text`_, `image`_, and `barcode`_
-elements.
+Contains arbitrary data for use in `image`_ elements.
 
 This is the only element in PythonReports templates that has significant
 body text; for all other elements body text is ignored.

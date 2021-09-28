@@ -449,7 +449,9 @@ class ReportElement(Structure):
         "tbox", "bbox", "obox", "text", "otext"]
 
     def __repr__(self):
-        for _box in (self.obox, self.bbox, self.tbox):
+        # Note: the attributes can be unitialized, __slots__ don't do that
+        for _attr in ("obox", "bbox", "tbox"):
+            _box = getattr(self, _attr, None)
             if _box is not None:
                 break
         if (_box is None) or (self.template is None):
@@ -825,8 +827,6 @@ class Section(list):
                     _element.barcode_text = None
             elif _item.tag == "image":
                 _element.image = self.builder.image(_item)
-                # FIXME: use_count should be incremented in Builder.image()
-                _element.image.use_count += 1
             self.append(_element)
         _subreports.sort()
         self.subreports_before = tuple(_item[1] for _item in _subreports
@@ -1149,6 +1149,9 @@ class Section(list):
                 _attrib["value"] = _element.text
             elif _prp_tag == "image":
                 _image = _element.image
+                # Images loaded dynamically are anonymized,
+                # so the "data" attribute may contain invalid name, wipe it.
+                _attrib["data"] = None
                 if _image.name:
                     _attrib["data"] = _image.name
                 elif _image.filepath and not _template.get("embed"):
@@ -1437,13 +1440,15 @@ class Builder(object):
         """
         return os.path.abspath(os.path.join(self.basedir, *path))
 
-    def image(self, element):
+    def _load_image(self, element):
         """Return an image object for report template element
 
         Parameters:
             element: template element of type "image".
 
         Return value: ImageDriver object for the image.
+
+        This is internal procedure for the `image` method.
 
         """
         _type = element.get("type")
@@ -1454,11 +1459,13 @@ class Builder(object):
             try:
                 return self.images_filed[_file]
             except KeyError:
-                _image = self.image_driver_factory.fromfile(_file, _type)
-                self.images_filed[_file] = _image
-                if element.get("embed"):
-                    self.images_loaded[_image.getdata(_type)] = _image
-                return _image
+                try:
+                    _image = self.image_driver_factory.fromfile(_file, _type)
+                except: # will try data
+                    pass
+                else:
+                    self.images_filed[_file] = _image
+                    return _image
         # try named data block
         _name = element.get("data")
         if _name:
@@ -1470,27 +1477,52 @@ class Builder(object):
                 # when _name is not in the datablocks collection.
                 _imgdata = self.template.datablocks[_name]
                 _img_contents = prt.Data.get_data(_imgdata, self.context)
+                # Note: even if the data element is named,
+                # we don't want to keep the name when image
+                # contents are dynamic; or else we end up
+                # with several data blocks all having the same name.
                 _image = self.image_driver_factory.fromdata(
-                    _img_contents, img_type=_type, name=_name)
+                    _img_contents, img_type=_type)
                 # cache named images unless data is dynamic
                 if not _imgdata.get("expr"):
+                    _image.name = _name
                     self.images_named[_name] = _image
-                self.images_loaded[_img_contents] = _image
                 return _image
         # unnamed data block (child of the image element)
         _data = element.find("data")
         if _data is None:
             _image = self.image_driver_factory.nullimage()
-            _imgdata = _image.getdata()
-            if _imgdata not in self.images_loaded:
-                self.images_loaded[_imgdata] = _image
         else:
             _imgdata = prt.Data.get_data(_data, self.context)
-            if _imgdata not in self.images_loaded:
+            try:
+                _image = self.images_loaded[_imgdata]
+            except KeyError:
                 _image = self.image_driver_factory.fromdata(_imgdata,
                     img_type=_type)
-                self.images_loaded[_imgdata] = _image
-        return self.images_loaded[_imgdata]
+        return _image
+
+    def image(self, element):
+        """Return an image object for report template element
+
+        Parameters:
+            element: template element of type "image".
+
+        Return value: ImageDriver object for the image.
+
+        Register loaded message in the `images_loaded`
+        collection, keep usage counts.
+
+        """
+        _image = self._load_image(element)
+        _type = element.get("type")
+        _img_contents = _image.getdata(_type)
+        _loaded = self.images_loaded.get(_img_contents, None)
+        if _loaded:
+            _image = _loaded
+        else:
+            self.images_loaded[_img_contents] = _image
+        _image.use_count += 1
+        return _image
 
     def find_layout_parents(self):
         """Register parent sections for all sections of the template"""
@@ -2653,14 +2685,8 @@ class Builder(object):
         _fonts = self.collect_fonts()
         for _name in sorted(_fonts):
             SubElement(_root, "font", _fonts[_name].attrib)
-        # output data blocks that were not used by the builder
-        # (images will be processed separately)
-        _data_names = set(self.images_named)
-        for (_name, _item) in self.template.datablocks.iteritems():
-            if _name not in self.images_named:
-                SubElement(_root, "data", _item.attrib).text = _item.text
-                _data_names.add(_name)
         _img_idx = 0
+        _data_names = set(self.images_named)
         for _image in self.images_loaded.itervalues():
             # look if an unnamed image is used more than once.
             # if yes, assign it a surrogate name.

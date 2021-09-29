@@ -292,7 +292,7 @@ class PdfWriter(object):
     def addOutline(self, element):
         """Add a document outline entry"""
         _key = element.get("name")
-        self.canvas.bookmarkPage(_key, "FitH", left=element.get("x", 0),
+        self.canvas.bookmarkPage(_key, "XYZ", left=element.get("x", 0),
             top=(self.pagesize[1] - element.get("y", 0)))
         self.canvas.addOutlineEntry(element.get("title"),
             _key, element.get("level", 1) - 1, element.get("closed"))

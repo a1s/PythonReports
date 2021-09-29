@@ -3,67 +3,73 @@ Introduction
 ============
 
 PythonReports_ is a toolkit aimed to build database reports
-in |Python(r)| programs.  The toolkit includes report template_
-designer, report builder and several printout_ renderers for
-GUI and graphic file output.
+in |Python(r)| programs.  The toolkit includes the report builder
+and printout_ renderer for PDF output.
 
 Report builder applies a template_ to a sequence of uniform data
 objects and produces a printout_ structure that can be saved in
-a file and/or rendered by one of the front-end drivers to screen,
-printer, HTML [*]_, PDF etc.
+a file and/or rendered to PDF.
 
-.. [*] HTML output is not implemented yet.
+It is possible to render printouts for other presentation formats
+such as a specific printer language or a GUI toolkit display.
+There used to be printing output for wxPython_ and screen
+display for Tkinter and wxPython_, but they fell out of use
+and their support is discontinued.
 
 ============
 Requirements
 ============
 
-PythonReports_ require Python_ version 2.5 [*]_ to 2.7.
+PythonReports_ require Python_ version 2.7.
+Currently there are no plans of porting the code to Python3.
 
-.. [*] Later versions have been tested only with Python 2.7.
-       Compatibility with Python 2.5 and 2.6 may be unintentionally broken.
-       Please file an issue if you encounter errors.
-
-Requirements for printout_ rendering depend on selected frontend:
-  * PDF output requires the ReportLab_ Toolkit.
-    Reports containing images additionally require
-    `Python Imaging Library`_: Pillow_ (preferred) or PIL_.
-  * wx-based preview and printing require wxPython_.
-
-    **Warning**: The ``wx`` front-end has never been checked
-    with `wxPython Phoenix`_, and has known issues with
-    print preview on earlier wxPython_ versions.
-  * Tk-based report preview requires Tkinter
-    (part of the Python Standard Library).
-    Reports containing images additionally require
-    `Python Imaging Library`_ or wxPython_.
-
-Report building can utilize any of the above options.
-In other words, if your system is able to display or print
-a report then it should be able to build a report too.
+Report building and printout_ rendering require the ReportLab_ Toolkit.
+Reports containing images additionally require
+`Python Imaging Library`_: Pillow_ (preferred) or PIL_.
 
 Templates in RSON format (introduced in v0.7.0) require rsonlite_.
 
 `QR`_ barcodes (introduced in v0.8.0) require qrcode_.
 
-Report template designer requires Tkinter with Tix_ support
-(standard Python installer for Windows includes Tix; on some
-platforms Tix must be installed separately).
-
-WYSIWIG template editor requires wxPython_.  For wxPython versions
-prior to 2.9 wxPropertyGrid_ must be installed as a separate module [*]_.
-
-.. [*] **Note**: the first Windows installer on the `wxPropertyGrid
-   download page`_ installs source code only; scroll down for binaries.
-
 ===========
 Quick Start
 ===========
 
-No documentation yet.  Please look at the `test script`_
-for report building example.  All printout rendering modules
-(``pdf``, ``Tk`` and ``wxPrint``) have command line interface
-that can serve as their API usage example.
+A report is built from a list of data dictionaries or data objects
+having uniform structure.  An example of such data is a list of rows
+fetched from an SQL server.
+
+Report layout is defined by a template_ file which can have
+either XML format or a textual format based on rsonlite_.
+
+Report builder applies loaded template to a list of data
+objects and produces a printout_ structure.  Printout can
+be saved in XML format.
+
+PDF writer creates an output file from a printout structure.
+
+There are example templates in the `package sources`_:
+`sakila.prt` is in XML format, and `sakila.prtr` is the
+same template in RSON format.  The data file for those
+templates can be found in the `project downloads`_.
+
+This is an example of building a PDF from that data::
+
+    import cPickle as pickle
+    from PythonReports.api import Builder, parse_rson, write_pdf
+
+    with open("sakila.dat", "rb") as data_file:
+        data = pickle.load(data_file)[:200]
+    template = parse_rson("sakila.prtr")
+    build = Builder(template)
+    printout = build.run(data)
+    with open("sakila.prp", "wt") as printout_file:
+        printout.write(printout_file)
+    # It is necessary to call .validate()
+    # on built or loaded printout
+    # before creating PDF output.
+    printout.validate()
+    write_pdf(printout, "sakila.pdf")
 
 .. _External hyperlink targets:
 
@@ -71,8 +77,6 @@ that can serve as their API usage example.
 .. _template: http://pythonreports.sourceforge.net/prt.shtml
 .. _printout: http://pythonreports.sourceforge.net/prp.shtml
 .. _Python: http://www.python.org/
-.. _ElementTree: http://effbot.org/zone/element-index.htm
-.. _cElementTree: http://effbot.org/zone/celementtree.htm
 .. _ReportLab: http://www.reportlab.org/rl_toolkit.html
 .. _PIL: http://www.pythonware.com/products/pil/
 .. _Python Imaging Library:
@@ -81,11 +85,8 @@ that can serve as their API usage example.
 .. _QR: https://en.wikipedia.org/wiki/QR_code
 .. _rsonlite: https://pypi.python.org/pypi/rsonlite
 .. _wxPython: http://www.wxpython.org/
-.. _wxPython Phoenix: https://wxpython.org/Phoenix/docs/html/index.html
-.. _wxPropertyGrid: http://wxpropgrid.sourceforge.net/
-.. _wxPropertyGrid download page: http://wxpropgrid.sourceforge.net/cgi-bin/index?page=download
-.. _Tix: http://tix.sourceforge.net/
-.. _test script: http://pythonreports.bzr.sourceforge.net/bzr/pythonreports/annotate/head%3A/test/test_build.py
+.. _package sources: http://pythonreports.bzr.sourceforge.net/bzr/pythonreports/files/head:/test/
+.. _project downloads: https://sourceforge.net/projects/pythonreports/files/Sample%20Data%20file/
 
 .. |Python(r)| unicode:: Python U+00AE
 

@@ -81,11 +81,13 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
     <data>90</data>
     <box x="5cm" />
    </barcode>
-   <field align="right">
+   <xref target="'https://dev.mysql.com/doc/sakila/en/'" type="url">
     <box x="8cm" width="9cm" height="1cm" valign="top" />
-    <style font="title" />
-    <data>DVD rental payments</data>
-   </field>
+    <field align="right">
+     <style font="title" />
+     <data>DVD rental payments</data>
+    </field>
+   </xref>
    <field align="justified" stretch="true" evaltime="report"
     expr="(DATA_COUNT, total_amount)"
     format="There are %s payments on this report with total amount of %s">
@@ -95,18 +97,20 @@ BFarLJ+ENZG/YAAqxNgACAAKP//Z
   <summary>
    <style bgcolor="#F3EDE7" />
    <rectangle pen="1" />
-   <image type="jpeg" scale="fill" data="TheLarch">
-    <box width="5cm" />
-   </image>
-   <field align="center">
-    <box x="6cm" width="11cm" height="1cm" />
-    <style font="title" />
-    <data>And now for something completely different...</data>
-   </field>
-   <field stretch="true">
-    <box x="6cm" y="2cm" width="11cm" height="2cm" valign="center" />
-    <data>Are there any other trees that any of you think you could recognize from quite a long way away?</data>
-   </field>
+   <xref target="'top'" type="outline">
+    <image type="jpeg" scale="fill" data="TheLarch">
+     <box width="5cm" />
+    </image>
+    <field align="center">
+     <box x="6cm" width="11cm" height="1cm" />
+     <style font="title" />
+     <data>And now for something completely different...</data>
+    </field>
+    <field stretch="true">
+     <box x="6cm" y="2cm" width="11cm" height="2cm" valign="center" />
+     <data>Are there any other trees that any of you think you could recognize from quite a long way away?</data>
+    </field>
+   </xref>
   </summary>
   <header>
    <box height="2cm" />

@@ -2,8 +2,8 @@
 PythonReports Templates
 =======================
 
-:Version: 0.9.6
-:Date: 28-sep-2021
+:Version: 0.10.0
+:Date: 10-oct-2021
 
 .. contents::
 
@@ -28,9 +28,10 @@ Let's start with some terminology:
 
 * _`body elements`: elements that produce primitive printable content,
   i.e. `field`_, `line`_, `rectangle`_, `image`_ and `barcode`_.
-* _`section elements`: `detail`_, `header`_, `footer`_, `title`_
+* _`section elements`: `detail`_, `header`_, `footer`_, `title`_,
   and `summary`_.
-* _`report elements`: `section elements`_ and `body elements`_.
+* _`report elements`: `section elements`_, `xref`_ elements,
+  and `body elements`_.
 * `box`_: rectangular area controlling the placement
   of `report elements`_.
 * `style`_: element controlling the appearance of `report elements`_ -
@@ -58,7 +59,7 @@ in the `layout`_/`group`_ hierarchy).
 
 All `section elements`_ may contain one `outline`_ element,
 one `box`_ element, a sequence of `eject`_ variants and
-`style`_ definitions, and any `body elements`_.
+`style`_ definitions, and any `xref`_ or `body elements`_.
 The order of `body elements`_ is important: elements appearing later
 in the template sequence are laid out on top of previous elements.
 
@@ -432,11 +433,12 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``x``              O    dimension Horizontal position.  Negative values
-                                  are offset from the right margin.
-                                  [#negative_position]_
-``y``              O    dimension Vertical position.  Negative values
-                                  are relative to the bottom of section.
+``x``              O    dimension Horizontal position of the left side.
+                                  Negative values are offset from the
+                                  right margin. [#negative_position]_
+``y``              O    dimension Vertical position of the element top.
+                                  Negative values are relative to the
+                                  bottom of section.
                                   [#negative_position]_
 ``float``          O    boolean   If True, ``y`` position (must be
                                   positive) is adjusted according to
@@ -518,12 +520,18 @@ The `outline`_ element defines an entry for document navigation tree.
 
 Attributes:
 
-.. TODO: evaltime
-
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
 ``title``          M    expr      Caption text for the outline tree.
+``name``           O    expr      Optional expression used to assign
+                                  custom identifier to outline entries.
+
+                                  The identifier can be referred to
+                                  by an `xref`_ element.
+
+                                  All identifiers in a printout
+                                  must be unique.
 ``level``          O    integer   An outline nesting level.
 
                                   The outermost level (default) is 1.
@@ -538,6 +546,30 @@ Attributes:
 ``closed``         O    boolean   True to display the outline closed
                                   at this entry (i.e. hide all nested
                                   levels).
+================= ===== ========= ======================================
+
+``xref``
+--------
+
+A hyperlink to an external resource or an `outline`_ entry.
+
+``xref`` elements may contain one `box`_ element, a sequence of
+`style`_ definitions, and any `body elements`_.
+The order of `body elements`_ is important: elements appearing later
+in the template sequence are laid out on top of previous elements.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    ``url`` or ``outline``.
+``target``         M    expr      An external resource URL
+                                  for type ``url``, or a name of an
+                                  outline entry for type ``outline``.
+``caption``        O    expr      Optional text to assign to the link.
+                                  The text is not shown in PDF,
+                                  but may be used by other front-ends.
 ================= ===== ========= ======================================
 
 ``embedded``

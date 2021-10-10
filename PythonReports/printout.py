@@ -102,6 +102,19 @@ Outline = Validator(tag="outline",
     doc="A bookmark for document outline navigation"
 )
 
+Xref = Validator(tag="xref", attributes={
+    "type": (XrefType, REQUIRED),
+    "caption": (String, None),
+    "target": (NonEmptyString, ""),
+}, children=(
+    (Box, Validator.ONE),
+    (Text, Validator.UNRESTRICTED),
+    (Line, Validator.UNRESTRICTED),
+    (Rectangle, Validator.UNRESTRICTED),
+    (Image, Validator.UNRESTRICTED),
+    (BarCode, Validator.UNRESTRICTED),
+), doc="A container for a cross-reference link")
+
 Page = Validator(tag="page",
     attributes={
         "width": (Dimension, REQUIRED),
@@ -117,6 +130,7 @@ Page = Validator(tag="page",
         (Image, Validator.UNRESTRICTED),
         (BarCode, Validator.UNRESTRICTED),
         (Outline, Validator.UNRESTRICTED),
+        (Xref, Validator.UNRESTRICTED),
     ), doc="Single output page")
 
 def Printout(tree, element, path):

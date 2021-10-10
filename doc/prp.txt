@@ -2,8 +2,8 @@
 PythonReports Printout
 ======================
 
-:Version: 0.9.6
-:Date: 28-sep-2021
+:Version: 0.10.0
+:Date: 10-oct-2021
 
 .. contents::
 
@@ -17,8 +17,8 @@ with a frontend driver.  Printouts are stored in XML files with extension
 This document describes printout structures.
 
 The overall structure of printouts is very simple: printout contains
-one or more `page`_ elements, and each page contains `outline`_,
-`text`_, `line`_, `rectangle`_, `image`_, and `barcode`_ elements,
+one or more `page`_ elements, and each page contains `text`_, `line`_,
+`rectangle`_, `image`_, `barcode`_, `outline`_, and `xref`_ elements,
 each having it's final dimensions and placement.
 
 `printout`_ element also contains `font`_ definitions and may contain
@@ -202,8 +202,8 @@ Attributes:
 ================= ===== ========= ======================================
   Name            Req     Type      Description
 ================= ===== ========= ======================================
-``x``              M    dimension Horizontal position.
-``y``              M    dimension Vertical position.
+``x``              M    dimension Horizontal position of the left side.
+``y``              M    dimension Vertical position of the element top.
 ``width``          M    dimension Element width.
 ``height``         M    dimension Element height.
 ================= ===== ========= ======================================
@@ -350,6 +350,28 @@ Attributes:
                                   levels).
 ``x``              O    dimension Horizontal position (Default: 0).
 ``y``              O    dimension Vertical position (Default: 0).
+================= ===== ========= ======================================
+
+``xref``
+--------
+
+A hyperlink to an external resource or an `outline`_ entry.
+
+``xref`` elements contain one `box`_ element, and a sequence of
+`text`_, `line`_, `rectangle`_, `image`_, and `barcode`_ elements.
+
+Attributes:
+
+================= ===== ========= ======================================
+  Name            Req     Type      Description
+================= ===== ========= ======================================
+``type``           M    string    ``url`` or ``outline``.
+``target``         M    string    An external resource URL
+                                  for type ``url``, or a name of an
+                                  outline entry for type ``outline``.
+``caption``        O    string    Optional text to assign to the link.
+                                  The text is not shown in PDF,
+                                  but may be used by other front-ends.
 ================= ===== ========= ======================================
 
 .. vim: set et ft=rst sts=2 sw=2 :

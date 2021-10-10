@@ -40,6 +40,8 @@ class PdfWriter(object):
     textobject = None
     font = None
     wordspace = 0
+    # coordinates of the top left corner, substituted for xref blocks
+    top = left = 0
 
     def __init__(self, report):
         """Initialize the writer
@@ -60,6 +62,7 @@ class PdfWriter(object):
             "text": self.drawText,
             "barcode": self.drawBarcode,
             "outline": self.addOutline,
+            "xref": self.addXref,
         }
         if Image:
             # PIL is loaded - can process images
@@ -106,6 +109,18 @@ class PdfWriter(object):
             _fonts[_name] = (_facename, _size, _size * 1.2)
         self.fonts = _fonts
 
+    def format_element(self, element):
+        """Add a printable element to self.canvas"""
+        # if current item is not a text
+        # and there is accumulated text, write it down
+        if (element.tag != "text") and self.textobject:
+            self._flushText()
+        try:
+            _handler = self.handlers[element.tag]
+        except KeyError:
+            return
+        _handler(element)
+
     def format_page(self, page):
         """Write a printout page to self.canvas
 
@@ -120,16 +135,7 @@ class PdfWriter(object):
         self.setPageSize(page.get("width"), page.get("height"))
         # draw elements
         for _item in page:
-            # if current item is not a text
-            # and there is accumulated text, write it down
-            if (_item.tag != "text") and self.textobject:
-                self._flushText()
-            try:
-                _handler = self.handlers[_item.tag]
-            except KeyError:
-                # no handler for element type - ignore element
-                continue
-            _handler(_item)
+            self.format_element(_item)
         # output accumulated text, if any
         if self.textobject:
             self._flushText()
@@ -281,12 +287,13 @@ class PdfWriter(object):
                 Must have a "box" child element.
 
         Return value: 4-element tuple (x, y, width, height)
-        where (x, y) is position of the upper left corner.
+        where (x, y) is position of the lower left corner.
 
         """
         _box = element.find("box")
         _height = _box.get("height")
-        return (_box.get("x"), self.pagesize[1] - _box.get("y") - _height,
+        return (_box.get("x") + self.left,
+            (self.top or self.pagesize[1]) - _box.get("y") - _height,
             _box.get("width"), _height)
 
     def addOutline(self, element):
@@ -296,6 +303,26 @@ class PdfWriter(object):
             top=(self.pagesize[1] - element.get("y", 0)))
         self.canvas.addOutlineEntry(element.get("title"),
             _key, element.get("level", 1) - 1, element.get("closed"))
+
+    def addXref(self, xref):
+        """Add a cross-reference section"""
+        (_x, _y, _width, _height) = self.getDimensions(xref)
+        _rect = (_x, _y, _x + _width, _y + _height)
+        _type = xref.get("type")
+        if _type == "outline":
+            self.canvas.linkAbsolute(xref.get("caption") or "",
+                xref.get("target"), _rect)
+        elif _type == "url":
+            self.canvas.linkURL(xref.get("target"), _rect)
+        _top = self.top
+        _left = self.left
+        self.left = _x
+        self.top = _y + _height
+        # When the xref type is not supported, just draw the contents
+        for _item in xref:
+            self.format_element(_item)
+        self.top = _top
+        self.left = _left
 
     def drawLine(self, line):
         """Draw a line"""

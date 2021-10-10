@@ -109,6 +109,7 @@ Outline = Validator(tag="outline",
     attributes={
         "title": (Expression, REQUIRED),
         "level": (Integer, 1),
+        "name": (Expression, None),
         "when": (Expression, None),
         "closed": (Boolean, False),
     },
@@ -123,31 +124,12 @@ Arg = Validator(tag="arg",
     doc="Actual argument value passed to subreport to fill a parameter slot"
 )
 
-def _need_template_or_embedded(tree, element, path):
-    """Additional validation for "subreport" elements
-
-    The element must have either "template" or "embedded" attribute,
-    but not both of them.
-
-    """
-    # pylint: disable-msg=W0613
-    # W0613: Unused argument 'tree'
-    _template = element.get("template")
-    _embedded = element.get("embedded")
-    if _template and _embedded:
-        raise XmlValidationError("Found both 'template' and 'embedded'",
-            element, path)
-    elif not (_template or _embedded):
-        raise XmlValidationError(
-            "Either 'template' or 'embedded' attribute is required",
-            element, path)
-
 # TODO subreport validation:
 #   - cannot be placed in a column
 #   - if inline is True, ownpageno must be False.
 Subreport = Validator(tag="subreport",
     validate=(
-        _need_template_or_embedded,
+        Validator.NeedOneAttr("template", "embedded"),
     ), attributes={
         "template": (String, None),
         "embedded": (String, None),
@@ -256,17 +238,30 @@ BarCode = Validator(tag="barcode",
 )
 
 # common set of child validators for all section elements
-_section_children = (
-    (Subreport, Validator.UNRESTRICTED),
+_printable_elements = (
     (Box, Validator.ZERO_OR_ONE),
     (Style, Validator.UNRESTRICTED),
-    (Eject, Validator.UNRESTRICTED),
-    (Outline, Validator.UNRESTRICTED),
     (Field, Validator.UNRESTRICTED),
     (Line, Validator.UNRESTRICTED),
     (Rectangle, Validator.UNRESTRICTED),
     (Image, Validator.UNRESTRICTED),
     (BarCode, Validator.UNRESTRICTED),
+)
+
+Xref = Validator(tag="xref",
+    attributes={
+        "type": (XrefType, REQUIRED),
+        "target": (Expression, REQUIRED),
+        "caption": (Expression, None),
+    }, children=_printable_elements,
+    doc="Sub-section defining a cross-reference link",
+)
+
+_section_children = _printable_elements + (
+    (Eject, Validator.UNRESTRICTED),
+    (Subreport, Validator.UNRESTRICTED),
+    (Outline, Validator.UNRESTRICTED),
+    (Xref, Validator.UNRESTRICTED),
 )
 
 Detail = Validator(tag="detail", children=_section_children,

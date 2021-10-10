@@ -904,6 +904,14 @@ class VariableIteration(_Codes):
 
     VALUES = ("report", "page", "column", "group", "detail", "item")
 
+class XrefType(_Codes):
+
+    """Target type for a cross-reference"""
+    # pylint: disable-msg=R0904
+    # R0904: Too many public methods - same as in the base class
+
+    VALUES = ("outline", "url")
+
 ### XML parsing/construction
 
 class Validator(object):
@@ -963,6 +971,33 @@ class Validator(object):
                 raise DuplicateElement(_name, self.collection_name,
                     element, path)
             _collection[_name] = element
+
+    class NeedOneAttr(object):
+
+        """"A validator checking that one, and only one attribute is filled
+
+        This validator raises an error when a set of attributes
+        is required, but the attributes of that set are mutually
+        exclusive, i.e. only one of these attributes must be
+        specified.
+
+        """
+
+        def __init__(self, *names):
+            self.names = names
+
+        def __call__(self, tree, element, path):
+            """Perform validation"""
+            _attrs = dict(filter(lambda item: item[1],
+                [(_name, element.get(_name, None)) for _name in self.names]))
+            if not _attrs:
+                raise XmlValidationError(
+                    "At least one of the following attributes is required: %s"
+                    % ", ".join(self.names))
+            elif len(attrs) > 1:
+                raise XmlValidationError(
+                    "Following attributes are mutually exclusive: %s"
+                    % ", ".join(_attrs.iterkeys()))
 
     # custom validation functions
     prevalidate = ()

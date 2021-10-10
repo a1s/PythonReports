@@ -463,18 +463,15 @@ class ReportElement(Structure):
                 _box.x, _box.y, _box.width, _box.height, self.template.tag)
         return _rv
 
-class Section(list):
+class Container(list):
 
-    """Output section
+    """Base class for laying out a set of body elements
 
-    Objects of this class fill a sections of the report,
-    i.e. title, summary, header, footer and detail sections.
-
-    After a section is built it acts like a list of ReportElement objects.
+    After a container is built it acts like a list of ReportElement objects.
 
     """
 
-    __slots__ = ["builder", "template", "box", "tbox", "resizeable",
+    __slots__ = ["builder", "template", "obox", "tbox", "resizeable",
         "subreports_before", "subreports_after", "bookmarks",
         # map template items to self's elements
         # for floating segment layout calculation
@@ -503,6 +500,7 @@ class Section(list):
             (prt.Image, prp.Image),
             (prt.BarCode, prp.BarCode),
             (prt.Outline, prp.Outline),
+            (prt.Xref, prp.Xref),
         ))
 
     # Bar Code drivers
@@ -518,7 +516,7 @@ class Section(list):
     }
 
     # Tag names for printable output elements (with dimension boxes)
-    PRINTABLE_ELEMENT_TAGS = frozenset(("field",
+    PRINTABLE_ELEMENT_TAGS = frozenset(("xref", "field",
         "line", "rectangle", "image", "barcode"))
 
     def __init__(self, builder, template, context=None):
@@ -534,10 +532,10 @@ class Section(list):
                 for this context
 
         """
-        super(Section, self).__init__()
+        super(Container, self).__init__()
         self.builder = builder
         self.template = template
-        self.box = self.tbox = Box.from_element(template.find("box"))
+        self.obox = self.tbox = Box.from_element(template.find("box"))
         self.resizeable = False
         # subreports and bookmarks lists are created in .build()
         self.subreports_before = self.subreports_after = self.bookmarks = ()
@@ -755,6 +753,41 @@ class Section(list):
         else:
             element.text = _template.get("format", "%s") % _value
 
+    def check_resizeable(self):
+        """Return C{True} if the container can be stretched
+
+        Return C{True} when the height is relative
+        to the bottom of the available area,
+        or there are elements that can grow, namely:
+
+        - fields with "stretch" flag;
+        - images with "scale" set to "grow";
+        - barcodes (always stretchable);
+        - resizeable xref areas.
+
+        Note: this is called at the end of L{build} when the
+        container elements have been built already.
+
+        """
+        if self.tbox.height <= 0:
+            return True
+        for _element in self:
+            _tag = _element.template.tag
+            if _tag == "field":
+                if _element.template.get("stretch"):
+                    return True
+            elif _tag == "image":
+                if _element.template.get("scale") == "grow":
+                    return True
+            elif _tag == "barcode":
+                return True
+            elif _tag == "xref":
+                # The container has been built,
+                # and it's own resizeable flag has been computed already
+                if _element.resizeable:
+                    return True
+        return False
+
     def build(self, context):
         """Create section contents
 
@@ -771,22 +804,9 @@ class Section(list):
         # if the section is suppressed do nothing
         if not self.printable:
             return
+        # create section placement box
+        self.obox = self.tbox.copy()
         _elements = getchildren(self.template)
-        # section is resizeable if it's height is not fixed
-        # then final size must be recalculated after filling
-        self.resizeable = self.tbox.height <= 0
-        if not self.resizeable:
-            # look for stretchable texts
-            # or barcodes (always stretchable)
-            # or growable images.
-            for _item in _elements:
-                _tag = _item.tag
-                if (((_tag == "field") and _item.get("stretch"))
-                    or (_tag == "barcode")
-                    or ((_tag == "image") and (_item.get("scale") == "grow"))
-                ):
-                    self.resizeable = True
-                    break
         _default_element_style = [self.compose_style(context,
             ("font", "color", "bgcolor"), self.iter_styles())]
         _subreports = []
@@ -800,13 +820,24 @@ class Section(list):
             if _item.tag == "outline":
                 _when = _item.get("when")
                 if (not _when) or context.eval(_when, _item):
-                    _bookmarks.append(Structure(template=_item,
-                        name=self.builder.generate_id(),
+                    _expr = _item.get("name", None)
+                    _name = str(context.eval(_expr)) if _expr \
+                        else self.builder.generate_id()
+                    _bookmarks.append(Structure(template=_item, name=_name,
                         title=context.eval(_item.get("title"), _item)))
                 continue
             if _item.tag not in self.PRINTABLE_ELEMENT_TAGS:
                 continue
-            _element = ReportElement(section=self, template=_item)
+            if _item.tag == "xref":
+                _element = Xref(self.builder, _item)
+                _element.section = self
+                for _attr in ("target", "caption"):
+                    _expr = _item.get(_attr, None)
+                    _value = unicode(context.eval(_expr)) if _expr else ""
+                    setattr(_element, _attr, _value)
+            else:
+                _element = ReportElement(section=self, template=_item,
+                    tbox=Box.from_element(_item.find("box")))
             self.template2element[_item] = _element
             _element.style = self.compose_style(context,
                 ("printwhen", "font", "color", "bgcolor"),
@@ -818,7 +849,6 @@ class Section(list):
             # skip elements that are not printable.
             if not _element.printable:
                 continue
-            _element.tbox = Box.from_element(_item.find("box"))
             if _item.tag in ("field", "barcode"):
                 self.set_text_value(context, _element)
                 if _item.get("evaltime"):
@@ -827,6 +857,8 @@ class Section(list):
                     _element.barcode_text = None
             elif _item.tag == "image":
                 _element.image = self.builder.image(_item)
+            elif _item.tag == "xref":
+                _element.build(context)
             self.append(_element)
         _subreports.sort()
         self.subreports_before = tuple(_item[1] for _item in _subreports
@@ -834,6 +866,9 @@ class Section(list):
         self.subreports_after = tuple(_item[1] for _item in _subreports
             if _item[0] > 0)
         self.bookmarks = tuple(_bookmarks)
+        # section is resizeable if it's height is not fixed
+        # then final size must be recalculated after filling
+        self.resizeable = self.check_resizeable()
 
     def build_barcode(self, element):
         """Compute sripe widths and box size/position for barcode element
@@ -865,8 +900,8 @@ class Section(list):
         # Always apply minimums here, actual sizes calculated in .refill()
         _bbox.width = _min_width
         _bbox.height = _min_height
-        _bbox.place_x(self.box)
-        _bbox.place_y(self.box)
+        _bbox.place_x(self.obox)
+        _bbox.place_y(self.obox)
         element.bbox = _bbox
         # remember the text of the symbol -
         # will skip build unless the text is changed
@@ -883,7 +918,7 @@ class Section(list):
         """
         _text_drivers = self.builder.text_drivers
         # create section placement box
-        _sbox = self.box = self.tbox.copy()
+        _sbox = self.obox
         _bbox = Box(x, y, width, bottom - y)
         _sbox.place_x(_bbox)
         _sbox.place_y(_bbox)
@@ -939,6 +974,9 @@ class Section(list):
                 # (i.e. y coordinate for the bounding box
                 # is relative to the section margin).
                 _bbox.y = _element.tbox.y
+            elif _template.tag == "xref":
+                _origx = _element.obox.copy()
+                _element.fill(0, 0, width - _bbox.x, bottom - _bbox.y)
             _element.bbox = _bbox
 
         self.move_floating_elements()
@@ -947,7 +985,8 @@ class Section(list):
         if self.resizeable:
             _height = self.tbox.height
             for _element in self:
-                if _element.template.tag == "barcode":
+                _template = _element.template
+                if _template.tag == "barcode":
                     # For barcodes, bbox is minimum allowed.
                     # If there is bigger fixed size in the template,
                     # use that size instead of bbox minimum.
@@ -958,15 +997,18 @@ class Section(list):
                         _bbox.height = _element.tbox.height
                 else:
                     _bbox = _element.bbox
-                # Note: bbox vertical dimensions are relative yet
-                if (_bbox.height < 0) and (_element.template.tag == "image") \
-                and (_element.template.get("scale") == "grow"):
+                # Note: bbox vertical dimensions are still relative
+                if (_bbox.height < 0) and (_template.tag == "image") \
+                and (_template.get("scale") == "grow"):
                     # box height is relative to section size
                     # which must grow to hold the image.
                     # absolute value of _bbox.height is bottom padding.
                     _elem_height = _element.image.getsize()[1] - _bbox.height
                     if _bbox.y > 0:
                         _elem_height += _bbox.y
+                elif (_bbox.height < 0) and (_template.tag == "xref"):
+                    # Actual height is set in .obox by Xref.fill()
+                    _elem_height = _bbox.y + _element.obox.height
                 elif _bbox.y < 0:
                     # the element was placed relatively to section bottom
                     # FIXME? height may be negative too
@@ -1005,8 +1047,6 @@ class Section(list):
             # apply alignment
             _bbox.align_x(_obox)
             _bbox.align_y(_obox)
-        # compute output boxes
-        self.refill()
 
     def move_floating_elements(self):
         """Move floating boxes using C{vertical_segment_layout}"""
@@ -1043,7 +1083,7 @@ class Section(list):
         if new_y is None:
             _sbox = None
         else:
-            _sbox = self.box
+            _sbox = self.obox
             _sbox.y = new_y
         _text_drivers = self.builder.text_drivers
         for _element in self:
@@ -1052,8 +1092,8 @@ class Section(list):
                 self.build_barcode(_element)
                 # Do the final placement: align width, grow height
                 _pbox = _element.tbox.copy()
-                _pbox.place_x(self.box)
-                _pbox.place_y(self.box)
+                _pbox.place_x(self.obox)
+                _pbox.place_y(self.obox)
                 _obox = _element.bbox.copy() # Minimal allowed dimensions
                 if not _element.template.get("grow"):
                     # Align both dimensions.
@@ -1106,6 +1146,79 @@ class Section(list):
             _obox.align_x(_bbox)
             _obox.align_y(_bbox)
             _element.obox = _obox
+            if _element.template.tag == "xref":
+                _element.do_refill()
+
+    def shrink_container(self, container):
+        """Remove white space at the sides of a container element
+
+        The containing areas are not visible per se,
+        so make the area fit the contained printable elements:
+        reduce width and height, and move down or right as needed.
+        Adjust positions of the contained elements.
+
+        This is to be called from the output procedure
+        when nothing else can be changed.
+        (Note: refill can be called more than once,
+        after moving the section to next page, or
+        after deferred expression evaluations.)
+
+        """
+        _height = _width = 0
+        _left = container.obox.width
+        _top = container.obox.height
+        for _item in container:
+            self.shrink(_item)
+            _bbox = _item.obox
+            _size = _bbox.y + _bbox.height
+            if _size > _height:
+                _height = _size
+            _size = _bbox.x + _bbox.width
+            if _size > _width:
+                _width = _size
+            if _bbox.x < _left:
+                _left = _bbox.x
+            if _bbox.y < _top:
+                _top = _bbox.y
+        if _left or _top:
+            container.obox.x += _left
+            container.obox.y += _top
+            for _item in container:
+                _item.obox.x -= _left
+                _item.obox.y -= _top
+        container.obox.height = _height - _top
+        container.obox.width = _width - _left
+
+    def shrink(self, element):
+        """Shrink an element's output box to minimum dimensions"""
+        _type = element.template.tag
+        if _type == "field":
+            _driver = self.builder.text_drivers[element.style.font]
+            (_width, _height) = _driver.getsize(element.otext)
+            # There may be right-aligned text
+            # in a left-aligned box of fixed width
+            # Since we are going to reduce the width of the box,
+            # make sure it will be aligned as requested.
+            _align = element.template.get("align")
+            if _align in ("center", "right"):
+                element.obox.halign = _align
+            else:
+                element.obox.halign = "left"
+        elif _type == "image":
+            (_width, _height) = element.image.getsize()
+        elif _type == "xref":
+            self.shrink_container(element)
+            return
+        else:
+            # TODO? barcode
+            return
+        _box = element.obox.copy()
+        if _box.width > _width:
+            element.obox.width = _width
+            element.obox.align_x(_box)
+        if _box.height > _height:
+            element.obox.height = _height
+            element.obox.align_y(_box)
 
     def output(self, page):
         """Create printout elements on printout page
@@ -1120,7 +1233,7 @@ class Section(list):
             _attrib = dict([(_name, _template.get(_name, ""))
                 for _name in _prp_attrs])
             # 01-apr-2017 The only bookmarks type is Outline
-            _attrib.update(dict(x=self.box.x, y=self.box.y,
+            _attrib.update(dict(x=self.obox.x, y=self.obox.y,
                 name=_element.name, title=_element.title,
             ))
             _prp_element = SubElement(page, _prp_type.tag, _attrib)
@@ -1161,20 +1274,26 @@ class Section(list):
                 # "scale" is boolean in prp: False to cut
                 _attrib["scale"] = Boolean(
                     _template.get("scale") in ("fill", "grow"))
+            elif _prp_tag == "xref":
+                _attrib["target"] = _element.target
+                _attrib["caption"] = _element.caption
             # create printout element
             _prp_element = SubElement(page, _prp_tag, _attrib)
+            self.shrink(_element)
             _element.obox.make_element(_prp_element)
             # add content (text and images)
             if _template.tag == "field":
                 # TODO: encoding, compression
                 prp.Data.make_element(_prp_element, {}, _element.otext)
-            elif (_template.tag == "image"):
+            elif _template.tag == "image":
                 _image = _element.image
                 if not _image.name \
                 and ((not _image.filepath) or _template.get("embed")):
                     # bitmap is kept in an anonymous data block
                     prp.Data.make_element(_prp_element, data=_image.getdata(),
                         attrib={"name": _image.name, "encoding": "base64"})
+            elif _template.tag == "xref":
+                _element.output(_prp_element)
 
     @staticmethod
     def estimate_height(template):
@@ -1204,6 +1323,66 @@ class Section(list):
             if _bottom > _rv:
                 _rv = _bottom
         return _rv
+
+class Xref(Container):
+
+    """A builder for cross-reference containers"""
+
+    # ReportElement (based on Structure) and Section (based on list)
+    # cannot be subclassed together.  Xref acts mostly like a Section
+    # (for building the contents), but also as a ReportElement, for
+    # placement and sizing purposes.
+
+    # "template", "tbox", "obox", "printable" are inherited from Section
+    # "text" and "otext" are only used for field and barcode elements
+    __slots__ = ["section", "style", "bbox", "target", "caption"]
+
+    def fill(self, x, y, width, bottom):
+        """Compute container layout within given dimensions"""
+        # Unlike normal sections, xref containers are allowed
+        # to have auto-width.  If it is so, adjust the output box
+        # from the available width.
+        _tbox_width = self.tbox.width
+        if _tbox_width <= 0:
+            self.obox.width = width + _tbox_width
+        super(Xref, self).fill(x, y, width, bottom)
+
+    def do_refill(self):
+        """Refill called by containing section: update contents"""
+        Container.refill(self)
+
+    def refill(self):
+        """Refill called by deferred evaluation: update containing section"""
+        self.section.refill()
+
+    def __repr__(self):
+        # Note: the attributes can be unitialized, __slots__ don't do that
+        for _attr in ("obox", "bbox", "tbox"):
+            _box = getattr(self, _attr, None)
+            if _box is not None:
+                break
+        if (_box is None) or (self.template is None):
+            _rv = "<%s@%X>" % (
+                self.__class__.__name__, id(self))
+        else:
+            _rv = "<%s@%X(%.1f, %.1f, %.1f, %.1f): %s>" % (
+                self.__class__.__name__, id(self),
+                _box.x, _box.y, _box.width, _box.height, self.template.tag)
+        return _rv
+
+class Section(Container):
+
+    """Output section
+
+    Objects of this class fill a sections of the report,
+    i.e. title, summary, header, footer and detail sections.
+
+    """
+
+    def fill(self, x, y, width, bottom):
+        super(Section, self).fill(x, y, width, bottom)
+        # compute output boxes
+        self.refill()
 
 class Frame(Structure):
 
@@ -1537,9 +1716,10 @@ class Builder(object):
                         _next_level.append(_child)
                     if _child.tag in (
                         "title", "summary", "header", "footer",
-                        "columns", "group", "detail",
+                        "columns", "group", "detail", "xref",
                     ):
                         self.layout_parents[_child] = _item
+                        _next_level.append(_child)
             _descend = _next_level
 
     def create_frames(self):
@@ -1996,19 +2176,19 @@ class Builder(object):
         if _page_footers and not inline:
             _bottom = _footers[-1][1].bottom
             _cur_y = max(
-                sum((_footer.box.height for _footer in _column_footers),
+                sum((_footer.obox.height for _footer in _column_footers),
                     self.cur_y),
-                _bottom - sum(_footer.box.height for _footer in _page_footers))
+                _bottom - sum(_footer.obox.height for _footer in _page_footers))
             for _footer in _page_footers:
                 _footer.refill(_cur_y)
-                _cur_y += _footer.box.height
+                _cur_y += _footer.obox.height
         for (_footer, _frame) in _footers:
-            if _footer.box.y < _frame.bottom:
+            if _footer.obox.y < _frame.bottom:
                 self.add_section(_footer)
                 # Adjust maximum used column length for containing frame.
                 _frame = self.section_frames[_footer.template]
-                if _footer.box.bottom > _frame.max_y:
-                    _frame.max_y = _footer.box.bottom
+                if _footer.obox.bottom > _frame.max_y:
+                    _frame.max_y = _footer.obox.bottom
 
     def fill_initial_headers(self):
         """Create all page headers at the start of report
@@ -2024,7 +2204,7 @@ class Builder(object):
             if _template not in self.section_builders:
                 _section = self.build_section(_template)
                 _headers.append((_template, _section))
-                _hsize += _section.box.height
+                _hsize += _section.obox.height
         _avail = self.section_frames[self.detail].bottom - self.cur_y
         if _hsize < _avail:
             # All built headers would fit here - put them in and return
@@ -2399,7 +2579,7 @@ class Builder(object):
                 # oops!
                 return None
         _section.fill(_frame.x, self.cur_y, _frame.width, _frame.bottom)
-        if ((_section.box.y + _section.box.height) > _frame.bottom) \
+        if ((_section.obox.y + _section.obox.height) > _frame.bottom) \
         and (_section.template.tag not in ("header", "footer")):
             self.eject(_frame)
             _context["COLUMN_NUMBER"] = _frame.column + 1
@@ -2429,7 +2609,7 @@ class Builder(object):
         # TODO? if the section is empty (no content), simply advance cur_y
         # without adding the section to the page
         self.page.append(section)
-        self.cur_y = section.box.y + section.box.height
+        self.cur_y = section.obox.y + section.obox.height
         # adjust top margin of all contained frames
         # (new columns will start at this position)
         #

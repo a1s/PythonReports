@@ -116,6 +116,7 @@ layout
     outline
       title = 'DVD rental payments'
       closed = true
+      name = 'top'
     barcode
       type = Code128
       body = Code 128
@@ -146,11 +147,14 @@ layout
       body = Version 2 (25x25)
       box = [ x = 2.6in ; width = .9in ; halign = center ; valign = center ]
       grow = True
-    field
-      align = right
+    xref
+      type = url
+      target = 'https://dev.mysql.com/doc/sakila/en/'
       box = [ x = 4.5in ; height = 1cm ; halign = right ; valign = top ]
-      style = [ font = title ]
-      body = DVD rental payments
+      field
+        align = right
+        style = [ font = title ]
+        body = DVD rental payments
     field
       align = justified
       stretch = true
@@ -162,20 +166,23 @@ layout
   summary
     style = [ bgcolor = #F3EDE7 ]
     rectangle = [ pen = 1 ]
-    image
-      type = jpeg
-      scale = fill
-      data = TheLarch
-      box = [ width = 5cm ]
-    field
-      align = center
-      box = [ x = 6cm ; width = 11cm ; height = 1cm ]
-      style = [ font = title ]
-      body = And now for something completely different...
-    field
-      stretch = true
-      box = [ x=6cm ; y=2cm ; width=11cm ; height=2cm ; valign=center ]
-      body = Are there any other trees that any of you think you could recognize from quite a long way away?
+    xref
+      type = outline
+      target = 'top'
+      image
+        type = jpeg
+        scale = fill
+        data = TheLarch
+        box = [ width = 5cm ]
+      field
+        align = center
+        box = [ x = 6cm ; width = 11cm ; height = 1cm ]
+        style = [ font = title ]
+        body = And now for something completely different...
+      field
+        stretch = true
+        box = [ x=6cm ; y=2cm ; width=11cm ; height=2cm ; valign=center ]
+        body = Are there any other trees that any of you think you could recognize from quite a long way away?
 
   header
     box = [ height = 2cm ]

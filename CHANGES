@@ -1,6 +1,15 @@
 PythonReports release history
 =============================
 
+version 0.10.0 (12-oct-2021)
+----------------------------
+
+Add xref elements.
+
+Fix building images from data elements with dynamic contents.
+
+Don't change zoom in PDF viewer when an outline entry is selected.
+
 version 0.9.5 (29-apr-2021)
 ---------------------------
 

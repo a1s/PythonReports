@@ -150,8 +150,7 @@ Attributes:
 ``encoding``       O    string    ``base64``, ``uu`` or ``qp``.
 ================= ===== ========= ======================================
 
-.. [#d] Ignored when immediate parent element is `text`_, `image`_,
-        or `barcode`_; required otherwise.
+.. [#d] Ignored when immediate parent element is `image`_; required otherwise.
 
 ``font``
 --------

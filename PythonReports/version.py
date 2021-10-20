@@ -2,7 +2,7 @@
 
 from datetime import date
 
-__version__ = "0.10.0"
+__version__ = "0.10.1"
 __date__ = date(2021, 10, 12)
 __all__ = ["__version__", "__date__"]
 

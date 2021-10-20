@@ -994,7 +994,7 @@ class Validator(object):
                 raise XmlValidationError(
                     "At least one of the following attributes is required: %s"
                     % ", ".join(self.names))
-            elif len(attrs) > 1:
+            elif len(_attrs) > 1:
                 raise XmlValidationError(
                     "Following attributes are mutually exclusive: %s"
                     % ", ".join(_attrs.iterkeys()))

@@ -12,6 +12,7 @@ __all__ = [
     # Note: load_template is a legacy call, parsing XML templates only.
     # load_template_file is newer API, trying both XML and RSON (if available)
     "load_template_file",
+    "pdf", "PdfWriter", "write_pdf",
 ]
 
 from PythonReports import template, printout
@@ -20,13 +21,8 @@ from PythonReports.printout import load as load_printout
 from PythonReports.builder import Builder
 from PythonReports.version import *
 
-try:
-    from PythonReports import pdf
-    from PythonReports.pdf import PdfWriter, write as write_pdf
-except ImportError:
-    pass
-else:
-    __all__.extend(("pdf", "PdfWriter", "write_pdf"))
+from PythonReports import pdf
+from PythonReports.pdf import PdfWriter, write as write_pdf
 
 try:
     from PythonReports import Tk
@@ -53,6 +49,6 @@ except ImportError:
     # Fall back to XML only
     load_template_file = load_template
 else:
-    __all__.extend("parse_rson")
+    __all__.append("parse_rson")
 
 # vim: set et sts=4 sw=4 :

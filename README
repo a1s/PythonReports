@@ -77,7 +77,7 @@ This is an example of building a PDF from that data::
 .. _template: http://pythonreports.sourceforge.net/prt.shtml
 .. _printout: http://pythonreports.sourceforge.net/prp.shtml
 .. _Python: http://www.python.org/
-.. _ReportLab: http://www.reportlab.org/rl_toolkit.html
+.. _ReportLab: https://www.reportlab.com/software/opensource/rl-toolkit/
 .. _PIL: http://www.pythonware.com/products/pil/
 .. _Python Imaging Library:
 .. _Pillow: https://pypi.python.org/pypi/Pillow

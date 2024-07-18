@@ -89,14 +89,11 @@ def run():
         maintainer_email="pythonreports-users@lists.sourceforge.net",
         classifiers=[
             "Development Status :: 5 - Production/Stable",
-            "Environment :: Win32 (MS Windows)",
-            "Environment :: X11 Applications",
             "Intended Audience :: Developers",
             "Intended Audience :: Information Technology",
             "License :: OSI Approved :: MIT License",
             "Operating System :: OS Independent",
-            "Programming Language :: Python :: 2",
-            "Topic :: Database :: Front-Ends",
+            "Programming Language :: Python :: 3",
             "Topic :: Printing",
         ],
         # cheeseshop says "you should enter a full description here

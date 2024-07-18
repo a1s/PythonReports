@@ -74,8 +74,6 @@ def str2value(txt):
 
     Otherwise use "txt" as is.
 
-    Decode all values from UTF-8 (that's encoding forced by rsonlite).
-
     """
     if len(txt) < 2:
         _rv = txt
@@ -88,8 +86,6 @@ def str2value(txt):
         _rv = eval(txt)
     else:
         _rv = txt
-    if not isinstance(_rv, (unicode, list)): # list may come from one-liner
-        _rv = _rv.decode("utf-8")
     return _rv
 
 def rson2element(tag, data):
@@ -123,20 +119,17 @@ def rson2element(tag, data):
         if not _value: # Skip empties
             continue
         try:
-            # _key is RsonToken which does not like to be combined
-            # with Unicode values in error messages.
-            _name = _key.decode("utf-8")
-            if isinstance(_value[0], basestring):
+            if isinstance(_value[0], str):
                 assert len(_value) == 1
                 _value = str2value(_value[0])
-            if isinstance(_value, basestring):
-                _attrs[_name] = _value
+            if isinstance(_value, str):
+                _attrs[_key] = _value
             else:
-                _children.append((_name, _value))
+                _children.append((_key, _value))
         except Exception:
             (_type, _val, _tb) = sys.exc_info()
-            raise (ValueError("Failed to parse RSON input in line %s: %s"
-                % (_key.line, unicode(_val))), None, _tb)
+            raise ValueError("Failed to parse RSON input in line %s: %s"
+                % (_key.line, str(_val))).with_traceback(_tb)
     _body = _attrs.pop("body", None)
     _rv = datatypes.Element(tag, _attrs)
     for (_name, _value) in _children:
@@ -155,19 +148,11 @@ def rson2element(tag, data):
 
 def parse_string(txt, validator=template.Report):
     """Build an validate an XML tree from RSON text string"""
-    if isinstance(txt, unicode):
-        # RSONlite is going to decode it anyway.
-        # Do it ourselves in order to detect and remove BOM.
-        txt = txt.encode("utf-8")
     # XXX rsonlite does not tolerate BOM:
     # when the first line is empty, BOM appears as a token by itself;
     # otherwise it is added to the element name in the first line.
-    if txt.startswith("\xEF\xBB\xBF"):
-        txt = txt[3:]
-    elif txt.startswith("\xFF\xFE"):
-        txt = txt[2:].decode("utf-16-le").encode("utf-8")
-    elif txt.startswith("\xFE\xFF"):
-        txt = txt[2:].decode("utf-16-be").encode("utf-8")
+    if txt.startswith("\uFEFF"):
+        txt = txt[1:]
     _root = rson2element(validator.tag, rsonlite.loads(txt))
     _rv = datatypes.ElementTree(validator, _root)
     _rv.validate()
@@ -175,13 +160,19 @@ def parse_string(txt, validator=template.Report):
 
 def parse_file(path, validator=template.Report):
     """Build an validate an XML tree from RSON text file"""
-    with open(path, "rU") as _ff:
-        _txt = _ff.read()
+    with open(path, "rb") as _ff:
+        _contents = _ff.read()
+    if _contents.startswith(b"\xFF\xFE"):
+        _txt = _contents.decode("utf-16-le")
+    elif _contents.startswith(b"\xFE\xFF"):
+        _txt = _contents.decode("utf-16-be")
+    else: # Assume UTF-8 (or ASCII)
+        _txt = _contents.decode("utf-8")
     _rv = parse_string(_txt, validator=validator)
     _rv.filename = path
     return _rv
 
-_re_nonempty_line = re.compile(r"(?:\xEF\xBB\xBF|\xFF\xFE|\xFE\xFF)?\s*(\S)")
+_re_nonempty_line = re.compile(rb"(?:\xEF\xBB\xBF|\xFF\xFE|\xFE\xFF)?\s*(\S)")
 
 def load_template_file(filename):
     """Load Template file in XML or RSON format, return Template ElementTree
@@ -193,11 +184,11 @@ def load_template_file(filename):
     use XML loader.  Otherwise use RSON loader.
 
     """
-    with open(filename, "rU") as _ff:
+    with open(filename, "rb") as _ff:
         for _line in _ff:
             _match = _re_nonempty_line.match(_line)
             if _match:
-                if _match.group(1) == "<":
+                if _match.group(1) == b"<":
                     _ff.seek(0)
                     _rv = template.load(_ff)
                     _rv.filename = filename

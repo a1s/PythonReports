@@ -806,7 +806,7 @@ class Container(list):
             return
         # create section placement box
         self.obox = self.tbox.copy()
-        _elements = getchildren(self.template)
+        _elements = list(self.template)
         _default_element_style = [self.compose_style(context,
             ("font", "color", "bgcolor"), self.iter_styles())]
         _subreports = []
@@ -1711,7 +1711,7 @@ class Builder(object):
         while _descend:
             _next_level = []
             for _item in _descend:
-                for _child in self.template.getchildren(_item):
+                for _child in _item:
                     if _child.tag in ("group", "columns"):
                         _next_level.append(_child)
                     if _child.tag in (
@@ -2356,11 +2356,11 @@ class Builder(object):
         _this_root = self.template.getroot()
         _new_root = self.template.copy(_this_root)
         # Make a shallow copy of all top-level elements.
-        for _elem in self.template.getchildren(_this_root):
+        for _elem in _this_root:
             if _elem.tag in ("import", "font", "data", "layout"):
                 _new_root.append(self.template.copy(_elem))
         _new_layout = _new_root.find("layout")
-        for _elem in self.template.getchildren(element):
+        for _elem in element:
             if _elem.tag in ("parameter", "variable"):
                 _new_root.insert(0, self.template.copy(_elem))
             else:

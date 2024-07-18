@@ -718,7 +718,7 @@ class TreeNodeData(list):
             for (_validator, _restrict) in validator.children
             if (_restrict not in (_validator.ONE, _validator.ZERO_OR_ONE))]
         _child_validators = validator.child_validators
-        for _child in getchildren(element):
+        for _child in element:
             _tag = _child.tag
             # boxes go to element properties -
             # don't create separate tree nodes for them
@@ -1444,7 +1444,7 @@ class Designer(Toplevel):
             self.current_node = None
         _parent = _data.parent
         _index = _parent.index(_data)
-        _element_index = getchildren(_parent.element).index(_data.element)
+        _element_index = list(_parent.element).index(_data.element)
         _hlist = self.tree.hlist
         if _data.tag == "group":
             # find contained group or detail element -

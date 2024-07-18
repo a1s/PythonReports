@@ -2,44 +2,16 @@
 
 import binascii
 import bz2
-import cPickle as pickle
+import io
+import pickle
 import sys
 import zlib
-
-from cStringIO import StringIO
+import xml.etree.ElementTree as ET
 from xml.sax import saxutils
-
-# Find ElementTree implementation
-# Note: lxml.etree cannot be used because it doesn't allow
-# attribute values to be anything but basestrings
-# and we need dimensions to act like integers.
-try:
-    # preferred to pure python because it's faster
-    import cElementTree as ET
-except ImportError:
-    try:
-        # preferred to batteries just because you bothered to install it
-        import elementtree.ElementTree as ET
-    except ImportError:
-        # pylint: disable-msg=E0611
-        # E0611: No name 'etree' in module 'xml' - true for python <2.5
-        # ... pylint still reports this error
-        # last resort; should always success in python2.5 and newer
-        import xml.etree.ElementTree as ET
 
 # export element factories from ElementTree
 Element = ET.Element
 SubElement = ET.SubElement
-
-# Fix xml Element function for listing all children.
-# Since Python 2.7 Element.getchildren() is deprecated and raises
-# DeprecationWarning on use.
-if sys.version_info <= (2, 7):
-    def getchildren(item):
-        return item.getchildren()
-else:
-    def getchildren(item):
-        return list(item)
 
 # XXX This is not the best place for such function.
 # It's more about report templates, but the template module
@@ -119,9 +91,6 @@ class XmlValidationWarning(UserWarning):
             _rv += " for element <%s>" % element_label(self.element)
         return _rv
 
-    def __str__(self):
-        return unicode(self).encode(self.encoding)
-
 class InvalidLiteral(ValueError):
 
     """Value is rejected by an attribute datatype"""
@@ -173,9 +142,6 @@ class XmlValidationError(RuntimeError):
             _rv += " for element <%s>" % element_label(self.element)
         return _rv
 
-    def __str__(self):
-        return unicode(self).encode(self.encoding)
-
 class MissingRequiredAttribute(XmlValidationError):
 
     """Required element attribute is missing"""
@@ -221,7 +187,7 @@ class AttributeConversionError(XmlValidationError):
     def __unicode__(self):
         _rv = XmlValidationError.__unicode__(self)
         if self.exception:
-            _rv += u" (%s: %s)" % (
+            _rv += " (%s: %s)" % (
                 self.exception.__class__.__name__, self.exception)
         return _rv
 
@@ -297,7 +263,7 @@ class MissingContextError(XmlValidationError):
             "Context not provided for data expression '%s'" % (expr),
             element=element, path=path)
 
-class REQUIRED(object):
+class _ValueRequired(object):
 
     """"Value is required" value
 
@@ -310,7 +276,7 @@ class REQUIRED(object):
     # R0903: Too few public methods
 
 # XXX should NOTHING be different from REQUIRED?
-REQUIRED = NOTHING = REQUIRED()
+REQUIRED = NOTHING = _ValueRequired()
 
 class Structure(object):
 
@@ -325,7 +291,7 @@ class Structure(object):
     # R0903: Too few public methods
 
     def __init__(self, **kwargs):
-        for (_name, _value) in kwargs.iteritems():
+        for (_name, _value) in kwargs.items():
             setattr(self, _name, _value)
 
 ### attribute value types
@@ -346,7 +312,7 @@ class _Value(object):
         # REQUIRED must be allowed for class initialization
         if value in (None, REQUIRED):
             return value
-        if isinstance(value, basestring) and (value.strip() == ""):
+        if isinstance(value, str) and (value.strip() == ""):
             return None
         return cls(value)
 
@@ -374,10 +340,7 @@ class Boolean(int, _Value): # 'bool' is not an acceptable base type; use int
             return int.__new__(cls, bool(value))
         # try string interpretation first because the primary use
         # is interpretation of element attribute values loaded from xml
-        # unicode() is used instead of str() to avoid the need of
-        # special processing of UnicodeEncodeError.  i hope it will add
-        # very little overhead for ascii strings.
-        _val = unicode(value).lower()
+        _val = str(value).lower()
         if _val in ("true", "yes", "1"):
             _val = True
         elif _val in ("false", "no", "0"):
@@ -490,7 +453,7 @@ class Dimension(float, _Value):
         """
         if isinstance(value, (float, int)):
             return float.__new__(cls, value)
-        _val = unicode(value).strip()
+        _val = str(value).strip()
         try:
             _unit = cls.UNITS[_val[-2:]]
         except KeyError:
@@ -523,13 +486,11 @@ class _MetaColor(type):
         try:
             return mcs.names[name.upper()]
         except KeyError:
-            raise AttributeError, name
+            raise AttributeError(name)
 
-class Color(_Value):
+class Color(_Value, metaclass=_MetaColor):
 
     """Color value"""
-
-    __metaclass__ = _MetaColor
 
     names = {
         # HTML 4.01 colors
@@ -580,7 +541,7 @@ class Color(_Value):
         _hexdigits = "0123456789ABCDEF"
         # if spec is a string, try to extract integer color number
         # or RGB triple
-        if isinstance(color, basestring):
+        if isinstance(color, str):
             if ("," in color):
                 if "." in color:
                     _convert = float
@@ -601,7 +562,7 @@ class Color(_Value):
         else:
             _color = color
         # check specification variants
-        if isinstance(_color, basestring):
+        if isinstance(_color, str):
             _color = _color.upper()
             if _color in cls.names:
                 return cls.names[_color]
@@ -666,7 +627,7 @@ class Color(_Value):
     def __repr__(self):
         return "<%s: %s>" % (self.__class__.__name__, self.value)
 
-class String(unicode, _Value):
+class String(str, _Value):
 
     """String value used in element attributes"""
 
@@ -675,7 +636,7 @@ class String(unicode, _Value):
 
     def __new__(cls, value):
         try:
-            return unicode.__new__(cls, value)
+            return str.__new__(cls, value)
         except (TypeError, ValueError):
             # note: unicode errors are subclasses of ValueError
             raise InvalidLiteral(cls, value)
@@ -704,7 +665,7 @@ class NonEmptyString(String):
         # REQUIRED must be allowed for class initialization
         if not value:
             return cls.BLANK
-        if isinstance(value, basestring) and (value.strip() == ""):
+        if isinstance(value, str) and (value.strip() == ""):
             return cls.BLANK
         return super(NonEmptyString, cls).fromValue(value)
 
@@ -859,7 +820,7 @@ class PageSize(_Codes):
         # and http://en.wikipedia.org/wiki/Envelope_size
     }
 
-    VALUES = DIMENSIONS.keys()
+    VALUES = list(DIMENSIONS.keys())
 
     dimensions = property(lambda self: self.DIMENSIONS[self],
         doc="Page dimensions (width, height)")
@@ -988,8 +949,11 @@ class Validator(object):
 
         def __call__(self, tree, element, path):
             """Perform validation"""
-            _attrs = dict(filter(lambda item: item[1],
-                [(_name, element.get(_name, None)) for _name in self.names]))
+            _attrs = {}
+            for _name in self.names:
+                _value = element.get(_name, None)
+                if _value:
+                    _attrs[_name] = _value
             if not _attrs:
                 raise XmlValidationError(
                     "At least one of the following attributes is required: %s"
@@ -997,7 +961,7 @@ class Validator(object):
             elif len(_attrs) > 1:
                 raise XmlValidationError(
                     "Following attributes are mutually exclusive: %s"
-                    % ", ".join(_attrs.iterkeys()))
+                    % ", ".join(_attrs.keys()))
 
     # custom validation functions
     prevalidate = ()
@@ -1032,7 +996,7 @@ class Validator(object):
         self.tag = tag
         if attributes:
             self.attributes = dict([(_name, (_cls, _cls.fromValue(_default)))
-                for (_name, (_cls, _default)) in attributes.iteritems()])
+                for (_name, (_cls, _default)) in attributes.items()])
         else:
             self.attributes = {}
         self.children = children
@@ -1069,7 +1033,7 @@ class Validator(object):
             _validate(tree, element, path)
         # verify attributes: convert XML values, apply defaults
         _attrib = element.attrib
-        for (_name, (_cls, _default)) in self.attributes.iteritems():
+        for (_name, (_cls, _default)) in self.attributes.items():
             _value = _attrib.get(_name, "")
             if _value != "":
                 try:
@@ -1077,7 +1041,7 @@ class Validator(object):
                 except:
                     (_err, _tb) = sys.exc_info()[1:]
                     raise AttributeConversionError(_name, _value, _err,
-                        element, path), None, _tb
+                        element, path).with_traceback(_tb)
             elif _default is REQUIRED:
                 raise MissingRequiredAttribute(_name, element, path)
             else:
@@ -1129,7 +1093,7 @@ class Validator(object):
             except AttributeError:
                 # _val is not instance of attribute value classes
                 # try simple conversion
-                _val = saxutils.quoteattr(unicode(_val))
+                _val = saxutils.quoteattr(str(_val))
             _items.append("=".join((_name, _val)))
         return " ".join(_items)
 
@@ -1147,11 +1111,13 @@ class Validator(object):
             newl: string used to put each element on different line
 
         """
-        _starttag = self.starttag(element).encode(encoding,
-            "xmlcharrefreplace")
+        _starttag = self.starttag(element)
+        def _output(fmt, tag):
+            writer.write((fmt % (indent, tag, newl))
+                .encode(encoding, "xmlcharrefreplace"))
         # collect known children
         _child_elements = []
-        for _child in getchildren(element):
+        for _child in element:
             try:
                 _validator = self.child_validators[_child.tag]
             except KeyError:
@@ -1159,13 +1125,13 @@ class Validator(object):
             else:
                 _child_elements.append((_child, _validator))
         if _child_elements:
-            writer.write("%s<%s>%s" % (indent, _starttag, newl))
+            _output("%s<%s>%s", self.starttag(element))
             for (_child, _validator) in _child_elements:
                 _validator.writexml(writer, _child, encoding,
                     indent + addindent, addindent, newl)
-            writer.write("%s</%s>%s" % (indent, self.tag, newl))
+            _output("%s</%s>%s", self.tag)
         else:
-            writer.write("%s<%s />%s" % (indent, _starttag, newl))
+            _output("%s<%s />%s", self.starttag(element))
 
 class DataBlock(Validator):
 
@@ -1173,12 +1139,11 @@ class DataBlock(Validator):
 
     Raw data may be any object that can be pickled
     if "pickle" is set to True.  If "pickle" is False
-    (default), raw data must be encoded (8-bit) string
-    if "encoding" is set, or unicode string if "encoding"
-    is unset, or None.
+    (default), raw data must be bytes if "encoding" is set,
+    or string if "encoding" is unset, or None.
 
     For binary or compressed or pickled data "encoding"
-    must be set to "base64" or "uu".
+    must be specified.
 
     """
 
@@ -1252,17 +1217,15 @@ class DataBlock(Validator):
         _encoding = attrib.get("encoding")
         if _encoding == "base64":
             _data = binascii.b2a_base64(_data)
-            _data = "\n".join([""] + [_data[_ii:_ii + 76]
-                for _ii in xrange(0, len(_data), 76)])
+            _data = b"\n".join([b""] + [_data[_ii:_ii + 76]
+                for _ii in range(0, len(_data), 76)])
         elif _encoding == "uu":
-            _data = "".join(["\n"] + [binascii.b2a_uu(_data[_ii:_ii + 45])
-                for _ii in xrange(0, len(_data), 45)])
+            _data = b"".join([b"\n"] + [binascii.b2a_uu(_data[_ii:_ii + 45])
+                for _ii in range(0, len(_data), 45)])
         elif _encoding == "qp":
-            _data = "\n" + binascii.b2a_qp(_data, True, False) + "\n"
-        else:
-            # encoded data is ASCII.  non-encoded must be unicode.
-            _data = unicode(_data)
-        _elem.text = _data
+            _data = b"\n" + binascii.b2a_qp(_data, True, False) + b"\n"
+        # All encodings produce ASCII text
+        _elem.text = _data.decode("ascii") if _encoding else str(_data)
         return _elem
 
     @staticmethod
@@ -1311,8 +1274,7 @@ class DataBlock(Validator):
         """Write XML to the writer object
 
         Parameters:
-            writer: file-like object with "write" method
-                able to accept unicode strings
+            writer: file-like object with "write" method accepting bytes
             element: tree element of type handled by this validator
             encoding: character set name
             indent: indentation of the current element
@@ -1326,15 +1288,14 @@ class DataBlock(Validator):
         _text = element.text or ""
         if element.get("encoding"):
             _indent2 = indent
-            # we will be adding certain amount of space before the closing tag
-            # to make it certain amount indeed, make sure there aren't any
-            # spaces yet.
+            # We will be adding certain amount of space before the closing tag.
+            # To make the amount certain, make sure there aren't any spaces.
             _text = _text.rstrip(" ")
         else:
             # must not add blank spaces to non-encoded values
             _indent2 = ""
         # there are no children for this element, just text
-        _text = u"%s<%s>%s%s</%s>%s" % (indent, self.starttag(element),
+        _text = "%s<%s>%s%s</%s>%s" % (indent, self.starttag(element),
             saxutils.escape(_text), _indent2, self.tag, newl)
         writer.write(_text.encode(encoding, "xmlcharrefreplace"))
 
@@ -1374,7 +1335,7 @@ class ElementTree(ET.ElementTree):
     def parse(self, source, parser=None):
         """Parse source file and validate loaded tree"""
         _root = ET.ElementTree.parse(self, source, parser)
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             self.filename = source
         else:
             self.filename = None
@@ -1412,21 +1373,6 @@ class ElementTree(ET.ElementTree):
         _stream = StringIO()
         self.write(_stream)
         return _stream.getvalue()
-
-    def getchildren(self, element=None):
-        """Return a list of child elements
-
-        Pararmeters:
-            element: Optional parent element to iterate over.
-
-                If omitted, use the root element of the tree.
-
-        Return: a list of Element objects.
-
-        """
-        if element is None:
-            element = self.getroot()
-        return getchildren(element)
 
     def copy(self, element):
         """Return a shallow copy of the element
@@ -1474,7 +1420,7 @@ class Box(object):
     # got 25% relative gain of total size of Box objects,
     # but cumulative size of the arrays is 3x bigger than Dimensions,
     # which made 20% loss in the whole.
-    __slots__ = map(lambda x: x[0], DEFAULTS)
+    __slots__ = [x[0] for x in DEFAULTS]
 
     # dimensions must be rounded after each calculation.
     # (got height=-5.6843418860808015e-014 which raised
@@ -1493,7 +1439,7 @@ class Box(object):
         _attrs = dict(self.DEFAULTS)
         _attrs.update(dict(zip(self.__slots__, args)))
         _attrs.update(kwargs)
-        for (_name, _value) in _attrs.iteritems():
+        for (_name, _value) in _attrs.items():
             setattr(self, _name, _value)
 
     def copy(self, dimensions_only=False):
@@ -1650,11 +1596,11 @@ class Box(object):
         return "<%s@%X: %.1f, %.1f, %.1f, %.1f>" % (self.__class__.__name__,
             id(self), self.x, self.y, self.width, self.height)
 
-# export constants and all non-private callables and constants
-__all__ = ["REQUIRED", "NOTHING", "Font"] + [
-    _global_name for (_global_name, _global_item) in globals().items()
-    if callable(_global_item) and not _global_name.startswith("_")
-]
-del _global_name, _global_item
+def _find_export_names():
+    """Return names of all non-private callables and constants for __all__"""
+    return [_name for (_name, _item) in globals().items()
+        if callable(_item) and not _name.startswith("_")]
+
+__all__ = ["REQUIRED", "NOTHING", "Font"] + _find_export_names()
 
 # vim: set et sts=4 sw=4 :

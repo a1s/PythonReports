@@ -1,23 +1,8 @@
 """Rendering utilities for Python Imaging Library (PIL) backend"""
-"""History (most recent first):
-05-dec-2006 [als]   sweep pylint warnings
-01-nov-2006 [als]   driver classes have backend name property
-05-oct-2006 [als]   use base classes for the rendering drivers
-02-oct-2006 [als]   ImageDriver: added .nullimage()
-29-sep-2006 [als]   added ImageDriver
-26-sep-2006 [als]   TextDriver.getsize: adjust width by heuristic coefficient
-26-sep-2006 [als]   font file resolving moved to the fonts module
-04-sep-2006 [als]   TextDriver made stateful (font-based);
-                    added TextDriver.getsize();
-                    added TTF_NAMEs for Times New Roman and Courier New fonts
-29-aug-2006 [als]   TextDriver ported from previous implementation
-"""
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/06 16:52:18 $"[7:-2]
 
 __all__ = ["ImageDriver", "TextDriver"]
 
-from cStringIO import StringIO
+from io import BytesIO
 
 from PIL import Image, ImageFont
 
@@ -77,7 +62,7 @@ class ImageDriver(drivers.ImageDriver):
         """Create an image source from data block
 
         Parameters:
-            data: image data
+            data: image data (bytes)
             img_type: image type, e.g. "jpeg" or "png"
                 (Note: not used by PIL driver.)
             name: optional name of a report block containing data
@@ -89,7 +74,7 @@ class ImageDriver(drivers.ImageDriver):
         # W0613: Unused argument 'img_type' - the type is guessed from contents
         _rv = cls()
         _rv.name = name
-        _rv._image = Image.open(StringIO(data))
+        _rv._image = Image.open(BytesIO(data))
         return _rv
 
     def getsize(self):
@@ -114,7 +99,7 @@ class ImageDriver(drivers.ImageDriver):
             # pylint: disable-msg=C0103
             # C0103: Invalid name "img_type"
             img_type = self.preferred_type
-        _buffer = StringIO()
+        _buffer = BytesIO()
         self._image.save(_buffer, format=img_type)
         return _buffer.getvalue()
 
@@ -134,8 +119,8 @@ class ImageDriver(drivers.ImageDriver):
             # pylint: disable-msg=C0103
             # C0103: Invalid name "img_type"
             img_type = self.preferred_type
-        _img = self._image.resize((width, height), Image.ANTIALIAS)
-        _buffer = StringIO()
+        _img = self._image.resize((width, height), Image.LANCZOS)
+        _buffer = BytesIO()
         _img.save(_buffer, format=img_type)
         return _buffer.getvalue()
 
@@ -156,7 +141,7 @@ class ImageDriver(drivers.ImageDriver):
 
         """
         _img = self._image.crop((0, 0, width, height))
-        _buffer = StringIO()
+        _buffer = BytesIO()
         _img.save(_buffer, format=img_type)
         return _buffer.getvalue()
 

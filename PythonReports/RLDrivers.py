@@ -4,14 +4,6 @@ This module contains no image driver: ReportLab requires PIL for images,
 so we can just use PIL ImageDriver instead of wrapping a wrapper.
 
 """
-"""History (most recent first):
-12-dec-2006 [als]   .size renamed to .height for compatibility with base class
-                    (.chop was broken)
-01-nov-2006 [als]   driver classes have backend name property
-05-oct-2006 [als]   created
-"""
-__version__ = "$Revision: 1.4 $"[11:-2]
-__date__ = "$Date: 2006/12/12 10:44:11 $"[7:-2]
 
 __all__ = ["TextDriver"]
 

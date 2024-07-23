@@ -4,18 +4,11 @@ This module contains no image driver: Tkinter
 does not provide sufficient image functionality.
 
 """
-"""History (most recent first):
-12-dec-2006 [als]   fix italic fonts: option name is "slant", not "style"
-05-dec-2006 [als]   sweep pylint warnings
-04-nov-2006 [als]   created
-"""
-__version__ = "$Revision: 1.3 $"[11:-2]
-__date__ = "$Date: 2006/12/12 10:49:27 $"[7:-2]
 
 __all__ = ["TextDriver"]
 
 import math
-import tkFont
+import tkinter.font
 
 from PythonReports import drivers
 
@@ -66,7 +59,7 @@ class TextDriver(drivers.TextDriver):
         ):
             if font.get(_prop, False):
                 _attrs[_attr] = _value
-        return tkFont.Font(**_attrs)
+        return tkinter.font.Font(**_attrs)
 
     def getsize(self, text):
         """Return size tuple (width, height) for given text"""

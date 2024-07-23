@@ -5,7 +5,7 @@ __all__ = []
 
 import base64
 import sys
-from Tkinter import *
+from tkinter import *
 
 from PythonReports.datatypes import *
 from PythonReports import drivers, fonts, printout as prp
@@ -29,7 +29,7 @@ class Painter(object):
 
         """
         super(Painter, self).__init__()
-        if isinstance(report, basestring):
+        if isinstance(report, str):
             self.report = prp.load(report)
         else:
             self.report = report
@@ -51,7 +51,7 @@ class Painter(object):
             self.handlers["image"] = self.drawImage
             self.named_images = {}
         _fonts = {}
-        for (_name, _font) in self.report.fonts.iteritems():
+        for (_name, _font) in self.report.fonts.items():
             _modifiers = []
             if _font.get("bold"):
                 _modifiers.append("bold")
@@ -103,7 +103,7 @@ class Painter(object):
             self.scale = scale
         self.scaled_fonts = dict([
             (_name, (_face, max(1, int(round(_size * self.scale))), _options))
-            for (_name, (_face, _size, _options)) in self.fonts.iteritems()])
+            for (_name, (_face, _size, _options)) in self.fonts.items()])
         # draw elements
         for _item in _page:
             try:
@@ -316,7 +316,7 @@ class PreviewWidget(Frame):
 
         """
         Frame.__init__(self, master, class_="PythonReportsWidget", **options)
-        if isinstance(report, basestring):
+        if isinstance(report, str):
             self.report = prp.load(report)
         else:
             self.report = report
@@ -539,7 +539,7 @@ class PreviewWindow(Toplevel):
             options: Tkinter Toplevel widget constructor options
 
         """
-        if isinstance(report, basestring):
+        if isinstance(report, str):
             # pylint: disable-msg=C0103
             # C0103: Invalid names "report", "title"
             if title is None:
@@ -557,7 +557,7 @@ class PreviewWindow(Toplevel):
 def run(argv=sys.argv):
     """Command line executable"""
     if len(argv) != 2:
-        print "Usage: %s <printout>" % argv[0]
+        print("Usage: %s <printout>" % argv[0])
         sys.exit(2)
     _root = Tk()
     _root.withdraw()

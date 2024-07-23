@@ -273,7 +273,7 @@ class Painter(object):
 
     def drawBarcode(self, canvas, barcode):
         """Draw Bar Code symbol"""
-        _xdim = barcode.get("module") / 1000. * 72.
+        _xdim = barcode.get("module") / 1000. * 72. * self.scale
         _stripes = [[int(_stripe) * _xdim for _stripe in _row.split(",")]
             for _row in barcode.get("stripes").split(" ")]
         # blank out the symbol area
@@ -316,7 +316,7 @@ class Painter(object):
         """Draw contents of an xref box"""
         _save = self.basepoint
         _box = Box.from_element(xref.find("box"))
-        self.basepoint = (_box.left, _box.top)
+        self.basepoint = (_box.left * self.scale, _box.top * self.scale)
         try:
             self.drawContents(canvas, xref)
         finally:

@@ -40,6 +40,7 @@ class Painter(object):
             "rectangle": self.drawRectangle,
             "text": self.drawText,
             "barcode": self.drawBarcode,
+            "xref": self.drawXref,
         }
         try:
             self.image_driver = drivers.get_driver("Image")
@@ -62,6 +63,7 @@ class Painter(object):
         self.fonts = _fonts
         self.scaled_fonts = _fonts
         self.scale = 1.0
+        self.basepoint = (0, 0)
 
     def pagecount(self):
         """Return number of pages in the printout"""
@@ -79,6 +81,23 @@ class Painter(object):
         """
         _page = self.pages[pageno]
         return (_page.get("width"), _page.get("height"))
+
+    def drawContents(self, canvas, container):
+        """Draw child elements on Tk canvas
+
+        Parameters:
+            canvas: Tkinter Canvas object
+            container: a sequence of printout Elements (e.g a page Element)
+
+        """
+        for _item in container:
+            try:
+                _handler = self.handlers[_item.tag]
+            except KeyError:
+                # no handler for element type - ignore element
+                pass
+            else:
+                _handler(canvas, _item)
 
     def paint(self, canvas, pageno, scale=1.0):
         """Draw single printout page on Tk canvas
@@ -101,18 +120,11 @@ class Painter(object):
             self.scale = .1
         else:
             self.scale = scale
+        self.basepoint = (0, 0)
         self.scaled_fonts = dict([
             (_name, (_face, max(1, int(round(_size * self.scale))), _options))
             for (_name, (_face, _size, _options)) in self.fonts.items()])
-        # draw elements
-        for _item in _page:
-            try:
-                _handler = self.handlers[_item.tag]
-            except KeyError:
-                # no handler for element type - ignore element
-                pass
-            else:
-                _handler(canvas, _item)
+        self.drawContents(canvas, _page)
 
     @staticmethod
     def _lineattrs(pen):
@@ -149,8 +161,12 @@ class Painter(object):
 
         """
         _box = Box.from_element(element.find("box"))
-        return tuple(dimension(_dim * self.scale)
-            for _dim in (_box.left, _box.top, _box.right, _box.bottom))
+        return tuple(dimension(_dim * self.scale) for _dim in (
+            _box.left + self.basepoint[0],
+            _box.top + self.basepoint[1],
+            _box.right + self.basepoint[0],
+            _box.bottom + self.basepoint[1],
+        ))
 
     def drawLine(self, canvas, line):
         """Draw a line"""
@@ -185,7 +201,7 @@ class Painter(object):
                 break
         else:
             raise KeyError("data element with name=%r cannot be found" % name)
-        _img = self.image_driver.fromdata(Data.get_data(_element), img_type)
+        _img = self.image_driver.fromdata(DataBlock.get_data(_element), img_type)
         self.named_images[(name, img_type)] = _img
         return _img
 
@@ -202,7 +218,7 @@ class Painter(object):
             else:
                 # image data must be child element
                 _img = self.image_driver.fromdata(
-                    Data.get_data(image.find("data")), _type)
+                    DataBlock.get_data(image.find("data")), _type)
         _box = image.find("box")
         _width = canvas.winfo_pixels(dimension(_box.get("width") * self.scale))
         _height = canvas.winfo_pixels(
@@ -252,7 +268,8 @@ class Painter(object):
             else:
                 _options["anchor"] = NW
                 _x = _box.left
-            canvas.create_text(dimension(_x), dimension(_box.top), **_options)
+            canvas.create_text(dimension(_x + self.basepoint[0]),
+                dimension(_box.top + self.basepoint[1]), **_options)
 
     def drawBarcode(self, canvas, barcode):
         """Draw Bar Code symbol"""
@@ -294,6 +311,16 @@ class Painter(object):
                         *map(dimension,
                             (_cur_x, _box.y, _cur_x + _stripe, _box.bottom)))
                 _cur_x += _stripe
+
+    def drawXref(self, canvas, xref):
+        """Draw contents of an xref box"""
+        _save = self.basepoint
+        _box = Box.from_element(xref.find("box"))
+        self.basepoint = (_box.left, _box.top)
+        try:
+            self.drawContents(canvas, xref)
+        finally:
+            self.basepoint = _save
 
 class PreviewWidget(Frame):
 

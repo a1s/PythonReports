@@ -1,22 +1,10 @@
 """Fonts registry"""
-"""History (most recent first):
-26-jan-2011 [luch]  try to load windows fonts once when a font is missing
-26-jan-2011 [als]   more well-known font file names;
-                    add Mac OS X font paths
-22-dec-2007 [als]   add Ubuntu fonts location to SYSFONTPATHS (sf bug 1856408)
-27-sep-2006 [als]   support different system font path variants
-26-sep-2006 [als]   add font paths on windows (required by reportlab)
-26-sep-2006 [als]   created
-"""
-__version__ = "$Revision: 1.5 $"[11:-2]
-__date__ = "$Date: 2011/01/26 13:53:59 $"[7:-2]
 
 __all__ = ["fontfile", "register"]
 
-from operator import itemgetter
 import os, sys
 
-import windows_fonts
+from . import windows_fonts
 
 # well-known font files
 FONTS = {
@@ -89,10 +77,10 @@ if os.name == "nt":
 elif os.name == "posix":
     # X windows
     SYSFONTPATHS.append("/usr/X11R6/lib/X11/fonts/TrueType")
-    SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/usr/share/fonts")))
-    SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/usr/local/share/fonts")))
+    SYSFONTPATHS.extend(_item[0] for _item in os.walk("/usr/share/fonts"))
+    SYSFONTPATHS.extend(_item[0] for _item in os.walk("/usr/local/share/fonts"))
     if sys.platform == "darwin":
-        SYSFONTPATHS.extend(map(itemgetter(0), os.walk("/Library/Fonts")))
+        SYSFONTPATHS.extend(_item[0] for _item in os.walk("/Library/Fonts"))
         FONTS[None] = "Courier New.ttf"
 
 def fontfile(typeface, bold=False, italic=False):

@@ -7,7 +7,7 @@ import math
 import re
 import sys
 
-from aztec_code_generator import AztecCode
+from .aztec_code_generator import AztecCode
 try:
     from qrcode import QRCode, \
         ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q, ERROR_CORRECT_H
@@ -16,8 +16,7 @@ except ImportError:
         = ERROR_CORRECT_Q = ERROR_CORRECT_H = None
     qr_missing = sys.exc_info()
 
-_re_digit = re.compile("\d")
-_re_nondigit = re.compile("\D")
+_re_nondigit = re.compile("[^0-9]")
 
 class InvalidLiteral(ValueError):
 
@@ -176,7 +175,7 @@ class Code2of5i(BarCode):
     (1, 1, 1, 1, 1, 3, 3, 1, 1, 3, 1, 1, 3, 1, 3, 1, 1)
     >>> code2of5i("5")
     (1, 1, 1, 1, 1, 3, 1, 1, 3, 3, 3, 1, 1, 1, 3, 1, 1)
-    >>> print textwrap.fill(repr(code2of5i("19980726")), 64)
+    >>> print(textwrap.fill(repr(code2of5i("19980726")), 64))
     (1, 1, 1, 1, 3, 1, 1, 3, 1, 1, 1, 3, 3, 1, 1, 3, 3, 1, 1, 1, 3,
     3, 1, 1, 1, 1, 1, 1, 3, 1, 3, 3, 1, 3, 1, 1, 3, 3, 1, 3, 1, 1,
     3, 1, 3, 1, 1)
@@ -286,7 +285,7 @@ class Code39(BarCode):
 
     Encoding example:
 
-    >>> print textwrap.fill(repr(Code39(gap=2)("BARCODE1")), 64)
+    >>> print(textwrap.fill(repr(Code39(gap=2)("BARCODE1")), 64))
     (1, 3, 1, 1, 3, 1, 3, 1, 1, 2, 1, 1, 3, 1, 1, 3, 1, 1, 3, 2, 3,
     1, 1, 1, 1, 3, 1, 1, 3, 2, 3, 1, 1, 1, 1, 1, 3, 3, 1, 2, 3, 1,
     3, 1, 1, 3, 1, 1, 1, 2, 3, 1, 1, 1, 3, 1, 1, 3, 1, 2, 1, 1, 1,
@@ -448,19 +447,19 @@ class Code128(BarCode):
 
     Encoding examples:
 
-    >>> print textwrap.fill(repr(code128("Code 128")), 64)
+    >>> print(textwrap.fill(repr(code128("Code 128")), 64))
     (2, 1, 1, 2, 1, 4, 1, 3, 1, 3, 2, 1, 1, 3, 4, 1, 1, 1, 1, 4, 1,
     2, 2, 1, 1, 1, 2, 2, 1, 4, 2, 1, 2, 2, 2, 2, 1, 2, 3, 2, 2, 1,
     2, 2, 3, 2, 1, 1, 3, 1, 1, 2, 2, 2, 1, 1, 1, 4, 2, 2, 2, 3, 3,
     1, 1, 1, 2)
-    >>> print textwrap.fill(repr(code128("\\rx")), 64)
+    >>> print(textwrap.fill(repr(code128("\\rx")), 64))
     (2, 1, 1, 4, 1, 2, 4, 1, 3, 1, 1, 1, 1, 1, 4, 1, 3, 1, 4, 2, 1,
     2, 1, 1, 3, 2, 1, 2, 2, 1, 2, 3, 3, 1, 1, 1, 2)
-    >>> print textwrap.fill(repr(code128("0123456789")), 64)
+    >>> print(textwrap.fill(repr(code128("0123456789")), 64))
     (2, 1, 1, 2, 3, 2, 2, 2, 2, 1, 2, 2, 3, 1, 2, 1, 3, 1, 1, 1, 3,
     1, 2, 3, 1, 4, 1, 1, 2, 2, 2, 1, 2, 1, 4, 1, 1, 4, 2, 1, 1, 2,
     2, 3, 3, 1, 1, 1, 2)
-    >>> print textwrap.fill(repr(code128("01234\\n")), 64)
+    >>> print(textwrap.fill(repr(code128("01234\\n")), 64))
     (2, 1, 1, 2, 3, 2, 2, 2, 2, 1, 2, 2, 3, 1, 2, 1, 3, 1, 3, 1, 1,
     1, 4, 1, 2, 2, 1, 2, 3, 1, 1, 4, 2, 2, 1, 1, 1, 2, 1, 1, 4, 2,
     2, 3, 3, 1, 1, 1, 2)
@@ -590,7 +589,7 @@ class Code128(BarCode):
             # A and B are known to be worse
             _len_a = _len_b = 0
             # encode digits
-            _seq_c = [int(text[_idx:_idx+2]) for _idx in xrange(0, _len_c, 2)]
+            _seq_c = [int(text[_idx:_idx+2]) for _idx in range(0, _len_c, 2)]
         else:
             # no characters will be encoded with Code C
             _len_c = 0
@@ -796,7 +795,7 @@ class QR(BarCode2D):
 
     def __call__(self, text):
         if QRCode is None:
-            raise qr_missing[0], qr_missing[1], qr_missing[2]
+            raise qr_missing[0](qr_missing[1]).with_traceback(qr_missing[2])
         _symbol = QRCode(error_correction=self.ec)
         _symbol.add_data(text)
         _symbol.make()
@@ -826,7 +825,7 @@ def _test():
     })
     # if there were failed tests, doctest reported that itself
     if not _fail:
-        print "%i tests passed." % _total
+        print("%i tests passed." % _total)
 
 if __name__ == "__main__":
     _test()

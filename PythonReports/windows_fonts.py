@@ -1,9 +1,4 @@
 """List installed TTF fonts on windows platform"""
-"""History (most recent first):
-26-jan-2011 [luch]  created
-"""
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2011/01/26 13:50:57 $"[7:-2]
 
 def ls_ttf():
     """@return: mapping of C{(font name, bold, italic)} to C{TTF file name}.
@@ -38,7 +33,7 @@ def ls_ttf():
 
 
 try:
-    import _winreg
+    import winreg
 except ImportError:
     def ls_fonts_key():
         return []
@@ -48,18 +43,18 @@ else:
         _FONTS_KEY = "SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
         _key = None
         try:
-            _key = _winreg.OpenKey(_winreg.HKEY_LOCAL_MACHINE, _FONTS_KEY)
-            _nn = _winreg.QueryInfoKey(_key)[1]
-            return [_winreg.EnumValue(_key, _ii)[:2] for _ii in xrange(_nn)]
+            _key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _FONTS_KEY)
+            _nn = winreg.QueryInfoKey(_key)[1]
+            return [winreg.EnumValue(_key, _ii)[:2] for _ii in range(_nn)]
         except WindowsError:
             if _key:
-                _winreg.CloseKey(_key)
+                winreg.CloseKey(_key)
             return []
 
 
 if __name__ == "__main__":
     import sys
-    for ((_name, _bold, _italic), _ttf) in sorted(ls_ttf().iteritems()):
+    for ((_name, _bold, _italic), _ttf) in sorted(ls_ttf().items()):
         sys.stdout.write("%s %s %s %s\n" % (
             _bold and "B" or " ", _italic and "I" or " ",
             _name.ljust(40, " "), _ttf))

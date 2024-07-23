@@ -3,6 +3,7 @@
 
 __all__ = ["PdfWriter", "write"]
 
+import io
 import os
 import sys
 
@@ -51,7 +52,7 @@ class PdfWriter(object):
 
         """
         super(PdfWriter, self).__init__()
-        if isinstance(report, basestring):
+        if isinstance(report, str):
             self.report = prp.load(report)
         else:
             self.report = report
@@ -69,7 +70,7 @@ class PdfWriter(object):
             self.handlers["image"] = self.drawImage
             _images = {}
             for _element in self.report.findall("data"):
-                _data = StringIO(prp.Data.get_data(_element))
+                _data = io.BytesIO(prp.Data.get_data(_element))
                 # data blocks may be used for other purposes too.
                 # if PIL says it's not an image, skip it.
                 try:
@@ -82,7 +83,7 @@ class PdfWriter(object):
         _fonts = {}
         _registered = set()
         _rlfonts = {}
-        for (_name, _font) in self.report.fonts.iteritems():
+        for (_name, _font) in self.report.fonts.items():
             _typeface = _font.get("typeface")
             _bold = _font.get("bold")
             _italic = _font.get("italic")
@@ -359,7 +360,7 @@ class PdfWriter(object):
         _scale = image.get("scale", True)
         # actually, builder embeds all images into the printout
         if image.find("data") is not None:
-            _data = StringIO(prp.Data.get_data(image.find("data")))
+            _data = io.BytesIO(prp.Data.get_data(image.find("data")))
             _img = Image.open(_data)
         elif image.get("data"):
             _img = self.named_images[image.get("data")]
@@ -496,7 +497,7 @@ def write(report, filepath, compression=True, encrypt=None):
 def run(argv=sys.argv):
     """Command line executable"""
     if len(argv) not in (2, 3):
-        print "Usage: %s <printout> [<pdf>]" % argv[0]
+        print("Usage: %s <printout> [<pdf>]" % argv[0])
         sys.exit(2)
     _printout = argv[1]
     if len(argv) > 2:

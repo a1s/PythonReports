@@ -56,15 +56,15 @@ templates can be found in the `project downloads`_.
 
 This is an example of building a PDF from that data::
 
-    import cPickle as pickle
+    import pickle
     from PythonReports.api import Builder, parse_rson, write_pdf
 
     with open("sakila.dat", "rb") as data_file:
-        data = pickle.load(data_file)[:200]
+        data = pickle.load(data_file, encoding="latin1")[:200]
     template = parse_rson("sakila.prtr")
     build = Builder(template)
     printout = build.run(data)
-    with open("sakila.prp", "wt") as printout_file:
+    with open("sakila.prp", "wb") as printout_file:
         printout.write(printout_file)
     # It is necessary to call .validate()
     # on built or loaded printout

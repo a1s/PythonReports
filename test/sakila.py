@@ -11,15 +11,8 @@ without root password.
 
 """
 # JFYI: size of the data file is about 3M.
-"""History (most recent first):
-17-jul-2006 [als]   MySQLdb import moved to build() - not required for load()
-16-jun-2006 [als]   created
-"""
 
-__version__ = "$Revision: 1.1 $"[11:-2]
-__date__ = "$Date: 2006/11/01 11:23:28 $"[7:-2]
-
-import cPickle as pickle
+import pickle
 
 DATA_FILE = "sakila.dat"
 
@@ -82,9 +75,8 @@ def build():
 
 # loader - used in tests
 def load():
-    data_file = open(DATA_FILE, "rb")
-    payments = pickle.load(data_file)
-    data_file.close()
+    with open(DATA_FILE, "rb") as data_file:
+        payments = pickle.load(data_file, encoding="latin1")
     return payments
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ class ExpressionError(RuntimeError):
         self.expr = expr
         self.template = template
 
-    def __unicode__(self):
+    def __str__(self):
         if self.template is None:
             _where = None
         elif isinstance(self.template, Element):
@@ -53,9 +53,6 @@ class ExpressionError(RuntimeError):
         else:
             _rv = "%s evaluating %r" % (self.error, self.expr)
         return _rv
-
-    def __str__(self):
-        return unicode(self).encode("utf-8")
 
 class Variable(object):
 
@@ -168,7 +165,7 @@ class Variable(object):
         If values are strings, return concatenated string.
 
         """
-        if isinstance(value[0], basestring):
+        if isinstance(value[0], str):
             return "".join(value)
         else:
             return sum(value)
@@ -286,7 +283,7 @@ class Context(object):
         self.sysvars = dict.fromkeys(self.PREDEFINED_VARIABLES, 0)
         self.sysvars.update(_attrs.pop("sysvars", {}))
         # copy remaining collections
-        for (_name, _value) in _attrs.iteritems():
+        for (_name, _value) in _attrs.items():
             setattr(self, _name, _value)
 
     def __repr__(self):
@@ -316,7 +313,7 @@ class Context(object):
             try:
                 return getattr(_data, name)
             except AttributeError:
-                raise KeyError, name
+                raise KeyError(name)
 
     def __setitem__(self, name, value):
         self.sysvars[name] = value
@@ -348,9 +345,9 @@ class Context(object):
             _globals.update(getattr(self, _name))
         try:
             return eval(expression, _globals, self)
-        except Exception, _err:
-            raise ExpressionError(_err, expression, template), \
-                None, sys.exc_info()[2]
+        except Exception as _err:
+            raise ExpressionError(
+                _err, expression, template).with_traceback(sys.exc_info()[2])
 
     # utilities
 
@@ -558,7 +555,6 @@ class Container(list):
         self.has_floating_boxes = any(_it[1].float and
             (_it[1].y >= 0) and (_it[1].height >= 0) for _it in _elements)
         if not self.has_floating_boxes:
-            template.vertical_segment_layout = (lambda *args: None)
             return
 
         # non-floating segments should precede floating ones
@@ -570,15 +566,22 @@ class Container(list):
 
         #template.vertical_segment_layout
         self.vertical_segment_layout = \
-            segment_layout.SegmentLayout(dict(_graph))
+            segment_layout.SegmentLayout(_graph)
 
     @staticmethod
     def arrange_segments(segments):
-        """@return: minimal DAG of floating segment dependencies.
+        """Build a minimal DAG of floating segment dependencies
 
-        @param segments: tuple, where first 3 items are C{(y, height,
-            floating)}, where C{floating} is boolean flag that the segment
+        @param segments: a sequence of segment specs.
+
+            Each segment spec is a tuple where first 3 items are I{(y, height,
+            floating)}, where I{floating} is boolean flag that the segment
             should float depending on segments wholly above the segment.
+
+        @return a dictionary where the keys are C{segments} passed
+        with arguments, and values are lists (possibly empty) of
+        segments that are directly dependent on the key segment.
+        All input segments are present in the dictionary keys.
 
         Segments precede other when it is wholly above it concerning
         - a static segment precede a floating segment, because third
@@ -596,19 +599,19 @@ class Container(list):
 
         >>> arrange = Section.arrange_segments
         >>> arrange([])
-        []
+        {}
 
         >>> arrange([(0, 1, False)])
-        [((0, 1, False), [])]
+        {(0, 1, False): []}
 
         >>> arrange([(0, 1, True), (2, 1, False)])
-        [((0, 1, True), []), ((2, 1, False), [])]
+        {(0, 1, True): [], (2, 1, False): []}
 
         >>> arrange([(0, 1, True), (2, 1, True)])
-        [((0, 1, True), []), ((2, 1, True), [(0, 1, True)])]
+        {(0, 1, True): [], (2, 1, True): [(0, 1, True)]}
 
         >>> val = arrange([(0, 1, False), (2, 1, True), (4, 1, True)])
-        >>> print "\\n".join(repr(it) for it in val)
+        >>> print "\\n".join(repr(it) for it in val.items())
         ((0, 1, False), [])
         ((2, 1, True), [(0, 1, False)])
         ((4, 1, True), [(2, 1, True)])
@@ -616,7 +619,8 @@ class Container(list):
         >>> val = arrange([(0, 0, False, 1), (0, 0, False, 2),
         ...   (0, 0, True, 3), (0, 0, True, 4), (10, 0, True, 5),
         ...   (5, 20, True, 6)])
-        >>> print "\\n".join(repr((s, sorted(p))) for (s, p) in sorted(val))
+        >>> print "\\n".join(repr((s, sorted(p)))
+        ...   for (s, p) in sorted(val.items()))
         ((0, 0, False, 1), [])
         ((0, 0, False, 2), [])
         ((0, 0, True, 3), [(0, 0, False, 1), (0, 0, False, 2)])
@@ -640,7 +644,7 @@ class Container(list):
             else:
                 _pre = []
             _rv[_seg] = _pre
-        return _rv.items()
+        return _rv
 
     def iter_styles(self):
         """Iterate over all styles for the section (both direct and inherited)
@@ -749,7 +753,7 @@ class Container(list):
         else:
             _value = None
         if _value is None:
-            element.text = u""
+            element.text = ""
         else:
             element.text = _template.get("format", "%s") % _value
 
@@ -833,7 +837,7 @@ class Container(list):
                 _element.section = self
                 for _attr in ("target", "caption"):
                     _expr = _item.get(_attr, None)
-                    _value = unicode(context.eval(_expr)) if _expr else ""
+                    _value = str(context.eval(_expr)) if _expr else ""
                     setattr(_element, _attr, _value)
             else:
                 _element = ReportElement(section=self, template=_item,
@@ -1055,7 +1059,7 @@ class Container(list):
         def _height(segment):
             _element = self.template2element[segment[-1]]
             return _element.bbox.height if _element.printable else 0
-        for (_seg, _y) in self.vertical_segment_layout(_height).iteritems():
+        for (_seg, _y) in self.vertical_segment_layout(_height).items():
             _element = self.template2element[_seg[-1]]
             if _element.printable:
                 _element.bbox.y = _y
@@ -1541,7 +1545,7 @@ class Builder(object):
 
         """
         super(Builder, self).__init__()
-        if isinstance(template, basestring):
+        if isinstance(template, str):
             self.template = load_template_file(template)
         else:
             self.template = template
@@ -1560,7 +1564,7 @@ class Builder(object):
             else:
                 self.basedir = os.getcwd()
         self.variables = [Variable(_item)
-            for _item in self.template.variables.itervalues()]
+            for _item in self.template.variables.values()]
         # subreport builders
         self.subreports = {}
         # text rendering drivers, will be re-evaluated in .run()
@@ -1893,7 +1897,7 @@ class Builder(object):
         _template = self.template
         # initialize fonts - moved from __init__() to allow backend switching
         self.text_drivers = dict([(_name, self.text_driver_factory(_font))
-            for (_name, _font) in _template.fonts.iteritems()])
+            for (_name, _font) in _template.fonts.items()])
         # create data iterator and get the first object, if any
         if data is NOTHING:
             _data = self.data
@@ -1901,7 +1905,7 @@ class Builder(object):
             _data = data
         _data_iter = iter(_data)
         try:
-            _data_obj = _data_iter.next()
+            _data_obj = next(_data_iter)
         except StopIteration:
             _data_obj = None
         # build initial context:
@@ -1919,12 +1923,12 @@ class Builder(object):
         _parameters = dict(self.parameters)
         if parameters:
             _parameters.update(parameters)
-        for (_name, _parm) in _template.parameters.iteritems():
+        for (_name, _parm) in _template.parameters.items():
             if _name not in _parameters:
                 _value = _context.eval(_parm.get("default"), _parm)
                 if _parm.get("prompt", False):
                     # TODO? parameter input with wx or Tkinter GUI
-                    _input = raw_input("%s [%s]: " % (_name, _value))
+                    _input = input("%s [%s]: " % (_name, _value))
                     if _input:
                         _value = _input
                 _parameters[_name] = _value
@@ -2261,7 +2265,7 @@ class Builder(object):
         self.context["PAGE_NUMBER"] += 1
         self.context["PAGE_COUNT"] = 0
         self.context["COLUMN_COUNT"] = 0
-        for (_name, _offset) in self.group_page_offsets.iteritems():
+        for (_name, _offset) in self.group_page_offsets.items():
             self.context[_name + "_PAGE_NUMBER"] \
                 = self.context["PAGE_NUMBER"] - _offset
         # reset column index for all frames
@@ -2809,10 +2813,10 @@ class Builder(object):
                 _template = _element.template
                 _value = self.old_context.eval(
                     _template.get("expr"), _template)
-                _element.text = _template.get("format", u"%s") % _value
+                _element.text = _template.get("format", "%s") % _value
                 _refill[id(_element.section)] = _element.section
             self.eval_later[_key] = []
-        for _section in _refill.itervalues():
+        for _section in _refill.values():
             _section.refill()
 
     @staticmethod
@@ -2843,8 +2847,8 @@ class Builder(object):
         """
         _all_fonts = dict((_item.get("name"), _item)
             for _item in self.template.findall("font"))
-        for (_element, _builder) in self.subreports.iteritems():
-            for (_name, _font) in _builder.collect_fonts().iteritems():
+        for (_element, _builder) in self.subreports.items():
+            for (_name, _font) in _builder.collect_fonts().items():
                 _own_font = _all_fonts.get(_name, None)
                 if _own_font is None:
                     _all_fonts[_name] = _font
@@ -2867,7 +2871,7 @@ class Builder(object):
             SubElement(_root, "font", _fonts[_name].attrib)
         _img_idx = 0
         _data_names = set(self.images_named)
-        for _image in self.images_loaded.itervalues():
+        for _image in self.images_loaded.values():
             # look if an unnamed image is used more than once.
             # if yes, assign it a surrogate name.
             if (_image.use_count > 1) and not _image.name:

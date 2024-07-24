@@ -13,10 +13,10 @@ from PythonReports.builder import Builder
 import sakila
 
 # limit the number of data objects to render
-# (set to sys.maxint to process the whole sequence).
-# (444 doesn't cause page break before the summary section
+# (set to sys.maxsize to process the whole sequence).
+# (567 doesn't cause page break before the summary section
 # with wx and RL drivers and is big enough to see the progress.)
-DATA_LIMIT = 444
+DATA_LIMIT = 567
 
 class Progress(object):
 
@@ -44,7 +44,7 @@ class Progress(object):
 
     def terminate(self):
         """Finalize the progress display"""
-        print # line feed
+        sys.stdout.write("\n")
 
 if wx:
     class wxProgress(Progress):
@@ -83,9 +83,8 @@ def run(template="sakila.prt", data=None):
     finally:
         _progress.terminate()
     # write printout file
-    _out = file("sakila.prp", "w")
-    _printout.write(_out)
-    _out.close()
+    with open("sakila.prp", "wb") as _out:
+        _printout.write(_out)
     # if a PDF is requested, write that too
     if "pdf" in sys.argv[1:]:
         from PythonReports.pdf import write

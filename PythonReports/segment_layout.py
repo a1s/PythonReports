@@ -1,13 +1,4 @@
 """1-dimension segment layout"""
-"""History (most recent first):
-21-jan-2011 [luch]  created
-"""
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2011/09/26 16:01:59 $"[7:-2]
-
-
-from operator import itemgetter
-
 
 class SegmentLayout(object):
     """1-dimension stretchable segment layout
@@ -62,7 +53,7 @@ class SegmentLayout(object):
 
     >>> map_indexes = lambda items, indexes: dict(
     ...    (items[i], [items[j] for j in indexes.get(i, [])])
-    ...    for i in xrange(len(items)))
+    ...    for i in range(len(items)))
 
     >>> sl = SegmentLayout(map_indexes([(0, 1), (1, 1)], {1:[0]}))
     >>> sorted(sl().items())
@@ -115,7 +106,7 @@ class SegmentLayout(object):
             There must be entry for every segment.
 
         """
-        _gap = dict(leading_gaps(segments_graph.iterkeys()))
+        _gap = dict(leading_gaps(segments_graph.keys()))
         self.segments = [
             (_segment, segments_graph[_segment], _gap[_segment])
             for _segment in toposort(segments_graph)]
@@ -171,7 +162,7 @@ def leading_gaps(segments, x0=0):
     """
     segments = list(segments)
     if segments:
-        x0 = min(x0, min(map(itemgetter(0), segments))) - 1
+        x0 = min(x0, *[segment[0] for segment in segments]) - 1
         _bound = (x0, 1)
         segments.append(_bound)
         _rv = [(_this, _this[0] - (_pre[-1][0] + _pre[-1][1]))

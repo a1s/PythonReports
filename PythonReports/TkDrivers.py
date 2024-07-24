@@ -8,6 +8,7 @@ does not provide sufficient image functionality.
 __all__ = ["TextDriver"]
 
 import math
+import tkinter
 import tkinter.font
 
 from PythonReports import drivers
@@ -37,7 +38,8 @@ class TextDriver(drivers.TextDriver):
         self._font = self._get_font(font)
         self.height = self._font["size"]
         # Tk fonts measure everything in pixels.  we need points.
-        self._pointsize = self._font._root.winfo_fpixels("1p")
+        _root = tkinter._get_default_root('use font')
+        self._pointsize = _root.winfo_fpixels("1p")
         # convert linespace to points.
         self._linespace = self._font.metrics("linespace") / self._pointsize
         self.leading = int(math.ceil(self._linespace - self.height))

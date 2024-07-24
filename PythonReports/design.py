@@ -5,20 +5,19 @@
 """PythonReports Template Designer"""
 
 from code import InteractiveInterpreter
-from cStringIO import StringIO
+from io import StringIO
 import datetime
 import os
 from subprocess import Popen
 import sys
 import traceback
 
-from Tix import *
+from tkinter.tix import *
 # override Tix.PanedWindow with Tkinter.PanedWindow
-from Tkinter import PanedWindow
-from ScrolledText import ScrolledText
-from tkColorChooser import askcolor
-from tkMessageBox import Message
-import tkFileDialog
+from tkinter import PanedWindow, filedialog
+from tkinter.scrolledtext import ScrolledText
+from tkinter.colorchooser import askcolor
+from tkinter.messagebox import Message
 
 from PythonReports import datatypes, drivers, version
 from PythonReports import template as prt, printout as prp
@@ -490,7 +489,7 @@ class PropertyEditor(object):
             assert issubclass(value, datatypes._Value)
             if issubclass(value, datatypes.PenType):
                 _rv = cls(CodeSelection, "variable", editable=True,
-                    values=value.VALUES + tuple(xrange(5)))
+                    values=value.VALUES + tuple(range(5)))
             elif issubclass(value, datatypes._Codes):
                 _rv = cls(CodeSelection, "variable", values=value.VALUES)
             elif issubclass(value, Color):
@@ -587,7 +586,7 @@ class DataBlockEditor(Frame):
 
     def loadFile(self):
         """Load file contents into the variable"""
-        _filename = tkFileDialog.askopenfilename(
+        _filename = filedialog.askopenfilename(
             initialfile=self.data.filename,
             initialdir=(self.data.filepath or os.getcwd()),
             filetypes=[(self._("All Files"), "*")])
@@ -606,7 +605,7 @@ class DataBlockEditor(Frame):
 
     def saveFile(self):
         """Save variable contents to disk file"""
-        _filename = tkFileDialog.asksaveasfilename(
+        _filename = filedialog.asksaveasfilename(
             initialfile=self.data.filename,
             initialdir=(self.data.filepath or os.getcwd()),
             filetypes=[(self._("All Files"), "*")])
@@ -619,7 +618,7 @@ class DataBlockEditor(Frame):
             self.textToContents()
             _file_mode = "wt"
             # FIXME: encoding should be designer property (probably changeable)
-            _contents = unicode(self.data.contents).encode("utf-8")
+            _contents = str(self.data.contents).encode("utf-8")
             # add terminating newline for conveninence
             _contents += "\n"
         _file = open(_filename, _file_mode)
@@ -749,7 +748,7 @@ class TreeNodeData(list):
 
         """
         _properties = []
-        for (_name, (_cls, _default)) in self.validator.attributes.iteritems():
+        for (_name, (_cls, _default)) in self.validator.attributes.items():
             _properties.append(PropertyData(name=_name, type=_cls,
                 default=_default, element=self.element, box=False))
         if self.is_printable or self.is_section:
@@ -760,9 +759,9 @@ class TreeNodeData(list):
                 _box = SubElement(self.element, "box",
                     attrib=dict((_name, _default)
                         for (_name, (_cls, _default))
-                        in _box_attrs.iteritems()))
+                        in _box_attrs.items()))
             if self.is_printable:
-                for (_name, (_cls, _default)) in _box_attrs.iteritems():
+                for (_name, (_cls, _default)) in _box_attrs.items():
                     _properties.append(PropertyData(name=_name, type=_cls,
                         default=_default, element=_box, box=True))
             elif self.is_section:
@@ -777,9 +776,9 @@ class TreeNodeData(list):
             _val = _prop.element.get(_prop.name, _prop.default)
             # Note: _val may be REQUIRED for newly added elements
             if _val in (None, REQUIRED):
-                _val = u""
+                _val = ""
             else:
-                _val = unicode(_val)
+                _val = str(_val)
             _prop.var.set(_val)
             # TODO? it is possible to add a write callback to the var
             # and update the element attribute as soon as the value
@@ -856,7 +855,7 @@ class TreeNodeData(list):
             _val = _prop.var.get()
             try:
                 _val = _prop.type.fromValue(_val)
-            except InvalidLiteral, _err:
+            except InvalidLiteral as _err:
                 if errors == "strict":
                     raise AttributeConversionError(_prop.name, _val, _err,
                         element=_element, path=self.path)
@@ -1221,7 +1220,7 @@ class Designer(Toplevel):
         """Load template file"""
         if not self.checkUpdate():
             return
-        _filename = tkFileDialog.askopenfilename(**self.fileoptions)
+        _filename = filedialog.askopenfilename(**self.fileoptions)
         if _filename:
             self.loadFile(_filename)
 
@@ -1490,7 +1489,7 @@ class Designer(Toplevel):
                 Designer._create_template_element(_element, _child)
         return _element
 
-    def insertNode(self, tag, before=sys.maxint):
+    def insertNode(self, tag, before=sys.maxsize):
         """Insert a child element at currently selected node
 
         Parameters:
@@ -1513,7 +1512,7 @@ class Designer(Toplevel):
             # force append to the end of list.
             # pylint: disable-msg=C0103
             # C0103: Invalid name "before"
-            before = sys.maxint
+            before = sys.maxsize
             # find contained group or detail element -
             # will replace deleted group
             for _child in _node:
@@ -1576,7 +1575,7 @@ class Designer(Toplevel):
         # W0703: Catch "Exception" - yep, that's what we do here
         try:
             self.report = prt.load(filename)
-        except Exception, _err:
+        except Exception as _err:
             traceback.print_exc()
             _focus = self.focus_get() or self.tree.hlist
             Message(self, icon="error", type="ok",
@@ -1618,7 +1617,7 @@ class Designer(Toplevel):
         if not filename:
             # pylint: disable-msg=C0103
             # C0103: Invalid name "filename"
-            filename = tkFileDialog.asksaveasfilename(**self.fileoptions)
+            filename = filedialog.asksaveasfilename(**self.fileoptions)
             if not filename:
                 return False
         self.report.write(filename)
@@ -1643,7 +1642,7 @@ class Designer(Toplevel):
         """
         try:
             self.data.updateProperties(recursive=True, errors=errors)
-        except AttributeConversionError, _err:
+        except AttributeConversionError as _err:
             self.select(_err.path)
             self.update_idletasks()
             Message(self, icon="error", type="ok",
@@ -1661,7 +1660,7 @@ class Designer(Toplevel):
         if errors == "strict":
             try:
                 self._validate(self.report, prt.Report)
-            except XmlValidationError, _err:
+            except XmlValidationError as _err:
                 # TODO: make translated messages
                 # for different validation errors
                 # TODO: select tree element that raised the error
@@ -1797,7 +1796,7 @@ class Designer(Toplevel):
                 self._run_preview()
             finally:
                 self["cursor"] = ""
-        except Exception, _err:
+        except Exception as _err:
             traceback.print_exc()
             Message(self, icon="error", type="ok",
                 title=self._("Report preview error"),
@@ -1820,7 +1819,7 @@ class Designer(Toplevel):
         ]
         if pdf:
             _filetypes.insert(1, (self._("Adobe PDF Files"), ".pdf"))
-        _filename = tkFileDialog.asksaveasfilename(
+        _filename = filedialog.asksaveasfilename(
             initialfile=_filename, initialdir=(self.filedir or os.getcwd()),
             filetypes=_filetypes, defaultextension=".prp")
         if not _filename:
@@ -1837,7 +1836,7 @@ class Designer(Toplevel):
 def run(argv=sys.argv):
     """Command line executable"""
     if len(argv) > 2:
-        print "Usage: %s [template]" % argv[0]
+        print("Usage: %s [template]" % argv[0])
         sys.exit(2)
     _root = Tk()
     _root.withdraw()

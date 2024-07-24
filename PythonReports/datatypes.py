@@ -1370,9 +1370,9 @@ class ElementTree(ET.ElementTree):
 
     def __str__(self):
         """Return string representation of the tree"""
-        _stream = StringIO()
+        _stream = io.BytesIO()
         self.write(_stream)
-        return _stream.getvalue()
+        return _stream.getvalue().decode("utf-8")
 
     def copy(self, element):
         """Return a shallow copy of the element

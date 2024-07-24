@@ -21,7 +21,8 @@ Requirements
 ============
 
 Current version of PythonReports_ has only been tested with Python v3.12.
-Earlier versions of Python3 may or may not work; Python2 is not supported.
+Earlier versions of Python3 may or may not work; Python2 is not supported
+starting from PythonReports v1.0.0.
 
 Report building and printout_ rendering require the ReportLab_ Toolkit.
 Reports containing images additionally require

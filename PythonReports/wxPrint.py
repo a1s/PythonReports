@@ -6,7 +6,7 @@ due to wxDC limitations.  Printer output may be broken too.
 
 """
 
-from cStringIO import StringIO
+import io
 import re
 import sys
 
@@ -30,7 +30,7 @@ class Printout(wx.Printout):
             title: optional window title
 
         """
-        if isinstance(report, basestring):
+        if isinstance(report, str):
             # pylint: disable-msg=C0103
             # C0103: Invalid names "report", "title"
             if title is None:
@@ -50,9 +50,10 @@ class Printout(wx.Printout):
             "image": self.drawImage,
             "text": self.drawText,
             "barcode": self.drawBarcode,
+            "xref": self.drawXref,
         }
         _fonts = {}
-        for (_name, _font) in report.fonts.iteritems():
+        for (_name, _font) in report.fonts.items():
             _attrs = {
                 #"encoding": wx.FONTENCODING_UTF8,
                 "family": wx.DECORATIVE,
@@ -61,10 +62,6 @@ class Printout(wx.Printout):
                 "style": wx.NORMAL,
                 "weight": wx.NORMAL,
             }
-            # on windows, positive size is cell height
-            # and negative size is character height
-            if wx.Platform == "__WXMSW__":
-                _attrs["pointSize"] = -_attrs["pointSize"]
             for (_prop, _attr, _value) in (
                 ("bold", "weight", wx.BOLD),
                 ("italic", "style", wx.ITALIC),
@@ -77,6 +74,25 @@ class Printout(wx.Printout):
         self.imgdata = dict([
             (_element.get("name"), prp.Data.get_data(_element))
             for _element in report.findall("data")])
+        self.basepoint = Box()
+
+    def GetDimensions(self, element, scale=None):
+        """Return a C{Box} containing dimensions for a printout element
+
+        @param element: an C{Element} containing C{box} sub-element.
+
+        @param scale: optional scale to apply to the box dimensions.
+
+        """
+        _box = Box.from_element(element.find("box"))
+        if scale:
+            _box.rescale(scale)
+        # DC output requires int values
+        for _attr in ("x", "y", "width", "height"):
+            setattr(_box, _attr, int(round(getattr(_box, _attr))))
+        _box.x += self.basepoint.x
+        _box.y += self.basepoint.y
+        return _box
 
     def GetPageInfo(self):
         """Return available page ranges"""
@@ -136,6 +152,22 @@ class Printout(wx.Printout):
             _brush = wx.Brush(self.getColor(color))
         return _brush
 
+    def drawContents(self, container):
+        """Draw child elements on the Device Context
+
+        Parameters:
+            container: a sequence of printout Elements (e.g a page Element)
+
+        """
+        for _item in container:
+            try:
+                _handler = self.handlers[_item.tag]
+            except KeyError:
+                # no handler for element type - ignore element
+                pass
+            else:
+                _handler(_item)
+
     def OnPrintPage(self, pageno):
         """Draw selected page to the output device context"""
         try:
@@ -144,24 +176,16 @@ class Printout(wx.Printout):
             return False
         # set DC scaling
         _dc = self.GetDC()
-        (_width, _height) = _dc.GetSizeTuple()
-        _dc.SetUserScale(float(_width) / _page.get("width"),
-            float(_height) / _page.get("height"))
-        # draw elements
-        for _item in _page:
-            try:
-                _handler = self.handlers[_item.tag]
-            except KeyError:
-                # no handler for element type - ignore element
-                pass
-            else:
-                _handler(_item)
+        _sz = _dc.GetSize()
+        _dc.SetUserScale(float(_sz.GetWidth()) / _page.get("width"),
+            float(_sz.GetHeight()) / _page.get("height"))
+        self.drawContents(_page)
         return True
 
     def drawLine(self, line):
         """Draw a line"""
         self.setPen(line.get("pen"), line.get("color"))
-        _box = Box.from_element(line.find("box"))
+        _box = self.GetDimensions(line)
         _dc = self.GetDC()
         if line.get("backslant"):
             _dc.DrawLine(_box.right, _box.top, _box.left, _box.bottom)
@@ -170,7 +194,7 @@ class Printout(wx.Printout):
 
     def drawRectangle(self, rect):
         """Draw a rectangle"""
-        _box = Box.from_element(rect.find("box"))
+        _box = self.GetDimensions(rect)
         _radius = rect.get("radius")
         _dc = self.GetDC()
         _dc.SetBrush(self.GetBrush(rect.get("color")))
@@ -197,13 +221,13 @@ class Printout(wx.Printout):
                     # XXX raise an error?
                     return
                 _data = prp.Data.get_data(_data)
-            _img = wx.ImageFromStream(wx.InputStream(StringIO(_data)))
-        _box = Box.from_element(image.find("box"))
+            _img = wx.Image(io.BytesIO(_data))
+        _box = self.GetDimensions(image)
         if image.get("scale"):
             _img.Rescale(_box.width, _box.height)
         else:
             _img.Resize((_box.width, _box.height), (0, 0))
-        self.GetDC().DrawBitmap(wx.BitmapFromImage(_img), _box.x, _box.y)
+        self.GetDC().DrawBitmap(wx.Bitmap(_img), _box.x, _box.y)
 
     def drawText(self, text):
         """Draw a text block"""
@@ -221,13 +245,9 @@ class Printout(wx.Printout):
         else:
             # TODO: justify
             _alignment = wx.ALIGN_CENTER_HORIZONTAL
-        _box = Box.from_element(text.find("box"))
+        _box = self.GetDimensions(text)
         _dc.DrawLabel(_content, (_box.x, _box.y, _box.width, _box.height),
             _alignment)
-        #if _strike:
-        #    _dc.SetPen(wx.Pen(_color, 1, wx.SOLID))
-        #    _x = _re.x + (_re.height / 2)
-        #    _dc.DrawLine(_x, _re.y, _x, _re.y + _re.width - 1)
 
     def drawBarcode(self, barcode):
         """Draw Bar Code symbol"""
@@ -239,8 +259,7 @@ class Printout(wx.Printout):
         _dc = self.GetDC()
         (_dc_scale_x, _dc_scale_y) = _dc.GetUserScale()
         _dc.SetUserScale((_dc_scale_x / _scale), (_dc_scale_y / _scale))
-        _box = Box.from_element(barcode.find("box"))
-        _box.rescale(_scale)
+        _box = self.GetDimensions(barcode, _scale)
         # blank the box
         _dc.SetBrush(wx.WHITE_BRUSH)
         _dc.SetPen(wx.TRANSPARENT_PEN)
@@ -270,6 +289,15 @@ class Printout(wx.Printout):
                 _cur_x += _stripe
         # restore DC scale
         _dc.SetUserScale(_dc_scale_x, _dc_scale_y)
+
+    def drawXref(self, xref):
+        """Draw contents of an xref box"""
+        _save = self.basepoint
+        self.basepoint = self.GetDimensions(xref)
+        try:
+            self.drawContents(xref)
+        finally:
+            self.basepoint = _save
 
 class Preview(wx.PrintPreview):
 
@@ -313,8 +341,8 @@ class PrintApp(wx.App):
     def OnInit(self):
         """Start the application: create main frame and open report preview"""
         _preview = Preview(self.prp)
-        if not _preview.Ok():
-            raise RuntimeError, "Cannot initialize preview"
+        if not _preview.IsOk():
+            raise RuntimeError("Cannot initialize preview")
             # if raise is changed to MessageBox, return False here
         _frame = wx.PreviewFrame(_preview, None, self.prp, size=(800, 600))
         _frame.Initialize()
@@ -324,7 +352,7 @@ class PrintApp(wx.App):
 def run(argv=sys.argv):
     """Command line executable"""
     if len(argv) != 2:
-        print "Usage: %s <printout>" % argv[0]
+        print("Usage: %s <printout>" % argv[0])
         sys.exit(2)
     _app = PrintApp(argv[1], 0)
     _app.MainLoop()

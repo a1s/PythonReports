@@ -1,15 +1,8 @@
 """Rendering utilities for wxPython backend"""
-"""History (most recent first):
-05-dec-2006 [als]   sweep pylint warnings
-01-nov-2006 [als]   created
-"""
-__version__ = "$Revision: 1.2 $"[11:-2]
-__date__ = "$Date: 2006/12/06 17:05:46 $"[7:-2]
 
 __all__ = ["ImageDriver", "TextDriver"]
 
-from cStringIO import StringIO
-import os
+import io
 
 import wx
 
@@ -90,10 +83,7 @@ class ImageDriver(drivers.ImageDriver):
         _rv = cls()
         _rv.name = name
         _rv.img_type = img_type
-        #_rv._image = wx.ImageFromStream(wx.InputStream(StringIO(data)),
-        #    cls._get_type_flag(img_type))
-        _rv._image = wx.ImageFromStream(StringIO(data),
-            cls._get_type_flag(img_type))
+        _rv._image = wx.Image(io.BytesIO(data), cls._get_type_flag(img_type))
         return _rv
 
     def getsize(self):
@@ -119,14 +109,9 @@ class ImageDriver(drivers.ImageDriver):
             # pylint: disable-msg=C0103
             # C0103: Invalid name "img_type"
             img_type = self.preferred_type
-        # XXX shoud use a MemoryFileSystem to avoid creating a temporary file.
-        _filename = os.tempnam(None, "primg")
-        image.SaveFile(_filename, self._get_type_flag(img_type))
-        _file = open(_filename, "rb")
-        _rv = _file.read()
-        _file.close()
-        os.remove(_filename)
-        return _rv
+        _out = io.BytesIO()
+        image.SaveFile(_out, self._get_type_flag(img_type))
+        return _out.getvalue()
 
     def getdata(self, img_type=None):
         """Return image data as string

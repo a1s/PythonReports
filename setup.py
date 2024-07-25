@@ -13,11 +13,10 @@ except ImportError:
 
 if os.name == "nt":
     DOC_DIR = "Lib\\site-packages\\PythonReports\\doc"
-    SCRIPTS=["scripts/prd", "scripts/prd.bat",
-        "scripts/prtedit", "scripts/prtedit.bat"]
+    SCRIPTS=["scripts/prd", "scripts/prd.bat"]
 else:
     DOC_DIR = "share/PythonReports/doc"
-    SCRIPTS=["scripts/prd", "scripts/prtedit"]
+    SCRIPTS=["scripts/prd"]
 
 DESCRIPTION = """\
 PythonReports is a toolkit aimed to build database reports
@@ -103,9 +102,7 @@ def run():
         # registration.
         license="MIT License",
         platforms=["OS Independent"],
-        packages=["PythonReports",
-            "PythonReports.editor", "PythonReports.editor.elements"],
-        package_data={"PythonReports.editor": ["res/*"]},
+        packages=["PythonReports"],
         scripts=SCRIPTS,
         data_files=[(DOC_DIR, ["README", "LICENSE", "CHANGES"]
             + glob.glob("doc/*.txt") + glob.glob("doc/*.html"))],

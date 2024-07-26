@@ -66,8 +66,7 @@ This is an example of building a PDF from that data::
     printout = build.run(data)
     with open("sakila.prp", "wb") as printout_file:
         printout.write(printout_file)
-    # It is necessary to call .validate()
-    # on built or loaded printout
+    # It is necessary to call .validate() on built or loaded printout
     # before creating PDF output.
     printout.validate()
     write_pdf(printout, "sakila.pdf")

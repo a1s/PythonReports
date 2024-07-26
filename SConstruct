@@ -54,6 +54,7 @@ whl = env.WhlFile(purelib)
 sdist = env.Alias("sdist", [
     doc,
     env.SDist(source=package_sources + doc_sources + doc_html + [
+        "PKG-INFO",
         "LICENSE",
         "pyproject.toml",
         "SConstruct",

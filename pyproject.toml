@@ -1,0 +1,40 @@
+[project]
+dynamic = ["version"]
+name = "PythonReports"
+description = "Database report generator"
+readme = {file = "README", content-type = "text/x-rst"}
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Printing",
+]
+dependencies = [
+  "Pillow",
+  "qrcode",
+  "ReportLab",
+  "rsonlite",
+]
+authors = [
+  {name = "Aleksandr Smyshliaev"},
+  {name = "Alexey Luchko"},
+  {name = "KACAH"},
+]
+
+[[project.maintainers]]
+name = "PythonReports Users Mailing List"
+email = "pythonreports-users@lists.sourceforge.net"
+
+[project.gui-scripts]
+prd = "PythonReports.design:run"
+
+[project.urls]
+Homepage = "https://pythonreports.sourceforge.net/"
+Repository = "https://sourceforge.net/p/pythonreports/code/"
+
+[build-system]
+requires = ["enscons", "docutils"]
+build-backend = "enscons.api"

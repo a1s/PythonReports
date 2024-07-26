@@ -3,3 +3,5 @@ dist
 MANIFEST
 doc/*.html
 test/sakila.dat
+.sconsign.dblite
+*.egg-info

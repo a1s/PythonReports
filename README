@@ -85,7 +85,7 @@ This is an example of building a PDF from that data::
 .. _QR: https://en.wikipedia.org/wiki/QR_code
 .. _rsonlite: https://pypi.python.org/pypi/rsonlite
 .. _wxPython: http://www.wxpython.org/
-.. _package sources: http://pythonreports.bzr.sourceforge.net/bzr/pythonreports/files/head:/test/
+.. _package sources: https://sourceforge.net/p/pythonreports/code/
 .. _project downloads: https://sourceforge.net/projects/pythonreports/files/Sample%20Data%20file/
 
 .. |Python(r)| unicode:: Python U+00AE

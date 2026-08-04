@@ -41,7 +41,7 @@ NEW_REPORT_TEMPLATE = """<report>
 </report>
 """
 
-PYTHONREPORTS_URL = "http://pythonreports.sourceforge.net/"
+PYTHONREPORTS_URL = "https://github.com/a1s/PythonReports"
 if os.name == "nt":
     URL_HANDLER_COMMAND = "start %s"
 else:

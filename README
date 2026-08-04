@@ -49,10 +49,10 @@ be saved in XML format.
 
 PDF writer creates an output file from a printout structure.
 
-There are example templates in the `package sources`_:
+There are example templates in the `test directory`_:
 `sakila.prt` is in XML format, and `sakila.prtr` is the
 same template in RSON format.  The data file for those
-templates can be found in the `project downloads`_.
+templates is distributed as `sakila.zip`_ with the project releases.
 
 This is an example of building a PDF from that data::
 
@@ -73,9 +73,9 @@ This is an example of building a PDF from that data::
 
 .. _External hyperlink targets:
 
-.. _PythonReports: http://pythonreports.sourceforge.net/
-.. _template: http://pythonreports.sourceforge.net/prt.shtml
-.. _printout: http://pythonreports.sourceforge.net/prp.shtml
+.. _PythonReports: https://github.com/a1s/PythonReports
+.. _template: https://github.com/a1s/PythonReports/wiki/Report-Templates
+.. _printout: https://github.com/a1s/PythonReports/wiki/Printout-Format
 .. _Python: http://www.python.org/
 .. _ReportLab: https://www.reportlab.com/software/opensource/rl-toolkit/
 .. _PIL: http://www.pythonware.com/products/pil/
@@ -85,8 +85,8 @@ This is an example of building a PDF from that data::
 .. _QR: https://en.wikipedia.org/wiki/QR_code
 .. _rsonlite: https://pypi.python.org/pypi/rsonlite
 .. _wxPython: http://www.wxpython.org/
-.. _package sources: https://sourceforge.net/p/pythonreports/code/
-.. _project downloads: https://sourceforge.net/projects/pythonreports/files/Sample%20Data%20file/
+.. _test directory: https://github.com/a1s/PythonReports/tree/main/test
+.. _sakila.zip: https://github.com/a1s/PythonReports/releases/download/v1.0.0/sakila.zip
 
 .. |Python(r)| unicode:: Python U+00AE
 

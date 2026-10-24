@@ -40,7 +40,7 @@ prd = "PythonReports.design:run"
 
 [project.urls]
 Homepage = "https://pythonreports.sourceforge.net/"
-Repository = "https://sourceforge.net/p/pythonreports/code/"
+Repository = "https://github.com/a1s/PythonReports.git"
 
 [build-system]
 requires = ["enscons", "docutils"]

@@ -106,6 +106,11 @@ CONVERSION = re.compile(r"%(?:\((?P<key>[^)]*)\))?(?P<flags>[-+ #0]*)"
     r"(?P<width>\*|\d+)?(?:\.(?P<precision>\*|\d*))?[hlL]?(?P<verb>.)",
     re.DOTALL)
 
+# What a % conversion says of the type of the value it converts.
+_VERB_HINTS = {"d": "int", "i": "int", "u": "int", "o": "int", "x": "int",
+    "X": "int", "e": "decimal", "E": "decimal", "f": "decimal",
+    "F": "decimal", "g": "decimal", "G": "decimal"}
+
 # Conversions Starlark's own % takes, with no flags, width or precision.
 _STARLARK_VERBS = frozenset("srdioxXefgEGc%")
 
@@ -175,7 +180,9 @@ class Names(object):
         imports: names created by import elements, mapped to the
             dotted path they import.
         records: record field names, mapped to a list of hints about
-            the field's type: "object", "list", "datetime".
+            the field's type: "object", "list", "datetime", "decimal",
+            "int", and "nullable" for a field the expressions test
+            for None or for truth.
 
     """
 
@@ -256,7 +263,8 @@ class Translator(object):
                 with "evaltime", and must read the end of its scope.
             hint: a type hint for a record field that makes up
                 the whole expression, such as "list" for the data
-                of a subreport.
+                of a subreport, or a list of them, one for each value
+                a format takes, as `format_hints` returns.
 
         """
         _text = source.strip()
@@ -265,10 +273,8 @@ class Translator(object):
             return Translation(source, None, [
                 "the expression does not parse as Python, "
                 "so it is copied unchanged"], False)
-        if hint and isinstance(_tree, ast.Name):
-            _kind = _Rewriter(self.names, False).kind(_tree.id)
-            if _kind == "record":
-                self.names.hint(_tree.id, hint)
+        if hint:
+            _Rewriter(self.names, False).hint_values(_tree, hint)
         _rewriter = _Rewriter(self.names, deferred)
         _tree = _rewriter.visit(_tree)
         ast.fix_missing_locations(_tree)
@@ -407,6 +413,28 @@ class _Rewriter(ast.NodeTransformer):
         """Return True if the node is a bare name of a record field."""
         return isinstance(node, ast.Name) and (self.kind(node.id) == "record")
 
+    def hint_values(self, node, hint):
+        """Add a type hint for the record fields an expression is made of.
+
+        Parameters:
+            node: the expression tree, not yet rewritten.
+            hint: a hint for a field that is the whole expression,
+                or a list of hints, one for each value of a tuple,
+                or for the whole expression if the list has one item.
+
+        """
+        if isinstance(hint, str):
+            _pairs = [(node, hint)]
+        elif isinstance(node, ast.Tuple):
+            _pairs = zip(node.elts, hint)
+        elif len(hint) == 1:
+            _pairs = [(node, hint[0])]
+        else:
+            _pairs = []
+        for (_item, _kind) in _pairs:
+            if _kind and self.is_record(_item):
+                self.names.hint(_item.id, _kind)
+
     def is_this(self, node):
         """Return True if the node reads THIS."""
         return isinstance(node, ast.Name) and (node.id == "THIS") \
@@ -440,6 +468,25 @@ class _Rewriter(ast.NodeTransformer):
         elif self.is_this(_base) and isinstance(_index, ast.Constant) \
         and isinstance(_index.value, str):
             self.names.hint(_index.value)
+        return self.generic_visit(node)
+
+    # -- tests for truth -------------------------------------------------
+
+    def visit_IfExp(self, node):
+        """Visit a conditional, noting a record field it tests."""
+        self.hint_values(node.test, "nullable")
+        return self.generic_visit(node)
+
+    def visit_BoolOp(self, node):
+        """Visit and or or, noting the record fields it tests."""
+        for _value in node.values[:-1]:
+            self.hint_values(_value, "nullable")
+        return self.generic_visit(node)
+
+    def visit_UnaryOp(self, node):
+        """Visit a unary operator, noting a record field that not tests."""
+        if isinstance(node.op, ast.Not):
+            self.hint_values(node.operand, "nullable")
         return self.generic_visit(node)
 
     # -- scopes of their own ---------------------------------------------
@@ -490,6 +537,7 @@ class _Rewriter(ast.NodeTransformer):
 
     def visit_Compare(self, node):
         """Rewrite is, is not, and chained comparisons."""
+        self.hint_null_tests(node)
         node = self.generic_visit(node)
         _ops = []
         for _op in node.ops:
@@ -508,8 +556,25 @@ class _Rewriter(ast.NodeTransformer):
                 comparators=[_operands[_idx + 1]])
             for (_idx, _op) in enumerate(_ops)])
 
+    def hint_null_tests(self, node):
+        """Note the record fields a comparison tests for None."""
+        _operands = [node.left] + list(node.comparators)
+        for (_idx, _op) in enumerate(node.ops):
+            if not isinstance(_op, (ast.Is, ast.IsNot, ast.Eq, ast.NotEq)):
+                continue
+            _pair = _operands[_idx:_idx + 2]
+            for (_one, _other) in (_pair, _pair[::-1]):
+                if isinstance(_other, ast.Constant) and (_other.value is None):
+                    self.hint_values(_one, "nullable")
+
     def visit_BinOp(self, node):
         """Rewrite ** and % formats, and fold ITEM_NUMBER offsets."""
+        if isinstance(node.op, ast.Mod) \
+        and isinstance(node.left, ast.Constant) \
+        and isinstance(node.left.value, str):
+            _hints = format_hints(node.left.value)
+            if _hints:
+                self.hint_values(node.right, _hints)
         node = self.generic_visit(node)
         _left = node.left
         if getattr(_left, "item_number", False) \
@@ -643,6 +708,8 @@ class _Rewriter(ast.NodeTransformer):
     def visit_Call(self, node):
         """Rewrite a call: methods, builtins, and imported functions."""
         _func = node.func
+        if self.makes_number(node):
+            self.hint_values(node.args[0], "decimal")
         if self.is_imported(_func):
             return self.imported_call(node)
         if isinstance(_func, ast.Attribute):
@@ -672,6 +739,16 @@ class _Rewriter(ast.NodeTransformer):
         _new_func = self.visit(_func)
         (_args, _keywords) = self.arguments_of(node)
         return ast.Call(func=_new_func, args=_args, keywords=_keywords)
+
+    def makes_number(self, node):
+        """Return True if a call makes a float or a decimal of one value."""
+        if (len(node.args) != 1) or node.keywords:
+            return False
+        _func = node.func
+        if self.is_imported(_func):
+            return self.qualified(_func) == "decimal.Decimal"
+        return isinstance(_func, ast.Name) and (_func.id == "float") \
+            and (self.kind("float", called=True) == "builtin")
 
     def arguments_of(self, node):
         """Return the visited positional and keyword arguments of a call."""
@@ -902,6 +979,25 @@ class _Rewriter(ast.NodeTransformer):
         for _term in _terms[1:]:
             _rv = ast.BinOp(left=_rv, op=ast.Add(), right=_term)
         return _rv
+
+def format_hints(spec):
+    """Return what a % format says of the types of the values it takes.
+
+    The result has an item for each value: "int" or "decimal" for
+    a numeric conversion, and None for any other.  It is None itself
+    for a format whose values do not line up with its conversions:
+    one that takes a mapping, or a width or a precision from the values.
+
+    """
+    _rv = []
+    for _item in CONVERSION.finditer(spec):
+        if (_item.group("key") is not None) or ("*" in "%s%s" % (
+            _item.group("width") or "", _item.group("precision") or "")
+        ):
+            return None
+        if _item.group("verb") != "%":
+            _rv.append(_VERB_HINTS.get(_item.group("verb")))
+    return _rv
 
 def engine_format(spec):
     """Return a % format as s-reports's format builtin takes it.

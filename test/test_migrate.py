@@ -10,6 +10,7 @@ the RSON test, where rsonlite is not.
 
 """
 
+import contextlib
 import datetime
 import io
 import os
@@ -21,14 +22,16 @@ import tempfile
 import unittest
 import zlib
 
+from PythonReports.migrate import cli
 from PythonReports.migrate import kdl
 from PythonReports.migrate import template
 from PythonReports.migrate.expressions import Names, Translator, printf_spec
 
 try:
+    from sr.kdl import parse as parse_kdl
     from sr.template.load import load_text
 except ImportError:
-    load_text = None
+    parse_kdl = load_text = None
 
 try:
     import rsonlite
@@ -168,6 +171,23 @@ class ExpressionTests(unittest.TestCase):
         self.assertEqual(_names.records, {"customer": ["object"],
             "strftime_me": ["datetime"], "items": ["list"]})
 
+    def test_type_hints(self):
+        _names = Names()
+        _names.imports = {"Decimal": "decimal.Decimal"}
+        _translator = Translator(_names)
+        for _source in ("float(amount) + Decimal(fee)",
+            "'%d at %.2f' % (qty, price)", "due is None or paid != None",
+            "(note or '') + ('*' if flag else '') + str(not gone)",
+        ):
+            _translator.translate(_source)
+        _translator.translate("(number, total)", hint=["int", "decimal"])
+        _translator.translate("shown", hint="nullable")
+        self.assertEqual(_names.records, {"amount": ["decimal"],
+            "fee": ["decimal"], "qty": ["int"], "price": ["decimal"],
+            "due": ["nullable"], "paid": ["nullable"], "note": ["nullable"],
+            "flag": ["nullable"], "gone": ["nullable"], "number": ["int"],
+            "total": ["decimal"], "shown": ["nullable"]})
+
     def test_printf_spec(self):
         self.assertEqual(printf_spec(">8.2f")[0], "%8.2f")
         self.assertEqual(printf_spec("<10s")[0], "%-10s")
@@ -186,6 +206,14 @@ class KdlTests(unittest.TestCase):
         self.assertEqual(kdl.quote("\"#\\"), "##\"\"#\\\"##")
         self.assertEqual(kdl.quote("a\nb"), "\"a\\nb\"")
         self.assertEqual(kdl.quote("a\u200eb"), "\"a\\u{200e}b\"")
+        # A raw string opening with three quotes is a multi-line one.
+        self.assertEqual(kdl.quote("\"\"\\x"), "\"\\\"\\\"\\\\x\"")
+
+    @unittest.skipIf(parse_kdl is None, "s-reports is not installed")
+    def test_quote_is_read_back(self):
+        for _text in ("a\\b", "\"#\\", "\"\"\\x", "\"\"\"\\x", "a\nb"):
+            _node = parse_kdl("field text=%s" % kdl.quote(_text)).nodes[0]
+            self.assertEqual(_node.properties["text"], _text)
 
     def test_number(self):
         self.assertEqual(kdl.number(1.0), "1")
@@ -214,7 +242,31 @@ GEOMETRY = """<report>
    <rectangle pen="0"><box x="10" width="30" /></rectangle>
    <line pen="1"><box y="-1" height="0" /></line>
    <line pen="dot"><box x="5" width="10" height="10" /></line>
+   <line pen="dash"><box y="-1" /></line>
   </detail>
+ </layout>
+</report>
+"""
+
+XREF = """<report>
+ <font name="f" typeface="Arial" size="10" />
+ <parameter name="SHOW" default="True" />
+ <layout width="200" height="300">
+  <title>
+   <box height="20" />
+   <xref type="url" target="'https://example.com/'">
+    <box x="0" y="0" width="50" height="10" />
+    <style printwhen="SHOW" />
+    <field expr="name"><box x="0" y="0" width="50" height="10" />
+     <style printwhen="name != ''" />
+    </field>
+    <field expr="other"><box x="0" y="0" width="50" height="10" /></field>
+   </xref>
+  </title>
+  <detail><box height="10" /></detail>
+  <summary>
+   <field expr="'below'"><box y="-1" height="20" /></field>
+  </summary>
  </layout>
 </report>
 """
@@ -235,13 +287,20 @@ class TemplateTests(unittest.TestCase):
             _file.write(text)
         return _path
 
-    def validate(self, text, name="test.kdl"):
-        """Return the error messages s-reports has about a template."""
+    def validate(self, text, name="test.kdl", warnings=False):
+        """Return the error messages s-reports has about a template.
+
+        With warnings true, return the warnings as well.
+
+        """
         if load_text is None:
             self.skipTest("s-reports is not installed")
         from pathlib import Path
         _loaded = load_text(text, name, Path(self.directory))
-        return [str(_item) for _item in _loaded.errors]
+        _found = list(_loaded.errors)
+        if warnings:
+            _found.extend(_loaded.warnings)
+        return [str(_item) for _item in _found]
 
     def test_geometry(self):
         _text = flat(template.convert(self.write("g.prt", GEOMETRY)).text)
@@ -254,8 +313,25 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("line width=1 bottom=0 height=0\n", _text)
         self.assertIn("line width=1 dash=\"dot\" backslant=#true left=5 "
             "right=165 height=10", _text)
+        # Level, by the height the box takes from the bottom edge.
+        self.assertIn("line width=1 dash=\"dash\" bottom=0 height=0\n", _text)
         self.assertIn("bgcolor=\"#C0C0C0\"", _text)
+        self.assertIn("member \"total\" type=\"decimal\"", _text)
         self.assertEqual(self.validate(_text), [])
+
+    def test_xref_and_bottom_edge(self):
+        _text = flat(template.convert(self.write("x.prt", XREF)).text)
+        _xref = [_line for _line in _text.splitlines()
+            if _line.lstrip().startswith("xref ")]
+        self.assertEqual(len(_xref), 1)
+        self.assertNotIn("printwhen", _xref[0])
+        self.assertIn("field expr=\"name\" width=50 height=10 "
+            "valign=\"bottom\" printwhen=\"(SHOW) and (name != '')\"", _text)
+        self.assertIn("field expr=\"other\" width=50 height=10 "
+            "valign=\"bottom\" printwhen=\"SHOW\"", _text)
+        # PythonReports makes the band as tall as the field it hangs.
+        self.assertIn("summary height=20 {", _text)
+        self.assertEqual(self.validate(_text, warnings=True), [])
 
     def test_sakila(self):
         _result = template.convert(os.path.join(HERE, "sakila.prt"))
@@ -267,6 +343,11 @@ class TemplateTests(unittest.TestCase):
         self.assertIn("expr=\"strftime(rental_date, '%d.%m.%Y')\"", _text)
         self.assertIn("printwhen=\"page_amount != None\"", _text)
         self.assertIn("member \"customer\" type=\"object\"", _text)
+        # Summed as a number, and tested for truth.
+        self.assertIn("member \"amount\" type=\"decimal\"\n", _text)
+        self.assertIn("member \"return_date\" type=\"datetime\" "
+            "nullable=#true", _text)
+        self.assertIn("line width=1 dash=\"dot\" bottom=0 height=0\n", _text)
         self.assertTrue(any("named 'top'" in _note.message
             for _note in _result.notes))
         # The original links to an outline it never names.
@@ -316,6 +397,50 @@ class TemplateTests(unittest.TestCase):
         self.assertTrue(_errors)
         self.assertTrue(all("inline subreport" in _error
             for _error in _errors))
+
+class CliTests(unittest.TestCase):
+
+    """The pr2sr command"""
+
+    def setUp(self):
+        self.directory = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.directory)
+
+    def path(self, name):
+        return os.path.join(self.directory, name)
+
+    def run_cli(self, *argv):
+        """Return the exit status of pr2sr and what it wrote to stderr."""
+        _stderr = io.StringIO()
+        with contextlib.redirect_stderr(_stderr):
+            _status = cli.main(list(argv))
+        return (_status, _stderr.getvalue())
+
+    def test_checks_follow_all_writes(self):
+        if load_text is None:
+            self.skipTest("s-reports is not installed")
+        for _name in ("submain.prt", "subsub.prt"):
+            shutil.copy(os.path.join(HERE, _name), self.directory)
+        # submain.prt runs subsub.prt, which is converted after it.
+        (_status, _text) = self.run_cli("template",
+            self.path("submain.prt"), self.path("subsub.prt"))
+        self.assertEqual(_status, 1)
+        self.assertNotIn("cannot read", _text)
+        self.assertIn("submain.kdl: s-reports: error: ", _text)
+        self.assertIn("inline subreport", _text)
+
+    def test_unwritable_output(self):
+        for _name in ("a.prt", "b.prt"):
+            with io.open(self.path(_name), "w", encoding="utf-8") as _file:
+                _file.write(GEOMETRY)
+        os.mkdir(self.path("a.kdl"))
+        (_status, _text) = self.run_cli("template", self.path("a.prt"),
+            self.path("b.prt"))
+        self.assertEqual(_status, 1)
+        self.assertIn("a.prt: not written: ", _text)
+        self.assertTrue(os.path.isfile(self.path("b.kdl")))
 
 PRINTOUT = """<printout name="test">
  <font name="f" typeface="Arial" size="10" />

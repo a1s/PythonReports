@@ -125,6 +125,7 @@ def _template_command(args):
             return 1
     _status = 0
     _written = {}
+    _converted = []
     for _source in args.source:
         _out = _target(_source, args.output, ".kdl")
         if not _unique(_source, _out, _written):
@@ -136,11 +137,21 @@ def _template_command(args):
             _report(_source, "not converted: %s" % _error)
             _status = 1
             continue
-        with io.open(_out, "w", encoding="utf-8", newline="\n") as _file:
-            _file.write(_result.text)
+        try:
+            with io.open(_out, "w", encoding="utf-8", newline="\n") \
+            as _file:
+                _file.write(_result.text)
+        except OSError as _error:
+            _report(_source, "not written: %s" % _error)
+            _status = 1
+            continue
         _report(_source, "written to %s" % _out)
         for _note in _result.notes:
             _report(_source, str(_note))
+        _converted.append(_out)
+    # A template may run another one of this run as a subreport,
+    # so the checks wait until all of them are written.
+    for _out in _converted:
         if not _validate(_out):
             _status = 1
     return _status
@@ -155,7 +166,11 @@ def _validate(path):
         from sr.template.load import load
     except ImportError:
         return True
-    _loaded = load(path)
+    try:
+        _loaded = load(path)
+    except Exception as _error:
+        _report(path, "s-reports: cannot check: %s" % _error)
+        return False
     for _item in _loaded.errors:
         _report(path, "s-reports: error: %s" % _item)
     for _item in _loaded.warnings:

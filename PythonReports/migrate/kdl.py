@@ -151,9 +151,12 @@ def quote(text):
     A string holding backslashes and nothing that needs an escape
     is written raw, so that an expression reads as Starlark spells it.
     Everything else is written quoted, with escapes.
+    So is a string that starts with two quotes, since a
+    raw string opening with three quotes is a multi-line one.
 
     """
-    if ("\\" in text) and not _ESCAPED.search(text):
+    if ("\\" in text) and not _ESCAPED.search(text) \
+    and not text.startswith("\"\""):
         _hashes = "#"
         while "\"" + _hashes in text:
             _hashes += "#"

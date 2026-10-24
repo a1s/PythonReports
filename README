@@ -115,7 +115,8 @@ with ``migrate:``.  These are the things to look at most often:
   and their types.  The converter declares every field the
   expressions read.  With ``--records``, a JSON array or NDJSON file
   of sample records, the types come from the data; without it, they
-  are guessed from how the expressions use the fields.
+  are guessed from how the expressions use the fields.  A field that
+  the expressions test for None or for truth is declared nullable.
 * Data.  s-reports reads its records from JSON rather than from
   Python objects, so the program that built reports has to write
   its data as JSON instead.

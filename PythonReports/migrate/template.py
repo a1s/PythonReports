@@ -49,7 +49,7 @@ from PythonReports import template as prt
 from PythonReports.migrate import kdl
 from PythonReports.migrate.expressions import CONVERSION, Names, \
     STARLARK_KEYWORDS, SR_GLOBALS, SR_PREDEFINED, Translator, \
-    engine_format, starlark
+    engine_format, format_hints, starlark
 
 # What a converted template file is named after: the source with this.
 EXTENSION = ".kdl"
@@ -324,6 +324,22 @@ def _python_type(value):
         return "object"
     return None
 
+def _span(position, size):
+    """Return how far a box reaches along one axis, where that is fixed.
+
+    A box with a size of its own reaches that far.  A box placed from
+    the far edge with a negative size reaches from its position to the
+    edge its size names.  A box placed from the near edge with a negative
+    size reaches as far as the container does, which is not known here:
+    the result is None.
+
+    """
+    if size >= 0:
+        return size
+    if position < 0:
+        return max(size - position, 0)
+    return None
+
 def _field_of(record, name):
     """Return a field of a sample record, mapping or object, or a marker."""
     try:
@@ -566,11 +582,13 @@ class _Converter(object):
         _path = "%s/variable[%s]" % (scope.path, _old)
         _names = scope.names
         _node = kdl.Node("variable", _names.variables[_old])
-        _node.set("expr", self.expr_text(_path, element.get("expr"), _node))
+        _calc = (element.get("calc") or "first").strip()
+        # A record field that is summed or averaged holds numbers.
+        _node.set("expr", self.expr_text(_path, element.get("expr"), _node,
+            hint="decimal" if _calc in ("sum", "avg", "std", "var") else None))
         if element.get("init"):
             _node.set("init", self.expr_text(_path, element.get("init"),
                 _node))
-        _calc = (element.get("calc") or "first").strip()
         if _calc == "count":
             _calc = "set"
             self.note(_path, "PythonReports counts distinct values; "
@@ -662,26 +680,23 @@ class _Converter(object):
                     _missing.append(_name)
             if _kind is None:
                 _guessed = True
-                if "datetime" in _hints:
-                    _kind = "datetime"
-                elif "list" in _hints:
-                    _kind = "list"
-                elif "object" in _hints:
-                    _kind = "object"
-                else:
-                    _kind = "string"
+                # A decimal holds whatever an int does, so it goes first.
+                _kind = ([_item for _item in ("datetime", "list", "object",
+                    "decimal", "int") if _item in _hints] + ["string"])[0]
             if _kind != "string":
                 _member.set("type", _kind)
-            if _nullable:
+            # The samples may lack the nulls that a test for one expects.
+            if _nullable or ("nullable" in _hints):
                 _member.set("nullable", True)
         if _missing:
             self.note("%s/records" % scope.path, "the sample data has no "
                 "values for %s" % ", ".join(_missing), _node)
         if _guessed:
             self.note("%s/records" % scope.path, "the types of these fields "
-                "are guessed from how the expressions use them: check them "
-                "against the data, and mark the fields that can be null "
-                "nullable", _node)
+                "are guessed from how the expressions use them, and a field "
+                "they test for None or for truth is nullable: check them "
+                "against the data, and mark the other fields that can be "
+                "null nullable", _node)
         return _node
 
     # -- layouts ---------------------------------------------------------
@@ -880,7 +895,8 @@ class _Converter(object):
             _node = kdl.Node("style")
             _when = _style.get("when")
             if not _is_true(_when):
-                _node.set("when", self.expr_text(context.path, _when, _node))
+                _node.set("when", self.expr_text(context.path,
+                    _when, _node, hint="nullable"))
             if _style.get("font"):
                 _node.set("font", _style.get("font").strip())
             for _name in ("color", "bgcolor"):
@@ -910,9 +926,10 @@ class _Converter(object):
             if not (_printwhen and _printwhen.strip()):
                 continue
             _when = _style.get("when")
+            # A record field tested for truth may well be null.
             _chain.append((None if _is_true(_when)
-                else self.expression(path, _when, node),
-                self.expression(path, _printwhen, node)))
+                else self.expression(path, _when, node, hint="nullable"),
+                self.expression(path, _printwhen, node, hint="nullable")))
             if _is_true(_when):
                 break
         if not _chain:
@@ -1006,8 +1023,9 @@ class _Converter(object):
         that grows: a stretch field, a growing image, or a bar code.
         It is then as tall as its elements reach, and PythonReports
         counts an element placed from the bottom edge as reaching
-        1 + its distance from that edge.  s-reports counts no such element,
-        since its size comes from the band.
+        1 + its distance from that edge, or its height if that is more.
+        s-reports counts no such element, since its place comes from
+        the band.
 
         """
         _elements = [_child for _child in element
@@ -1050,7 +1068,7 @@ class _Converter(object):
                     + (context.font_size(_child) or 1))
                 continue
             if _ypos < 0:
-                _rv = max(_rv, 1 - _ypos)
+                _rv = max(_rv, 1 - _ypos, _height)
             elif _height < 0:
                 _rv = max(_rv, _ypos + 1 - _height)
         return _rv if _rv > _reach + 0.0005 else 0
@@ -1178,17 +1196,39 @@ class _Converter(object):
         if element.tag == "field":
             self.field_height(element, _placed, _node, context, path)
         _node.props.extend(_placed.props)
-        _printwhen = self.printwhen(_styles, path, _node)
-        _guard = self.none_guard(element, _node, path)
-        if _guard and _printwhen:
-            _printwhen = "(%s) and %s" % (_printwhen, _guard)
-        elif _guard:
-            _printwhen = _guard
-        if _printwhen:
-            _node.set("printwhen", _printwhen)
         if element.tag != "xref":
+            _printwhen = self.element_printwhen(element,
+                inherited, _node, path)
+            if _printwhen:
+                _node.set("printwhen", _printwhen)
             _node.children.extend(self.style_nodes(_styles, context))
         return _node
+
+    def element_printwhen(self, element, inherited, node, path):
+        """Return the printwhen of a body element, or None.
+
+        PythonReports hides an xref, and all it holds, by the printwhen
+        of the xref's styles, and an element inside it by the printwhen
+        of the element's own.  s-reports has no printwhen on an xref,
+        so an element inside one prints where both conditions hold.
+        The xref's comes first, since PythonReports tests it first.
+
+        Parameters:
+            element: the template element.
+            inherited: style elements of an xref holding the element.
+            node: the node of the element, for notes.
+            path: where the element is, for notes.
+
+        """
+        _parts = [_text for _text in (
+            self.printwhen(list(inherited), path, node),
+            self.printwhen(element.findall("style"), path, node)) if _text]
+        _guard = self.none_guard(element, node, path)
+        if (len(_parts) > 1) or (_parts and _guard):
+            _parts = ["(%s)" % _text for _text in _parts]
+        if _guard:
+            _parts.append(_guard)
+        return " and ".join(_parts) or None
 
     def none_guard(self, element, node, path):
         """Return a printwhen that keeps a field from printing None.
@@ -1379,7 +1419,8 @@ class _Converter(object):
         _styles = element.findall("style")
         if any(_style.get("printwhen") for _style in _styles):
             self.note(path, "s-reports has no printwhen on an xref: the "
-                "elements inside it got it instead", node)
+                "elements inside it got it instead, and the link is there "
+                "even where they do not print", node)
         if _styles:
             self.note(path, "s-reports has no styles on an xref: the elements "
                 "inside it got them instead", node)
@@ -1406,8 +1447,11 @@ class _Converter(object):
         else:
             _data_text = None
         _evaltime = (element.get("evaltime") or "").strip()
+        # A numeric conversion says what kind of number a field holds.
+        _hints = format_hints(_format)
         if _expr and _expr.strip() and _evaltime:
-            _result = self.expression(path, _expr, node, deferred=True)
+            _result = self.expression(path, _expr, node, deferred=True,
+                hint=_hints)
             if not _result.final:
                 self.note(path, "the deferred expression %s reads nothing "
                     "that changes as the report is built, so it is "
@@ -1432,7 +1476,7 @@ class _Converter(object):
                     "longest value" % kind, node)
             return
         if _expr and _expr.strip():
-            _result = self.expression(path, _expr, node)
+            _result = self.expression(path, _expr, node, hint=_hints)
             _tree = _result.tree
             if isinstance(_tree, ast.Constant) \
             and isinstance(_tree.value, str) and (_format == "%s"):
@@ -1523,9 +1567,10 @@ class _Converter(object):
         # backslant, and s-reports draws it falling, "\", unless told so.
         # A level or upright line is the same either way.
         _box = element.find("box")
-        _flat = (_box is not None) and any(
-            _box.get(_name) and (_points(_box.get(_name)) == 0)
-            for _name in ("width", "height"))
+        _attrs = {} if _box is None else _box.attrib
+        _tall = _span(_points(_attrs.get("y") or "0"),
+            _points(_attrs.get("height") or "-1"))
+        _flat = (width == 0) or (_tall == 0)
         _backslant = bool(element.get("backslant")) \
             and _boolean(element.get("backslant"))
         if not (_flat or _backslant):

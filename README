@@ -1,3 +1,14 @@
+==========
+Superseded
+==========
+
+PythonReports_ is superseded by s-reports_, a banded report formatter
+with a template format that grew out of this one.
+New reports should be written for s-reports.
+
+Existing templates and printouts can be carried over with the
+``pr2sr`` command; see `Migrating to s-reports`_ below.
+
 ============
 Introduction
 ============
@@ -71,9 +82,60 @@ This is an example of building a PDF from that data::
     printout.validate()
     write_pdf(printout, "sakila.pdf")
 
+======================
+Migrating to s-reports
+======================
+
+The ``pr2sr`` command converts PythonReports files to s-reports ones.
+It is installed with PythonReports, and ``python -m
+PythonReports.migrate`` runs it as well::
+
+    pr2sr template sakila.prt                  # writes sakila.kdl
+    pr2sr template sakila.prt --records payments.jsonl
+    pr2sr printout sakila.prp                  # writes sakila.srp.jsonl
+    pr2sr printout sakila.prp -o sakila.pdf    # rendered by s-reports
+
+``pr2sr template`` reads a template in either format, XML or RSON,
+and writes an s-reports template in KDL.  It needs nothing beyond
+PythonReports, and rsonlite_ for RSON.  ``pr2sr printout`` reads
+a printout and writes an s-reports printout, as NDJSON (``.srp.jsonl``),
+CBOR (``.srp.cbor``), or PDF (``.pdf``), so that archived printouts
+can be rendered by s-reports.  It needs s-reports itself::
+
+    pip install PythonReports[sr]
+
+Where s-reports is installed, ``pr2sr template`` also checks the converted
+template with it, and exits with status 1 if s-reports does not accept it.
+
+What the conversion could not carry over unchanged is listed on
+standard error, and in the converted template as comments that begin
+with ``migrate:``.  These are the things to look at most often:
+
+* Record fields.  s-reports declares the fields of the data records
+  and their types.  The converter declares every field the
+  expressions read.  With ``--records``, a JSON array or NDJSON file
+  of sample records, the types come from the data; without it, they
+  are guessed from how the expressions use the fields.  A field that
+  the expressions test for None or for truth is declared nullable.
+* Data.  s-reports reads its records from JSON rather than from
+  Python objects, so the program that built reports has to write
+  its data as JSON instead.
+* Expressions.  s-reports evaluates Starlark rather than Python.
+  The converter rewrites what has a Starlark counterpart, and notes
+  what has none, such as names from ``import`` elements.
+* Deferred fields.  s-reports sizes a field or a bar code that has
+  ``evaltime`` by a placeholder text.  Where the template gave none,
+  the converter writes a guess.
+* Values of None.  PythonReports prints nothing for them,
+  and s-reports prints ``None``.  A field that shows a variable prints
+  only when the value is not None.
+* Inline subreports.  s-reports runs an inline subreport without a page
+  header or footer of its own.
+
 .. _External hyperlink targets:
 
 .. _PythonReports: https://github.com/a1s/PythonReports
+.. _s-reports: https://github.com/a1s/sr.py
 .. _template: https://github.com/a1s/PythonReports/wiki/Report-Templates
 .. _printout: https://github.com/a1s/PythonReports/wiki/Printout-Format
 .. _Python: http://www.python.org/

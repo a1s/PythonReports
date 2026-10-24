@@ -1,6 +1,6 @@
 [project]
 dynamic = ["version"]
-name = "PythonReports"
+name = "pythonreports"
 description = "Database report generator"
 readme = {file = "README", content-type = "text/x-rst"}
 classifiers = [

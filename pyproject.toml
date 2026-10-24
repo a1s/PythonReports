@@ -28,6 +28,13 @@ authors = [
 name = "PythonReports Users Mailing List"
 email = "pythonreports-users@lists.sourceforge.net"
 
+[project.optional-dependencies]
+# The printout converter of PythonReports.migrate builds s-reports printouts.
+sr = ["s-reports"]
+
+[project.scripts]
+pr2sr = "PythonReports.migrate.cli:main"
+
 [project.gui-scripts]
 prd = "PythonReports.design:run"
 

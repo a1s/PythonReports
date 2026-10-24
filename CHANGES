@@ -1,6 +1,14 @@
 PythonReports release history
 =============================
 
+version 1.0.1 (24-oct-2026)
+---------------------------
+
+PythonReports is now superseded by s-reports.
+
+Add the pr2sr command converting the templates and printouts
+to s-reports format.
+
 version 1.0.0 (27-jul-2024)
 ---------------------------
 

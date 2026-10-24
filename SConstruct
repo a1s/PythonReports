@@ -34,7 +34,8 @@ env = Environment(
     },
 )
 
-py_sources = env.Glob("PythonReports/*.py")
+py_sources = env.Glob("PythonReports/*.py") \
+    + env.Glob("PythonReports/migrate/*.py")
 
 doc_sources = ["README", "CHANGES", "doc/prt.txt", "doc/prp.txt"]
 doc_html = [
